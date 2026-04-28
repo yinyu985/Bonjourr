@@ -103,7 +103,7 @@ function changeGroup(event: Event): void {
 
     const transition = transitioner()
 
-    if (!!domlinkblocks.dataset.folderid) {
+    if (domlinkblocks.dataset.folderid) {
         return
     }
 
