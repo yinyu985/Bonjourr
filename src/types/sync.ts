@@ -56,6 +56,7 @@ export interface Sync {
 
 export interface LinkGroups {
     on: boolean
+    position?: 'top' | 'bottom'
     selected: string
     groups: string[]
     pinned: string[]

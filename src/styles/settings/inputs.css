@@ -13,7 +13,7 @@ aside .param-textarea {
     font-size: 13px;
     line-height: 1.5;
     resize: none;
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--color-text);
     background-color: var(--color-areas);
 }
@@ -23,7 +23,7 @@ aside .param-btn {
     padding: 0 0.9em;
     color: var(--color-blue);
     border: none;
-    border-radius: 1em;
+    border-radius: 8px;
     white-space: nowrap;
     background-color: rgba(var(--blue), 0.15);
     display: inline-flex;
@@ -55,7 +55,7 @@ aside .param-btn:disabled {
 }
 
 aside .inline-btn {
-    border-radius: 1em;
+    border-radius: 8px;
     color: var(--color-blue);
     background-color: transparent;
 }
@@ -101,7 +101,7 @@ aside .prism-code-editor {
 aside select,
 aside input,
 aside button {
-    border-radius: 12px;
+    border-radius: 8px;
     color: var(--color-text);
     -webkit-appearance: none;
     appearance: none;
@@ -445,7 +445,7 @@ aside form.valid.remove span::after {
 .param {
     margin-top: 8px;
     padding: 8px 12px;
-    border-radius: var(--border-radius);
+    border-radius: 14px;
     background-color: rgb(var(--color-param));
 }
 

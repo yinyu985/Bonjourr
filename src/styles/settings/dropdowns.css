@@ -117,6 +117,10 @@
     max-height: 423px;
 }
 
+#linkgroups_options.shown {
+    max-height: 420px;
+}
+
 #notes_options.shown {
     max-height: 200px;
 }

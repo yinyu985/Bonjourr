@@ -4,6 +4,11 @@
     --in-out-bounce: cubic-bezier(0.68, -0.2, 0.265, 1.2);
 }
 
+#linkblocks[data-group-position='top'] #link-mini {
+    padding-top: 0;
+    padding-bottom: 1em;
+}
+
 #linkblocks.hidden {
     display: none;
 }

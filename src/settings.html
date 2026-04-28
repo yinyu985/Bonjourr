@@ -576,13 +576,23 @@
             <input id="i_linkgroups" class="switch" type="checkbox" />
         </div>
 
-        <div class="as as_link dropdown">
+        <div id="linkgroups_options" class="as as_link dropdown">
             <p class="tooltiptext dropdown">
                 <span class="trn"
                 >Organize your links even more with pages. Right click next to a page to add another.</span>
                 <a class="trn" href="https://bonjourr.fr/docs/overview#links" rel="noreferrer noopener" target="_blank"
                 >Learn more</a>
             </p>
+
+            <hr />
+
+            <div class="wrapper">
+                <label for="i_linkgroup-position" class="trn">Group bar position</label>
+                <select id="i_linkgroup-position">
+                    <option value="bottom" class="trn">Bottom</option>
+                    <option value="top" class="trn">Top</option>
+                </select>
+            </div>
 
             <div class="not-safari">
                 <hr />

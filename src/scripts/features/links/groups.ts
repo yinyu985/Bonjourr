@@ -11,6 +11,14 @@ import type { LinkGroups, Sync } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 
+export function isGroupFocus(): boolean {
+    return document.body.classList.contains('group-focus')
+}
+
+export function setGroupFocus(focused: boolean): void {
+    document.body.classList.toggle('group-focus', focused)
+}
+
 export function initGroups(data: Sync, init?: true): void {
     if (!init) {
         for (const node of document.querySelectorAll('#link-mini button') ?? []) {
@@ -67,6 +75,10 @@ function createGroups(linkgroups: LinkGroups): void {
     }
 
     domlinkblocks?.classList.toggle('with-groups', linkgroups.on)
+
+    if (!linkgroups.on) {
+        setGroupFocus(false)
+    }
 }
 
 function changeGroup(event: Event): void {
@@ -91,7 +103,14 @@ function changeGroup(event: Event): void {
 
     const transition = transitioner()
 
-    if (!!domlinkblocks.dataset.folderid || button.classList.contains('selected-group')) {
+    if (!!domlinkblocks.dataset.folderid) {
+        return
+    }
+
+    if (button.classList.contains('selected-group')) {
+        if (event.type !== 'wheel') {
+            setGroupFocus(!isGroupFocus())
+        }
         return
     }
 
@@ -121,6 +140,7 @@ function changeGroup(event: Event): void {
 
     function showNewGroup(): void {
         domlinkblocks.classList.remove('hiding')
+        setGroupFocus(true)
     }
 }
 
@@ -128,6 +148,7 @@ function changeGroup(event: Event): void {
 
 export function toggleGroups(on: boolean, data: Sync): Sync {
     domlinkblocks?.classList.toggle('with-groups', on)
+    setGroupFocus(false)
     data.linkgroups.on = on
     return data
 }

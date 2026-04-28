@@ -241,6 +241,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_background-mute-videos', data.backgrounds.mute ?? true)
     setCheckbox('i_quicklinks', data.quicklinks)
     setCheckbox('i_linkgroups', data?.linkgroups?.on)
+    setInput('i_linkgroup-position', data?.linkgroups?.position ?? 'bottom')
     setCheckbox('i_linknewtab', data.linknewtab)
     setCheckbox('i_time', data.time)
     setCheckbox('i_analog', data.clock?.analog ?? false)
@@ -305,6 +306,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('main_options')?.classList.toggle('shown', data.main)
     paramId('weather_provider')?.classList.toggle('shown', data.weather?.moreinfo === 'custom')
     paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
+    paramId('linkgroups_options')?.classList.toggle('shown', data.linkgroups?.on ?? false)
     paramId('pomodoro_options')?.classList.toggle('shown', data.pomodoro.on)
     paramId('notes_options')?.classList.toggle('shown', data.notes?.on)
     paramId('searchbar_options')?.classList.toggle('shown', data.searchbar?.on)
@@ -466,7 +468,12 @@ function initOptionsEvents(): void {
     })
 
     onclickdown(paramId('i_linkgroups'), (_, target) => {
+        paramId('linkgroups_options')?.classList.toggle('shown', target.checked)
         quickLinks(undefined, { groups: target.checked })
+    })
+
+    paramId('i_linkgroup-position').addEventListener('change', function (this): void {
+        quickLinks(undefined, { groupPosition: this.value as 'top' | 'bottom' })
     })
 
     onclickdown(paramId('i_linknewtab'), (_, target) => {

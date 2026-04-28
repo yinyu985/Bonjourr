@@ -1,3 +1,5 @@
+import { setGroupFocus } from './features/links/groups.ts'
+
 let isMousingDownOnInput = false
 
 export function userActions(): void {
@@ -35,6 +37,9 @@ function keyboardUserActions(event: KeyboardEvent): void {
         else if (open.folder) {
             document.dispatchEvent(new Event('close-folder'))
         } //
+        else if (open.groupfocus && keyup) {
+            setGroupFocus(false)
+        } //
         else if (keyup) {
             // condition to avoid conflicts with esc key on supporters modal
             // likely to be improved
@@ -68,6 +73,7 @@ function clickUserActions(event: MouseEvent): void {
         linkfolder: path.some((el) => el.className.includes('folder')),
         addgroup: path.some((el) => el.className.includes('add-group')),
         folder: path.some((el) => el.className.includes('in-folder')),
+        linkblocks: pathIds.includes('linkblocks'),
         button: path.some((el) => el.className.includes('param-btn')),
         localfiles: path.some((el) => el.id === 'local_options'),
         interface: pathIds.includes('interface'),
@@ -111,6 +117,10 @@ function clickUserActions(event: MouseEvent): void {
         return
     }
 
+    if (open.groupfocus && !on.linkblocks) {
+        setGroupFocus(false)
+    }
+
     if (open.settings && !on.interactable) {
         document.dispatchEvent(new CustomEvent('toggle-settings'))
     } //
@@ -127,12 +137,14 @@ function clickUserActions(event: MouseEvent): void {
 function isOpen(): {
     settings: boolean
     folder: boolean
+    groupfocus: boolean
     selectall: boolean | undefined
     contextmenu: boolean | undefined
 } {
     return {
         settings: !!document.getElementById('settings')?.classList.contains('shown'),
         folder: !!document.querySelector('.in-folder'),
+        groupfocus: document.body.classList.contains('group-focus'),
         selectall: document.getElementById('linkblocks')?.classList.contains('select-all'),
         contextmenu: document.querySelector<HTMLDialogElement>('#contextmenu')?.open,
     }

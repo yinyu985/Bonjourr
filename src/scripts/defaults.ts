@@ -115,6 +115,7 @@ export const SYNC_DEFAULT: Sync = {
     linkiconradius: 1.1,
     linkgroups: {
         on: false,
+        position: 'bottom',
         selected: 'default',
         groups: ['default'],
         pinned: [],

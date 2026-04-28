@@ -72,6 +72,7 @@ type LinksUpdate = {
     row?: string
     newtab?: boolean
     groups?: boolean
+    groupPosition?: 'top' | 'bottom'
     addLinks?: AddLinks
     addGroups?: AddGroups
     addFolder?: { ids: string[]; group?: string }
@@ -104,6 +105,7 @@ type LinksInit = {
 }
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
+const domlinkmini = document.getElementById('link-mini') as HTMLDivElement
 let initIconList: [HTMLImageElement, string][] = []
 let selectallTimer = 0
 
@@ -139,9 +141,12 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
 export function initblocks(sync: Sync, local?: Local): true {
     const allLinks = Object.values(sync).filter((val) => isLink(val)) as Link[]
     const { pinned, synced, selected } = sync.linkgroups
+    const groupPosition = sync.linkgroups.position ?? 'bottom'
     const activeGroups: LinkGroups = []
 
-    for (const group of [...pinned, selected]) {
+    setGroupBarPosition(groupPosition)
+
+    for (const group of groupPosition === 'top' ? [selected, ...pinned] : [...pinned, selected]) {
         const div = document.querySelector<HTMLDivElement>(`.link-group[data-group="${group}"]`)
         const folder = div?.dataset.folder
         const lis: HTMLLIElement[] = []
@@ -156,8 +161,6 @@ export function initblocks(sync: Sync, local?: Local): true {
             synced: synced?.includes(group),
         })
     }
-
-    activeGroups.reverse()
 
     // Remove links that didn't make the cut
     const divs = activeGroups.map((g) => g.div)
@@ -225,7 +228,11 @@ export function initblocks(sync: Sync, local?: Local): true {
         linkgroup.classList.toggle('pinned', group.pinned)
         linkgroup.classList.toggle('synced', group.synced)
         linklist.appendChild(fragment)
-        domlinkblocks.prepend(linkgroup)
+        if (groupPosition === 'top') {
+            domlinkblocks.append(linkgroup)
+        } else {
+            domlinkblocks.insertBefore(linkgroup, domlinkmini)
+        }
 
         if (group.title === 'topsites') {
             linktitle.textContent = tradThis('Most visited')
@@ -250,6 +257,17 @@ export function initblocks(sync: Sync, local?: Local): true {
     displayInterface('links')
 
     return true
+}
+
+function setGroupBarPosition(position: 'top' | 'bottom'): void {
+    domlinkblocks.dataset.groupPosition = position
+
+    if (position === 'top') {
+        domlinkblocks.prepend(domlinkmini)
+        return
+    }
+
+    domlinkblocks.append(domlinkmini)
 }
 
 function createFolder(link: LinkFolder, folderChildren: Link[], style: Sync['linkstyle']): HTMLLIElement {
@@ -460,6 +478,9 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
     }
     if (update.groups !== undefined) {
         data = toggleGroups(update.groups, data)
+    }
+    if (update.groupPosition) {
+        data = setGroupPosition(update.groupPosition, data)
     }
     if (update.newtab !== undefined) {
         data = setOpenInNewTab(update.newtab, data)
@@ -841,6 +862,13 @@ function setRows(row: string): void {
     const val = Number.parseInt(row ?? '6')
     initRows(val, style)
     eventDebounce({ linksrow: row })
+}
+
+function setGroupPosition(position: 'top' | 'bottom', data: Sync): Sync {
+    data.linkgroups.position = position
+    setGroupBarPosition(position)
+    initblocks(data)
+    return data
 }
 
 // Helpers

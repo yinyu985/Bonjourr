@@ -54,3 +54,25 @@
 #linkblocks.in-folder {
     align-self: start;
 }
+
+body.group-focus #main,
+body.group-focus #time,
+body.group-focus #sb_container,
+body.group-focus #notes_container,
+body.group-focus #quotes_container,
+body.group-focus #pomodoro_container,
+body.group-focus #credit-container {
+    display: none;
+}
+
+body.group-focus #interface {
+    align-content: start;
+    gap: 0;
+    padding-top: 2.25em;
+    padding-bottom: 2em;
+}
+
+body.group-focus #linkblocks {
+    place-self: start center;
+    width: 100%;
+}
