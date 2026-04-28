@@ -1,7 +1,7 @@
 #settings-footer {
     width: 75%;
     font-size: 14px;
-    margin: 50px auto 100px;
+    margin: 36px auto 80px;
     color: var(--color-light-text);
 }
 
@@ -18,7 +18,7 @@
 }
 
 #settings-footer > div:nth-child(2) {
-    margin: 1.5em 0;
+    margin: 1em 0;
 }
 
 #settings-footer svg {

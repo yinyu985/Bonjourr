@@ -15,7 +15,7 @@ aside h2 {
     display: grid;
     place-items: baseline;
     grid-template-columns: 1fr min-content;
-    margin: 32px 20px 0px 20px;
+    margin: 24px 16px 0 16px;
     color: var(--color-light-text);
     /* offset for when section is automatically getting scrolled to */
     scroll-margin-top: 20px;
@@ -55,7 +55,7 @@ aside .settings-title .tooltip {
 .tooltiptext {
     color: var(--color-light-text);
     font-size: 13px;
-    line-height: 1.5em;
+    line-height: 1.4em;
 }
 
 .param .tooltiptext {

@@ -20,11 +20,11 @@
     opacity: 0.8;
     font-size: 13px;
     width: 100%;
-    height: 110px;
-    min-height: 110px;
+    height: 96px;
+    min-height: 96px;
     max-height: 3000px;
-    margin: 6px 0;
-    padding: 10px 16px;
+    margin: 4px 0;
+    padding: 8px 12px;
     tab-size: 1.5em;
     resize: vertical;
     cursor: pointer;
@@ -44,7 +44,7 @@
     opacity: unset;
     cursor: inherit;
     display: inline-block;
-    min-height: 300px;
+    min-height: 220px;
 }
 
 #file-import,
@@ -73,7 +73,7 @@
 /*  Reset  */
 
 #reset-settings {
-    margin-top: 1em;
+    margin-top: 0.75em;
 }
 
 #reset-conf,
