@@ -183,6 +183,10 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_favicon', data.favicon ?? '')
     setInput('i_tabtitle', data.tabtitle ?? '')
     setInput('i_solid-background', data.backgrounds.color ?? '#185A63')
+    setInput('i_texture', data.backgrounds.texture.type ?? 'none')
+    setInput('i_texture-size', data.backgrounds.texture.size ?? '220')
+    setInput('i_texture-opacity', data.backgrounds.texture.opacity ?? '0.1')
+    setInput('i_texture-color', data.backgrounds.texture.color ?? '#ffffff')
     setInput('i_pagewidth', data.pagewidth || 1600)
     setInput('i_pagegap', data.pagegap ?? 1)
     setInput('i_dateformat', data.dateformat || 'eu')
@@ -241,7 +245,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_background-mute-videos', data.backgrounds.mute ?? true)
     setCheckbox('i_quicklinks', data.quicklinks)
     setCheckbox('i_linkgroups', data?.linkgroups?.on)
-    setInput('i_linkgroup-position', data?.linkgroups?.position ?? 'bottom')
     setCheckbox('i_linknewtab', data.linknewtab)
     setCheckbox('i_time', data.time)
     setCheckbox('i_analog', data.clock?.analog ?? false)
@@ -262,6 +265,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_supporters_notif', data.supporters?.enabled ?? true)
 
     colorInput('solid-background', data.backgrounds.color)
+    colorInput('texture-color', data.backgrounds.texture.color ?? '#ffffff')
 
     paramId('i_notes-shade')?.classList.toggle('on', (data.notes?.background ?? '#fff').includes('#000'))
     paramId('i_sb-shade')?.classList.toggle('on', (data.searchbar?.background ?? '#fff').includes('#000'))
@@ -270,6 +274,7 @@ function initOptionsValues(data: Sync, local: Local): void {
         'on',
         (data.analogstyle?.background ?? '#fff').includes('#000'),
     )
+
 
     // Change edit tips on mobile
     if (IS_MOBILE) {
@@ -472,10 +477,6 @@ function initOptionsEvents(): void {
         quickLinks(undefined, { groups: target.checked })
     })
 
-    paramId('i_linkgroup-position').addEventListener('change', function (this): void {
-        quickLinks(undefined, { groupPosition: this.value as 'top' | 'bottom' })
-    })
-
     onclickdown(paramId('i_linknewtab'), (_, target) => {
         quickLinks(undefined, { newtab: target.checked })
     })
@@ -559,6 +560,26 @@ function initOptionsEvents(): void {
     })
 
     // Background filters
+
+    paramId('i_texture').addEventListener('change', function (this: HTMLInputElement): void {
+        backgroundUpdate({ texture: this.value })
+    })
+
+    paramId('b_texture-color').addEventListener('click', function (): void {
+        paramId('i_texture-color').click()
+    })
+
+    paramId('i_texture-color').addEventListener('input', function (): void {
+        backgroundUpdate({ texturecolor: this.value })
+    })
+
+    paramId('i_texture-size').addEventListener('input', function (this: HTMLInputElement): void {
+        backgroundUpdate({ texturesize: this.value })
+    })
+
+    paramId('i_texture-opacity').addEventListener('input', function (this: HTMLInputElement): void {
+        backgroundUpdate({ textureopacity: this.value })
+    })
 
     paramId('i_blur').addEventListener('pointerdown', function (this: HTMLInputElement): void {
         backgroundUpdate({ blurenter: true })

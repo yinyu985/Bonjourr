@@ -61,12 +61,20 @@
     text-overflow: ellipsis;
     border: none;
     background-color: transparent;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg') no-repeat 10px center;
+    background-size: 20px;
+    padding-left: 40px;
 }
 
 #searchbar::placeholder {
     transition: opacity 0.2s;
     text-transform: none;
     color: #fff8;
+}
+
+#searchbar::placeholder {
+    color: white;
+    opacity: 0.7;
 }
 
 #sb-buttons {

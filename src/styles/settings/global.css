@@ -8,6 +8,7 @@ aside {
     min-width: 333px;
     width: 450px;
     padding: 0 18px;
+    --border-radius: 10px;
     background-color: var(--color-settings);
     color: var(--color-text);
     font-size: 15px;

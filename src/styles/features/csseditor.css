@@ -24,6 +24,12 @@
     user-select: none;
     isolation: isolate;
     white-space: pre;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.prism-code-editor::-webkit-scrollbar {
+    display: none;
 }
 
 [data-system='mac'] .prism-code-editor {
@@ -46,6 +52,12 @@
     pointer-events: auto;
     user-select: auto;
     -webkit-user-select: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.prism-code-editor textarea::-webkit-scrollbar {
+    display: none;
 }
 
 .prism-code-editor textarea::placeholder {

@@ -15,7 +15,7 @@ export const API_DOMAIN = 'https://services.bonjourr.fr'
 export const ENVIRONNEMENT: 'PROD' | 'DEV' | 'TEST' = globalThis.ENV ?? 'TEST'
 
 // attributes an ID to this tab to keep track of them
-export const TAB_ID = crypto.randomUUID()
+export const TAB_ID = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 export const tabsBc = new BroadcastChannel('bonjourr_tabs')
 
 export const SYSTEM_OS = iosUA.includes(navigator.platform) ||
@@ -115,7 +115,6 @@ export const SYNC_DEFAULT: Sync = {
     linkiconradius: 1.1,
     linkgroups: {
         on: false,
-        position: 'bottom',
         selected: 'default',
         groups: ['default'],
         pinned: [],

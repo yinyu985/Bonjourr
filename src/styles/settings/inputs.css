@@ -23,7 +23,7 @@ aside .param-btn {
     padding: 0 0.9em;
     color: var(--color-blue);
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     white-space: nowrap;
     background-color: rgba(var(--blue), 0.15);
     display: inline-flex;
@@ -55,7 +55,7 @@ aside .param-btn:disabled {
 }
 
 aside .inline-btn {
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--color-blue);
     background-color: transparent;
 }
@@ -98,10 +98,24 @@ aside .prism-code-editor {
     font-family: var(--monospace-font-family);
 }
 
+aside textarea,
+aside #settings-data,
+aside .param-textarea,
+aside .prism-code-editor textarea {
+    resize: none;
+}
+
+aside textarea::-webkit-resizer,
+aside #settings-data::-webkit-resizer,
+aside .param-textarea::-webkit-resizer,
+aside textarea::-webkit-scrollbar-corner {
+    display: none !important;
+}
+
 aside select,
 aside input,
 aside button {
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--color-text);
     -webkit-appearance: none;
     appearance: none;
@@ -145,7 +159,7 @@ aside .switch {
     display: inline-block;
     height: 26px;
     width: 59px;
-    border-radius: 16px;
+    border-radius: 6px;
     background-color: #c6c4c7;
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -163,7 +177,7 @@ aside .switch:after {
     position: absolute;
     height: 22px;
     width: 34px;
-    border-radius: 100px;
+    border-radius: 3px;
     background-color: white;
     transition: background-color 0.15s, transform 0.15s;
 
@@ -220,7 +234,7 @@ aside input[type='range']::-webkit-slider-thumb {
     background: #fff;
     height: 20px;
     width: 30px;
-    border-radius: 50px;
+    border-radius: 4px;
     border: 0;
     box-shadow: 0px 1px 4px 2px rgba(20, 20, 20, 0.17);
     margin-top: calc(4px * 0.5 - 20px * 0.5);
@@ -247,7 +261,7 @@ aside input[type='range']::-moz-range-thumb {
     background: #fff;
     height: 20px;
     width: 30px;
-    border-radius: 50px;
+    border-radius: 4px;
     border: 0;
     box-shadow: 0px 1px 4px 2px rgba(20, 20, 20, 0.17);
     margin-top: calc(4px * 0.5 - 20px * 0.5);
@@ -445,7 +459,7 @@ aside form.valid.remove span::after {
 .param {
     margin-top: 8px;
     padding: 8px 12px;
-    border-radius: 14px;
+    border-radius: 10px;
     background-color: rgb(var(--color-param));
 }
 

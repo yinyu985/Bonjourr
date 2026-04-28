@@ -1,8 +1,5 @@
 #settings-footer {
-    width: 75%;
-    font-size: 14px;
-    margin: 36px auto 80px;
-    color: var(--color-light-text);
+    display: none !important;
 }
 
 @supports (-webkit-touch-callout: none) {

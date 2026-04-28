@@ -1,6 +1,7 @@
 import { applyUrls, getUrlsAsCollection, initUrlsEditor, urlsCacheControl } from './urls.ts'
 import { handleBackgroundActions, initBackgroundActionsEvents } from '../contextmenu.ts'
 import { toggleCredits, updateCredits } from './credits.ts'
+import { TEXTURE_RANGES } from './textures.ts'
 import { PROVIDERS } from './providers.ts'
 import {
     addLocalBackgrounds,
@@ -11,7 +12,7 @@ import {
     setCurrentVideo,
 } from './local.ts'
 
-import { colorInput, turnRefreshButton } from '../../shared/dom.ts'
+import { colorInput, turnRefreshButton, webkitRangeTrackColor } from '../../shared/dom.ts'
 import { daylightPeriod, needsChange, userDate } from '../../shared/time.ts'
 import { networkForm } from '../../shared/form.ts'
 import { rgbToHex } from '../../shared/generic.ts'
@@ -46,7 +47,11 @@ interface BackgroundUpdate {
     fadein?: string
     refresh?: Event
     urlsapply?: true
+    texture?: string
     provider?: string
+    texturecolor?: string
+    texturesize?: string
+    textureopacity?: string
     mute?: boolean
 }
 
@@ -82,6 +87,7 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
 
     toggleCredits(sync.backgrounds)
     applyFilters(sync.backgrounds)
+    applyTexture(sync.backgrounds.texture)
     handleBackgroundActions(sync.backgrounds)
     document.getElementById('background-wrapper')?.setAttribute('data-type', sync.backgrounds.type)
 
@@ -206,6 +212,34 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
         storage.sync.set({ backgrounds: data.backgrounds })
     }
 
+    // Textures
+
+    if (update.texturecolor !== undefined) {
+        data.backgrounds.texture.color = update.texturecolor
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        colorInput('texture-color', update.texturecolor)
+        applyTexture(data.backgrounds.texture)
+    }
+
+    if (update.textureopacity !== undefined) {
+        data.backgrounds.texture.opacity = Number.parseFloat(update.textureopacity)
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        applyTexture(data.backgrounds.texture)
+    }
+
+    if (update.texturesize !== undefined) {
+        data.backgrounds.texture.size = Number.parseInt(update.texturesize)
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        applyTexture(data.backgrounds.texture)
+    }
+
+    if (isBackgroundTexture(update.texture)) {
+        data.backgrounds.texture = { type: update.texture }
+        storage.sync.set({ backgrounds: data.backgrounds })
+        handleBackgroundOptions(data.backgrounds)
+        applyTexture(data.backgrounds.texture)
+    }
+
     document.dispatchEvent(
         new CustomEvent('updateSettingsBeforeInit', {
             detail: data,
@@ -280,7 +314,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     }
 }
 
-export async function filtersUpdate({ blur, bright, fadein }: Partial<Backgrounds>): Promise<void> {
+export async function filtersUpdate({ blur, bright, fadein, texture }: Partial<Backgrounds>): Promise<void> {
     const data = await storage.sync.get('backgrounds')
 
     if (blur !== undefined) {
@@ -291,6 +325,9 @@ export async function filtersUpdate({ blur, bright, fadein }: Partial<Background
     }
     if (fadein !== undefined) {
         data.backgrounds.fadein = fadein
+    }
+    if (texture !== undefined) {
+        data.backgrounds.texture = texture
     }
 
     storage.sync.set({ backgrounds: data.backgrounds })
@@ -751,6 +788,26 @@ function applyFilters({ blur, bright, fadein }: Partial<Backgrounds>): void {
     }
 }
 
+function applyTexture(texture: Backgrounds['texture']): void {
+    const wrapper = document.getElementById('background-wrapper')
+    const domtexture = document.getElementById('background-texture')
+
+    if (!(domtexture && wrapper)) {
+        return
+    }
+
+    const ranges = TEXTURE_RANGES[texture.type]
+    const color = texture.color ?? ranges.color
+    const size = texture.size ?? ranges.size.value
+    const opacity = texture.opacity ?? ranges.opacity.value
+
+    wrapper.dataset.texture = texture.type
+    document.documentElement.style.setProperty('--texture-color', `${color}`)
+    document.documentElement.style.setProperty('--texture-color-transparent', `${color}77`)
+    document.documentElement.style.setProperty('--texture-opacity', `${opacity}`)
+    document.documentElement.style.setProperty('--texture-size', `${size}px`)
+}
+
 // 	Settings options
 
 export function initBackgroundOptions(sync: Sync, local: Local): void {
@@ -772,8 +829,43 @@ function handleBackgroundOptions(backgrounds: Backgrounds): void {
     document.getElementById('background-filters-options')?.classList.toggle('shown', type !== 'color')
     document.getElementById('background-video-sound-options')?.classList.toggle('shown', withVideos)
 
+    handleTextureOptions(backgrounds)
     handleProviderOptions(backgrounds)
     handleBackgroundActions(backgrounds)
+}
+
+function handleTextureOptions(backgrounds: Backgrounds): void {
+    const hasTexture = backgrounds.texture.type !== 'none'
+
+    document.getElementById('background-texture-options')?.classList.toggle('shown', hasTexture)
+
+    if (hasTexture) {
+        const iOpacity = document.querySelector<HTMLInputElement>('#i_texture-opacity')
+        const iSize = document.querySelector<HTMLInputElement>('#i_texture-size')
+        const colorOption = document.querySelector<HTMLElement>('#background-texture-color-option')
+
+        const ranges = TEXTURE_RANGES[backgrounds.texture.type]
+        const { opacity, size } = backgrounds.texture
+
+        // shows and hides texture color option
+        colorOption?.classList.toggle('shown', ranges.color !== undefined)
+
+        if (iOpacity) {
+            iOpacity.min = ranges.opacity.min
+            iOpacity.max = ranges.opacity.max
+            iOpacity.step = ranges.opacity.step
+            iOpacity.value = opacity === undefined ? ranges.opacity.value : opacity.toString()
+            webkitRangeTrackColor(iOpacity)
+        }
+
+        if (iSize) {
+            iSize.min = ranges.size.min
+            iSize.max = ranges.size.max
+            iSize.step = ranges.size.step
+            iSize.value = size === undefined ? ranges.size.value : size.toString()
+            webkitRangeTrackColor(iSize)
+        }
+    }
 }
 
 function handleProviderOptions(backgrounds: Backgrounds): void {
@@ -992,6 +1084,31 @@ export function toggleMuteStatus(muted = true): void {
 
 function isBackgroundType(str = ''): str is Sync['backgrounds']['type'] {
     return ['files', 'urls', 'images', 'videos', 'color'].includes(str)
+}
+function isBackgroundTexture(str = ''): str is Sync['backgrounds']['texture']['type'] {
+    return [
+        'none',
+        'grain',
+        'verticalDots',
+        'diagonalDots',
+        'topographic',
+        'checkerboard',
+        'isometric',
+        'grid',
+        'verticalLines',
+        'horizontalLines',
+        'diagonalStripes',
+        'verticalStripes',
+        'horizontalStripes',
+        'diagonalLines',
+        'aztec',
+        'circuitBoard',
+        'ticTacToe',
+        'endlessClouds',
+        'vectorGrain',
+        'waves',
+        'honeycomb',
+    ].includes(str)
 }
 function isFrequency(str = ''): str is Frequency {
     return ['tabs', 'hour', 'day', 'period', 'pause'].includes(str)

@@ -56,7 +56,6 @@ export interface Sync {
 
 export interface LinkGroups {
     on: boolean
-    position?: 'top' | 'bottom'
     selected: string
     groups: string[]
     pinned: string[]
@@ -88,7 +87,31 @@ export interface Backgrounds {
     pausedVideo?: BackgroundVideo
     queries: Record<string, string>
     texture: {
-        type: 'none'
+        type:
+            | 'none'
+            | 'grain'
+            | 'verticalDots'
+            | 'diagonalDots'
+            | 'topographic'
+            | 'checkerboard'
+            | 'isometric'
+            | 'grid'
+            | 'verticalLines'
+            | 'horizontalLines'
+            | 'diagonalStripes'
+            | 'verticalStripes'
+            | 'horizontalStripes'
+            | 'diagonalLines'
+            | 'aztec'
+            | 'circuitBoard'
+            | 'ticTacToe'
+            | 'endlessClouds'
+            | 'vectorGrain'
+            | 'waves'
+            | 'honeycomb'
+        size?: number
+        opacity?: number
+        color?: string
     }
 }
 

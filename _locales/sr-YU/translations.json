@@ -1,10 +1,12 @@
 {
     "lang": "sr-YU",
     "New tab": "Nova kartica",
+
     "Love using Bonjourr? Consider giving us a review or donating, that would help a lot! 😇": "Dopada Vam se da koristite Bonjourr? Razmislite o tome da nam date recenziju ili donaciju, jer bi nam to mnogo značilo!",
     "Read the blog post": "Pročitajte objavu na blogu",
     "Review": "Recenzija",
     "Donate": "Donacija",
+
     "Good morning": "Dobro jutro",
     "Good afternoon": "Dobar dan",
     "Good evening": "Dobro veče",
@@ -18,6 +20,7 @@
     "Default group": "Podrazumevana grupa",
     "Folder": "Fascikla",
     "Photo by <name>": "Fotografija od <name>",
+
     "Editing": "Uređivanje",
     "No selection": "Nema izbora",
     "Grid position": "Položaj mreže",
@@ -28,12 +31,14 @@
     "Text alignment": "Poravnanje teksta",
     "Reset layout": "Resetuj izgled",
     "Done": "Gotovo",
+
     "Title": "Naziv",
     "Link": "Veza",
     "Icon": "Ikonica",
     "Website favicon": "Ikonica veb-sajta",
     "Local file": "Lokalna datoteka",
     "URL": "URL",
+
     "Add new link": "Dodaj novu vezu",
     "Add new group": "Dodaj novu grupu",
     "Create new folder": "Kreiraj fasciklu",
@@ -58,6 +63,7 @@
     "Sessions today": "Sesije danas",
     "This week": "Ove sedmice",
     "This month": "Ovog meseca",
+
     "Pomodoro timer": "Pomodoro tajmer",
     "Pomodoro is a productivity tool to help you stay focused on your goals and work efficiently.": "Pomodoro je alat za produktivnost koji Vam pomaže da ostanete fokusirani na svoje ciljeve i radite efikasno.",
     "Play sound on alarm": "Pusti zvuk na alarm",
@@ -70,6 +76,7 @@
     "Focus": "Fokus",
     "mins": "min",
     "Time's up!": "Vreme je isteklo!",
+
     "Synchronized groups are automatically updated to match your browser bookmarks. Learn more on": "Sinhronizovane grupe se automatski ažuriraju tako da odgovaraju obeleživačima Vašeg pretraživača. Saznajte više u",
     "our documentation": "našoj dokumentaciji",
     "Select group": "Izaberi grupu",
@@ -77,6 +84,7 @@
     "Most visited": "Najposećenije",
     "Import selection": "Uvezi odabir",
     "(synced)": "(sinhronizovano)",
+
     "This January, Bonjourr is brought to you by our lovely supporters.": "Ovog januara, Bonjourr Vam donose naši divni podržavaoci.",
     "This February, Bonjourr is brought to you by our lovely supporters.": "Ovog februara, Bonjourr Vam donose naši divni podržavaoci.",
     "This March, Bonjourr is brought to you by our lovely supporters.": "Ovog marta, Bonjourr Vam donose naši divni podržavaoci.",
@@ -89,6 +97,7 @@
     "This October, Bonjourr is brought to you by our lovely supporters.": "Ovog oktobra, Bonjourr Vam donose naši divni podržavaoci.",
     "This November, Bonjourr is brought to you by our lovely supporters.": "Ovog novembra, Bonjourr Vam donose naši divni podržavaoci.",
     "This December, Bonjourr is brought to you by our lovely supporters.": "Ovog decembra, Bonjourr Vam donose naši divni podržavaoci.",
+
     "Find out who they are": "Saznajte ko su oni",
     "Supporters like you make Bonjourr possible": "Podržavaoci poput Vas čine Bonjourr mogućim",
     "Here are the wonderful people who supported us last month. Thanks to them, we can keep Bonjourr free, open source, and constantly evolving.": "Evo divnih ljudi koji su nas podržali prošlog meseca. Zahvaljujući njima, možemo da zadržimo Bonjourr besplatnim, otvorenog koda i konstantno ga unapređujemo.",
@@ -96,8 +105,10 @@
     "Our one-time supporters": "Naši jednokratni podržavaoci",
     "Join the community and get your name in Bonjourr.": "Pridružite se zajednici i dobijte svoje ime u Bonjourr-u.",
     "The supporters notification appears at the top of your settings to thank those who donate and support our work.": "Obaveštenje o podržavaocima pojavljuje se na vrhu Vaših podešavanja da bi se zahvalili onima koji doniraju i podržavaju naš rad.",
+
     "Synchronized links require the user to accept permissions": "Sinhronizovane veze zahtevaju od korisnika da prihvati dozvole",
     "Ask permission": "Pitaj za dozvolu",
+
     "General": "Opšte",
     "Show all settings": "Prikaži sva podešavanja",
     "Enabled": "Omogućeno",
@@ -113,6 +124,7 @@
     "The icon and title that appear on your tab. You can put any emoji.": "Ikonica i naziv za karticu. Možete dodati i emotikone.",
     "Hide settings icon": "Sakrij ikonicu podešavanja",
     "When this is enabled, clicking the bottom right corner will still open settings.": "Kada je omogućeno, kliktanje na donji desni ugao će i dalje otvoriti podešavanja.",
+
     "Background": "Pozadina",
     "Background type": "Vrsta pozadine",
     "Default": "Podrazumevana",
@@ -148,9 +160,33 @@
     "Every hour": "Svaki sat",
     "Every day": "Svaki dan",
     "Locked": "Zaključano",
+    "Texture overlay": "Tekstura preklapanja",
+    "Texture density": "Gustina teksture",
+    "Texture color": "Boja teksture",
+    "Texture opacity": "Providnost teksture",
     "Background color": "Boja pozadine",
     "Fade in time": "Fade in vreme",
+    "Grain": "Zrno",
+    "Vector grain": "Vektor zrna",
+    "Diagonal dots": "Dijagonalne tačke",
+    "Vertical dots": "Vertikalne tačke",
+    "Topographic": "Topografsko",
+    "Aztec": "Astečko",
+    "Checkerboard": "Šahovska tabla",
+    "Isometric": "Izometrijsko",
+    "Circuit board": "Matična ploča",
+    "Endless clouds": "Beskonačni oblaci",
+    "Waves": "Talasi",
+    "Honeycomb": "Saće",
+    "Grid": "Mreža",
+    "Vertical lines": "Vertikalne linije",
+    "Horizontal lines": "Horizontalne linije",
+    "Diagonal lines": "Dijagonalne linije",
+    "Vertical stripes": "Vertikalne pruge",
+    "Horizontal stripes": "Horizontalne pruge",
+    "Diagonal stripes": "Dijagonalne pruge",
     "Next background": "Sledeća pozadina",
+
     "Show all": "Prikaži sve",
     "Unsplash collection": "Unsplash kolekcija",
     "Tips on Unsplash collections": "Saveti za Unsplash kolekcije",
@@ -158,6 +194,7 @@
     "Blur intensity": "Intenzitet zamućenja",
     "Brightness": "Osvetljenost",
     "Fade in": "Fade in",
+
     "Quick Links": "Brze veze",
     "Tips on Quick Links": "Saveti za brze veze",
     "These are Bonjourr's bookmarks. Edit your Quick Links by right clicking the icon.": "Ovo su Bonjourr obeleživači. Uredite brze veze desnim klikom na ikonicu.",
@@ -178,6 +215,7 @@
     "Text": "Samo tekst",
     "Toggle link titles": "Uklj/Isklj naslove veza",
     "Toggle link backgrounds": "Uklj/Isklj pozadinu veze",
+
     "Time & Date": "Datum i vreme",
     "Analog clock": "Analogni sat",
     "Clock face": "Izgled sata",
@@ -216,6 +254,7 @@
     "Clock and date": "Sat i datum",
     "Clock only": "Samo sat",
     "Date only": "Samo datum",
+
     "Weather & Greetings": "Vremenska prognoza i pozdrav",
     "Greeting": "Dobro došli",
     "Clock size": "Veličina sata",
@@ -261,6 +300,7 @@
     "Description and icon": "Opis i ikonica",
     "Description only": "Samo opis",
     "Icon only": "Samo ikonica",
+
     "Notes": "Beleške",
     "You can use Markdown and keyboard shortcuts in notes.": "Možete koristiti Markdown i prečice na tastaturi u beleškama.",
     "Edit this note": "Uredi ovu belešku",
@@ -271,6 +311,7 @@
     "Right": "desno",
     "Width": "Širina",
     "Notes shade": "Nijansa beleške",
+
     "Search bar": "Traka za pretragu",
     "Suggestions": "Predlozi",
     "Search engine": "Pretraživač",
@@ -290,6 +331,7 @@
     "Search": "Pretraga",
     "Opacity": "Providnost",
     "Search bar shade": "Nijansa trake za pretragu",
+
     "Quotes": "Citati",
     "Use the default quote collections or import your own.": "Koristite podrazumevane kolekcije citata ili uvezite svoje.",
     "Always show author": "Uvek prikaži autora",
@@ -300,6 +342,7 @@
     "Fetch failed, please check console for more information": "Preuzimanje nije uspelo, proverite konzolu za više informacija",
     "Author, Your quote.\nAuthor, Your second quote.": "Autor, Vaš citat.\nAutor, Vaš drugi citat.",
     "Next quote": "Sledeći citat",
+
     "Fonts": "Fontovi",
     "Font family": "Familija fonta",
     "Cannot load this font": "Nije moguće učitati ovaj font",
@@ -308,6 +351,7 @@
     "Extra Light": "Izuzetno lako",
     "Thin": "Tanko",
     "Normal": "Normalno",
+
     "Semi Bold": "Polu-podebljano",
     "Bold": "Podebljano",
     "Extra Bold": "Izuzetno podebljano",
@@ -317,6 +361,7 @@
     "These fonts come from Fontsource.": "Ovi fontovi dolaze iz Fontsource-a.",
     "Preview fonts": "Pregledaj fontove",
     "Where can I preview these fonts": "Gde mogu da pregledam ove fontove",
+
     "Page layout": "Raspored na stranici",
     "Tips on page grid layout": "Saveti za mrežni raspored stranice",
     "Customise how and where widgets appear.": "Prilagodite kako i gde se widget-i pojavljuju.",
@@ -330,12 +375,14 @@
     "Simple": "Jedna",
     "Double": "Dve",
     "Triple": "Tri",
+
     "Custom Style": "Prilagođeni stil",
     "Tips on Custom styles": "Saveti o prilagođenim stilovima",
     "Make cool things happen with CSS.": "Učinite da se kul stvari dešavaju pomoću CSS-a.",
     "Check out our": "Pogledajte naše",
     "CSS snippets.": "CSS primere.",
     "Type in your custom CSS": "Unesi prilagođeni CSS",
+
     "Notifications": "Obaveštenja",
     "Updates": "Ažuriranja",
     "Major": "Glavno",
@@ -343,6 +390,7 @@
     "Supporters": "Podržavaoci",
     "What are supporters notifications?": "Šta su obaveštenja podržavalaca?",
     "Supporters notifications appear monthly at the top of your settings as a thank you to people who donate and support our work.": "Obaveštenja podržavalaca pojavljuju se mesečno na vrhu Vaših podešavanja kao zahvalnost ljudima koji doniraju i podržavaju naš rad.",
+
     "Settings management": "Upravljanje podešavanjima",
     "Tips on imports & exports": "Saveti za uvoz i izvoz",
     "Transfer your settings between multiple instances of Bonjourr.": "Prenesite svoja podešavanja između više instanci Bonjourr-a.",
@@ -385,6 +433,7 @@
     "Are you sure?": "Da li Ste sigurni?",
     "I am sure": "Da",
     "No, go back": "Ne, odustani",
+
     "Bonjourr's website": "Bonjourr-ov veb-sajt",
     "Join us on Bluesky": "Pridružite nam se na Bluesky",
     "Bonjourr's GitHub repository": "Bonjourr-ov GitHub repozitorijum",

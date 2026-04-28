@@ -1,10 +1,12 @@
 {
     "lang": "hi",
     "New tab": "नया टैब",
+
     "Love using Bonjourr? Consider giving us a review or donating, that would help a lot! 😇": "क्या आपको Bonjourr इस्तेमाल करना पसंद है? कृपया हमें एक समीक्षा दें या दान करें, इससे हमें बहुत मदद मिलेगी! 😇",
     "Read the blog post": "ब्लॉग पोस्ट पढ़ें",
     "Review": "समीक्षा",
     "Donate": "दान करें",
+
     "Good morning": "शुभ प्रभात",
     "Good afternoon": "शुभ दोपहर",
     "Good evening": "शुभ संध्या",
@@ -18,6 +20,7 @@
     "Default group": "डिफ़ॉल्ट ग्रुप",
     "Folder": "फ़ोल्डर",
     "Photo by <name>": "<name> द्वारा फ़ोटो",
+
     "Editing": "एडिटिंग",
     "No selection": "कोई चयन नहीं",
     "Grid position": "ग्रिड स्थिति",
@@ -28,12 +31,14 @@
     "Text alignment": "टेक्स्ट अलाइनमेंट",
     "Reset layout": "लेआउट रीसेट करें",
     "Done": "हो गया?",
+
     "Title": "शीर्षक",
     "Link": "लिंक",
     "Icon": "आइकन",
     "Website favicon": "वेबसाइट फ़ेविकॉन",
     "Local file": "लोकल फ़ाइल",
     "URL": "URL",
+
     "Add new link": "नया लिंक जोड़ें",
     "Add new group": "नया ग्रुप जोड़ें",
     "Create new folder": "नया फ़ोल्डर बनाएं",
@@ -58,6 +63,7 @@
     "Sessions today": "आज के सेशन",
     "This week": "इस हफ़्ते",
     "This month": "इस महीने",
+
     "Pomodoro timer": "पोमोडोरो टाइमर",
     "Pomodoro is a productivity tool to help you stay focused on your goals and work efficiently.": "पोमोडोरो एक प्रोडक्टिविटी टूल है जो आपको अपने लक्ष्यों पर फ़ोकस रहने और कुशलता से काम करने में मदद करता है।",
     "Play sound on alarm": "अलार्म पर साउंड बजाएं",
@@ -70,6 +76,7 @@
     "Focus": "फ़ोकस",
     "mins": "मिनट",
     "Time's up!": "टाइम खत्म!",
+
     "Synchronized groups are automatically updated to match your browser bookmarks. Learn more on": "सिंक्रोनाइज़्ड ग्रुप्स आपके ब्राउज़र बुकमार्क्स से ऑटोमैटिकली अपडेट होते हैं। और जानें",
     "our documentation": "हमारे डॉक्यूमेंटेशन पर",
     "Select group": "ग्रुप चुनें",
@@ -77,6 +84,7 @@
     "Most visited": "सबसे ज़्यादा विज़िट किए गए",
     "Import selection": "चयन इम्पोर्ट करें",
     "(synced)": "(सिंक किया गया)",
+
     "This January, Bonjourr is brought to you by our lovely supporters.": "इस जनवरी, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
     "This February, Bonjourr is brought to you by our lovely supporters.": "इस फ़रवरी, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
     "This March, Bonjourr is brought to you by our lovely supporters.": "इस मार्च, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
@@ -89,6 +97,7 @@
     "This October, Bonjourr is brought to you by our lovely supporters.": "इस अक्टूबर, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
     "This November, Bonjourr is brought to you by our lovely supporters.": "इस नवंबर, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
     "This December, Bonjourr is brought to you by our lovely supporters.": "इस दिसंबर, Bonjourr आपके लिए हमारे प्यारे सपोर्टर्स द्वारा लाया गया है।",
+
     "Find out who they are": "पता करें वे कौन हैं",
     "Supporters like you make Bonjourr possible": "आप जैसे सपोर्टर्स Bonjourr को संभव बनाते हैं",
     "Here are the wonderful people who supported us last month. Thanks to them, we can keep Bonjourr free, open source, and constantly evolving.": "यहां वे लोग हैं जिन्होंने पिछले महीने हमारा समर्थन किया हैं। उनकी बदौलत, हम Bonjourr को मुक्त, ओपन सोर्स और लगातार विकसित रख सकते हैं।",
@@ -96,8 +105,10 @@
     "Our one-time supporters": "हमारे वन-टाइम सपोर्टर्स",
     "Join the community and get your name in Bonjourr.": "कम्युनिटी में शामिल हों और Bonjourr में अपना नाम पाएं।",
     "The supporters notification appears at the top of your settings to thank those who donate and support our work.": "सपोर्टर्स नोटिफिकेशन आपकी सेटिंग्स के ऊपर दिखाई देती है ताकि उन लोगों का धन्यवाद किया जा सके जो दान करते हैं और हमारे काम को समर्थन करते हैं।",
+
     "Synchronized links require the user to accept permissions": "सिंक्रोनाइज़्ड लिंक्स के लिए यूज़र को परमिशन देनी होगी",
     "Ask permission": "परमिशन मांगें",
+
     "General": "जनरल",
     "Show all settings": "सभी सेटिंग्स दिखाएं",
     "Enabled": "एनेबल",
@@ -113,6 +124,7 @@
     "The icon and title that appear on your tab. You can put any emoji.": "यह आपके टैब पर दिखने वाला आइकन और टाइटल हैं। आप कोई भी इमोजी डाल सकते हैं।",
     "Hide settings icon": "सेटिंग्स आइकन छुपाएं",
     "When this is enabled, clicking the bottom right corner will still open settings.": "जब यह एनेबल हो, तब भी नीचे दिये गये कोने पर क्लिक करने से सेटिंग्स खुलेगी।",
+
     "Background": "बैकग्राउंड",
     "Background type": "बैकग्राउंड के प्रकार",
     "Default": "डिफ़ॉल्ट",
@@ -148,9 +160,33 @@
     "Every hour": "हर घंटे",
     "Every day": "हर दिन",
     "Locked": "लॉक किया गया",
+    "Texture overlay": "टेक्सचर ओवरले",
+    "Texture density": "टेक्सचर डेन्सिटी",
+    "Texture color": "टेक्सचर का रंग",
+    "Texture opacity": "टेक्सचर ओपैसिटी",
     "Background color": "बैकग्राउंड का रंग",
     "Fade in time": "फे़ड-इन का समय",
+    "Grain": "ग्रेन",
+    "Vector grain": "वेक्टर ग्रेन",
+    "Diagonal dots": "तिरछी बिंदियाँ",
+    "Vertical dots": "खड़ी बिंदियाँ",
+    "Topographic": "टोपोग्राफ़िक",
+    "Aztec": "एज़्टेक",
+    "Checkerboard": "चेकरबोर्ड",
+    "Isometric": "आइसोमेट्रिक",
+    "Circuit board": "सर्किट बोर्ड",
+    "Endless clouds": "अनंत बादल",
+    "Waves": "लहरें",
+    "Honeycomb": "हनीकॉम्ब",
+    "Grid": "ग्रिड",
+    "Vertical lines": "खड़ी रेखाएं",
+    "Horizontal lines": "आड़ी रेखाएं",
+    "Diagonal lines": "तिरछी रेखाएं",
+    "Vertical stripes": "खड़ी स्ट्राइप्स",
+    "Horizontal stripes": "आड़ी स्ट्राइप्स",
+    "Diagonal stripes": "तिरछी स्ट्राइप्स",
     "Next background": "अगला बैकग्राउंड",
+
     "Show all": "सभी दिखाएं",
     "Unsplash collection": "Unsplash कलेक्शन",
     "Tips on Unsplash collections": "Unsplash कलेक्शन्स के लिए टिप्स",
@@ -158,6 +194,7 @@
     "Blur intensity": "धुंधलापन",
     "Brightness": "ब्राइटनेस",
     "Fade in": "फ़ेड इन",
+
     "Quick Links": "क्विक लिंक्स",
     "Tips on Quick Links": "क्विक लिंक्स के लिए टिप्स",
     "These are Bonjourr's bookmarks. Edit your Quick Links by right clicking the icon.": "ये Bonjourr के बुकमार्क्स हैं। आइकन पर राइट क्लिक करके अपने क्विक लिंक्स एडिट करें।",
@@ -178,6 +215,7 @@
     "Text": "शब्द",
     "Toggle link titles": "लिंक टाइटल्स टॉगल करें",
     "Toggle link backgrounds": "लिंक बैकग्राउंड्स टॉगल करें",
+
     "Time & Date": "समय और तारीख",
     "Analog clock": "एनालॉग घड़ी",
     "Clock face": "घड़ी का डायल",
@@ -216,6 +254,7 @@
     "Clock and date": "घड़ी और तारीख",
     "Clock only": "केवल घड़ी",
     "Date only": "केवल तारीख",
+
     "Weather & Greetings": "मौसम और ग्रिटींग",
     "Greeting": "ग्रिटींग",
     "Clock size": "घड़ी का आकार",
@@ -261,6 +300,7 @@
     "Description and icon": "विवरण और आइकन",
     "Description only": "केवल विवरण",
     "Icon only": "केवल आइकन",
+
     "Notes": "नोट्स",
     "You can use Markdown and keyboard shortcuts in notes.": "आप नोट्स में मार्कडाउन और कीबोर्ड शॉर्टकट का उपयोग कर सकते हैं।",
     "Edit this note": "इस नोट को बदलें",
@@ -271,6 +311,7 @@
     "Right": "दाएं",
     "Width": "चौड़ाई",
     "Notes shade": "नोट्स का शेड",
+
     "Search bar": "सर्च बार",
     "Suggestions": "सुझाव",
     "Search engine": "सर्च इंजन",
@@ -290,6 +331,7 @@
     "Search": "सर्च",
     "Opacity": "ओपेसिटी",
     "Search bar shade": "सर्च बार का शेड",
+
     "Quotes": "सुविचार",
     "Use the default quote collections or import your own.": "डिफ़ॉल्ट सुविचार संग्रह का उपयोग करें या अपना इम्पोर्ट करें।",
     "Always show author": "हमेशा लेखक दिखाएं",
@@ -300,6 +342,7 @@
     "Fetch failed, please check console for more information": "फ़ेच विफल रहा, अधिक जानकारी के लिए कंसोल देखें",
     "Author, Your quote.\nAuthor, Your second quote.": "लेखक, आपका विचार.\nलेखक, आपका दूसरा विचार",
     "Next quote": "अगला सुविचार",
+
     "Fonts": "फ़ॉन्ट",
     "Font family": "फ़ॉन्ट फैमिली",
     "Cannot load this font": "यह फ़ॉन्ट लोड नहीं किया जा सकता",
@@ -308,6 +351,7 @@
     "Extra Light": "और हल्का",
     "Thin": "पतला",
     "Normal": "सामान्य",
+
     "Semi Bold": "सेमी बोल्ड",
     "Bold": "बोल्ड",
     "Extra Bold": "और बोल्ड",
@@ -317,6 +361,7 @@
     "These fonts come from Fontsource.": "ये फॉन्ट, Fontsource से लिए गए हैं।",
     "Preview fonts": "फ़ॉन्ट देखें",
     "Where can I preview these fonts": "मैं इन फ़ॉन्ट्स को कहा देख सकता हूँ?",
+
     "Page layout": "पेज लेआउट",
     "Tips on page grid layout": "पेज ग्रिड लेआउट पर टिप्स",
     "Customise how and where widgets appear.": "कस्टमाइज़ करें कि विजेट्स कैसे और कहाँ दिखाई दें।",
@@ -330,12 +375,14 @@
     "Simple": "सिंगल",
     "Double": "डबल",
     "Triple": "ट्रिपल",
+
     "Custom Style": "कस्टम स्टाइल",
     "Tips on Custom styles": "कस्टम स्टाइल पर टिप्स",
     "Make cool things happen with CSS.": "CSS के साथ नया लुक दें",
     "Check out our": "हमारे यहाँ देखें",
     "CSS snippets.": "CSS स्निपेट्स।",
     "Type in your custom CSS": "अपना कस्टम CSS टाइप करें",
+
     "Notifications": "नोटिफिकेशन",
     "Updates": "अपडेट",
     "Major": "मुख्य",
@@ -343,6 +390,7 @@
     "Supporters": "सपोर्टर्स",
     "What are supporters notifications?": "सपोर्टर्स नोटिफिकेशन क्या हैं?",
     "Supporters notifications appear monthly at the top of your settings as a thank you to people who donate and support our work.": "सपोर्टर्स नोटिफिकेशन आपकी सेटिंग्स के ऊपर दिखाई देती है ताकि उन लोगों का धन्यवाद किया जा सके जो दान करते हैं और हमारे काम को समर्थन करते हैं।",
+
     "Settings management": "सेटिंग्स प्रबंधन",
     "Tips on imports & exports": "इम्पोर्ट और एक्सपोर्ट पर टिप्स",
     "Transfer your settings between multiple instances of Bonjourr.": "Bonjourr के कई इंस्टेंस के बीच अपनी सेटिंग्स ट्रांसफर करें।",
@@ -385,6 +433,7 @@
     "Are you sure?": "क्या आप पक्का ऐसा करना चाहते हैं?",
     "I am sure": "हाँ, मुझे यकीन है",
     "No, go back": "नहीं, वापस जाएँ",
+
     "Bonjourr's website": "Bonjourr की वेबसाइट",
     "Join us on Bluesky": "Bluesky पर हमसे जुड़ें",
     "Bonjourr's GitHub repository": "Bonjourr की GitHub रिपॉजिटरी",

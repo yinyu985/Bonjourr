@@ -2,6 +2,10 @@
     overflow: visible; /* It clips box-shadows on "hidden" */
 }
 
+#supporters-notif-container {
+    display: none !important;
+}
+
 #supporters-notif {
     position: relative;
     padding: 1.5em 1.8em;

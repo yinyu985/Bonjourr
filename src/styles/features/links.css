@@ -2,11 +2,10 @@
 
 #linkblocks {
     --in-out-bounce: cubic-bezier(0.68, -0.2, 0.265, 1.2);
-}
-
-#linkblocks[data-group-position='top'] #link-mini {
-    padding-top: 0;
-    padding-bottom: 1em;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    position: relative;
 }
 
 #linkblocks.hidden {
@@ -111,6 +110,9 @@
     visibility: visible;
     flex-wrap: wrap;
     justify-content: center;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
     row-gap: var(--row-gap);
     column-gap: var(--column-gap);
     min-height: var(--min-height);
@@ -154,8 +156,31 @@
     display: initial;
 }
 
+/* In group-focus layout, hide the title inside the content group
+   since it's already shown in #link-mini */
+#linkblocks > .link-group > .link-title {
+    display: none;
+}
+
+/* Position the link-group content below the title bar */
+#linkblocks > .link-group {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+    padding-top: 0.5em;
+}
+
 .link-title:hover {
     opacity: 1;
+}
+
+/* Disable title transform animation in group-focus layout */
+.link-title {
+    transform: none;
 }
 
 /*
@@ -236,6 +261,7 @@
     max-height: 3.6em;
     overflow: hidden;
     word-wrap: break-word;
+    max-width: 400px;
 }
 
 .titles .link span {
@@ -342,6 +368,28 @@
 }
 
 /* Link styles */
+
+/* Remove hover underline for inline and text modes */
+.inline .link:hover,
+.text .link:hover span,
+#linkblocks .link:hover,
+#linkblocks .link:hover span {
+    text-decoration: none !important;
+}
+
+/* Remove link border-radius to avoid text clipping */
+.link div,
+.link img,
+.inline .link div,
+.inline .link img,
+.text .link span {
+    border-radius: 0 !important;
+}
+
+aside a,
+dialog a {
+    border-radius: 0 !important;
+}
 
 /* Large */
 

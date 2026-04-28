@@ -498,6 +498,67 @@
             </div>
         </div>
     </div>
+
+    <div class="as as_texture dropdown">
+        <hr />
+
+        <div class="wrapper">
+            <label for="i_texture" class="trn">Texture overlay</label>
+
+            <select id="i_texture">
+                <option value="none" class="trn">None</option>
+                <option value="grain" class="trn">Grain</option>
+                <option value="vectorGrain" class="trn">Vector grain</option>
+                <option value="diagonalDots" class="trn">Diagonal dots</option>
+                <option value="verticalDots" class="trn">Vertical dots</option>
+                <option value="topographic" class="trn">Topographic</option>
+                <option value="aztec" class="trn">Aztec</option>
+                <option value="checkerboard" class="trn">Checkerboard</option>
+                <option value="isometric" class="trn">Isometric</option>
+                <option value="circuitBoard" class="trn">Circuit board</option>
+                <option value="ticTacToe" class="trn">Tic-tac-toe</option>
+                <option value="endlessClouds" class="trn">Endless clouds</option>
+                <option value="waves" class="trn">Waves</option>
+                <option value="honeycomb" class="trn">Honeycomb</option>
+                <option value="grid" class="trn">Grid</option>
+                <option value="verticalLines" class="trn">Vertical lines</option>
+                <option value="horizontalLines" class="trn">Horizontal lines</option>
+                <option value="diagonalLines" class="trn">Diagonal lines</option>
+                <option value="verticalStripes" class="trn">Vertical stripes</option>
+                <option value="horizontalStripes" class="trn">Horizontal stripes</option>
+                <option value="diagonalStripes" class="trn">Diagonal stripes</option>
+            </select>
+        </div>
+
+        <div id="background-texture-options" class="dropdown shown">
+            <div id="background-texture-color-option" class="dropdown">
+                <hr />
+
+                <div class="wrapper">
+                    <label for="i_texture-color" class="trn">Texture color</label>
+
+                    <div id="texture-color" class="color-button">
+                        <input type="color" id="i_texture-color" name="texture-color" tabindex="-1" />
+                        <button id="b_texture-color" class="trn">Pick a Color</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="wrapper">
+                <label for="i_texture-opacity" class="trn">Texture opacity</label>
+                <input id="i_texture-opacity" name="texture-opacity" class="range" type="range" />
+            </div>
+
+            <hr />
+
+            <div class="wrapper">
+                <label for="i_texture-size" class="trn">Texture density</label>
+                <input id="i_texture-size" name="texture-size" class="range" type="range" />
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="settings-title" id="links_title">
@@ -576,23 +637,13 @@
             <input id="i_linkgroups" class="switch" type="checkbox" />
         </div>
 
-        <div id="linkgroups_options" class="as as_link dropdown">
+        <div class="as as_link dropdown">
             <p class="tooltiptext dropdown">
                 <span class="trn"
                 >Organize your links even more with pages. Right click next to a page to add another.</span>
                 <a class="trn" href="https://bonjourr.fr/docs/overview#links" rel="noreferrer noopener" target="_blank"
                 >Learn more</a>
             </p>
-
-            <hr />
-
-            <div class="wrapper">
-                <label for="i_linkgroup-position" class="trn">Group bar position</label>
-                <select id="i_linkgroup-position">
-                    <option value="bottom" class="trn">Bottom</option>
-                    <option value="top" class="trn">Top</option>
-                </select>
-            </div>
 
             <div class="not-safari">
                 <hr />

@@ -1,10 +1,12 @@
 {
     "lang": "en",
     "New tab": "New tab",
+
     "Love using Bonjourr? Consider giving us a review or donating, that would help a lot! 😇": "Love using Bonjourr? Consider giving us a review or donating, that would help a lot! 😇",
     "Read the blog post": "Read the blog post",
     "Review": "Review",
     "Donate": "Donate",
+
     "Good morning": "Good morning",
     "Good afternoon": "Good afternoon",
     "Good evening": "Good evening",
@@ -18,6 +20,7 @@
     "Default group": "Default group",
     "Folder": "Folder",
     "Photo by <name>": "Photo by <name>",
+
     "Editing": "Editing",
     "No selection": "No selection",
     "Grid position": "Grid position",
@@ -28,12 +31,14 @@
     "Text alignment": "Text alignment",
     "Reset layout": "Reset layout",
     "Done": "Done",
+
     "Title": "Title",
     "Link": "Link",
     "Icon": "Icon",
     "Website favicon": "Website favicon",
     "Local file": "Local file",
     "URL": "URL",
+
     "Add new link": "Add new link",
     "Add new group": "Add new group",
     "Create new folder": "Create new folder",
@@ -58,6 +63,7 @@
     "Sessions today": "Sessions today",
     "This week": "This week",
     "This month": "This month",
+
     "Pomodoro timer": "Pomodoro timer",
     "Pomodoro is a productivity tool to help you stay focused on your goals and work efficiently.": "Pomodoro is a productivity tool to help you stay focused on your goals and work efficiently.",
     "Play sound on alarm": "Play sound on alarm",
@@ -70,6 +76,7 @@
     "Focus": "Focus",
     "mins": "mins",
     "Time's up!": "Time's up!",
+
     "Synchronized groups are automatically updated to match your browser bookmarks. Learn more on": "Synchronized groups are automatically updated to match your browser bookmarks. Learn more on",
     "our documentation": "our documentation",
     "Select group": "Select group",
@@ -77,6 +84,7 @@
     "Most visited": "Most visited",
     "Import selection": "Import selection",
     "(synced)": "(synced)",
+
     "This January, Bonjourr is brought to you by our lovely supporters.": "This January, Bonjourr is brought to you by our lovely supporters.",
     "This February, Bonjourr is brought to you by our lovely supporters.": "This February, Bonjourr is brought to you by our lovely supporters.",
     "This March, Bonjourr is brought to you by our lovely supporters.": "This March, Bonjourr is brought to you by our lovely supporters.",
@@ -89,6 +97,7 @@
     "This October, Bonjourr is brought to you by our lovely supporters.": "This October, Bonjourr is brought to you by our lovely supporters.",
     "This November, Bonjourr is brought to you by our lovely supporters.": "This November, Bonjourr is brought to you by our lovely supporters.",
     "This December, Bonjourr is brought to you by our lovely supporters.": "This December, Bonjourr is brought to you by our lovely supporters.",
+
     "Find out who they are": "Find out who they are",
     "Supporters like you make Bonjourr possible": "Supporters like you make Bonjourr possible",
     "Here are the wonderful people who supported us last month. Thanks to them, we can keep Bonjourr free, open source, and constantly evolving.": "Here are the wonderful people who supported us last month. Thanks to them, we can keep Bonjourr free, open source, and constantly evolving.",
@@ -96,8 +105,10 @@
     "Our one-time supporters": "Our one-time supporters",
     "Join the community and get your name in Bonjourr.": "Join the community and get your name in Bonjourr.",
     "The supporters notification appears at the top of your settings to thank those who donate and support our work.": "The supporters notification appears at the top of your settings to thank those who donate and support our work.",
+
     "Synchronized links require the user to accept permissions": "Synchronized links require the user to accept permissions",
     "Ask permission": "Ask permission",
+
     "General": "General",
     "Show all settings": "Show all settings",
     "Enabled": "Enabled",
@@ -113,6 +124,7 @@
     "The icon and title that appear on your tab. You can put any emoji.": "The icon and title that appear on your tab. You can put any emoji.",
     "Hide settings icon": "Hide settings icon",
     "When this is enabled, clicking the bottom right corner will still open settings.": "When this is enabled, clicking the bottom right corner will still open settings.",
+
     "Background": "Background",
     "Background type": "Background type",
     "Default": "Default",
@@ -148,9 +160,33 @@
     "Every hour": "Every hour",
     "Every day": "Every day",
     "Locked": "Locked",
+    "Texture overlay": "Texture overlay",
+    "Texture density": "Texture density",
+    "Texture color": "Texture color",
+    "Texture opacity": "Texture opacity",
     "Background color": "Background color",
     "Fade in time": "Fade in time",
+    "Grain": "Grain",
+    "Vector grain": "Vector grain",
+    "Diagonal dots": "Diagonal dots",
+    "Vertical dots": "Vertical dots",
+    "Topographic": "Topographic",
+    "Aztec": "Aztec",
+    "Checkerboard": "Checkerboard",
+    "Isometric": "Isometric",
+    "Circuit board": "Circuit board",
+    "Endless clouds": "Endless clouds",
+    "Waves": "Waves",
+    "Honeycomb": "Honeycomb",
+    "Grid": "Grid",
+    "Vertical lines": "Vertical lines",
+    "Horizontal lines": "Horizontal lines",
+    "Diagonal lines": "Diagonal lines",
+    "Vertical stripes": "Vertical stripes",
+    "Horizontal stripes": "Horizontal stripes",
+    "Diagonal stripes": "Diagonal stripes",
     "Next background": "Next background",
+
     "Show all": "Show all",
     "Unsplash collection": "Unsplash collection",
     "Tips on Unsplash collections": "Tips on Unsplash collections",
@@ -158,6 +194,7 @@
     "Blur intensity": "Blur intensity",
     "Brightness": "Brightness",
     "Fade in": "Fade in",
+
     "Quick Links": "Quick Links",
     "Tips on Quick Links": "Tips on Quick Links",
     "These are Bonjourr's bookmarks. Edit your Quick Links by right clicking the icon.": "These are Bonjourr's bookmarks. Edit your Quick Links by right clicking the icon.",
@@ -178,6 +215,7 @@
     "Text": "Text",
     "Toggle link titles": "Toggle link titles",
     "Toggle link backgrounds": "Toggle link backgrounds",
+
     "Time & Date": "Time & Date",
     "Analog clock": "Analog clock",
     "Clock face": "Clock face",
@@ -216,6 +254,7 @@
     "Clock and date": "Clock and date",
     "Clock only": "Clock only",
     "Date only": "Date only",
+
     "Weather & Greetings": "Weather & Greetings",
     "Greeting": "Greeting",
     "Clock size": "Clock size",
@@ -261,6 +300,7 @@
     "Description and icon": "Description and icon",
     "Description only": "Description only",
     "Icon only": "Icon only",
+
     "Notes": "Notes",
     "You can use Markdown and keyboard shortcuts in notes.": "You can use Markdown and keyboard shortcuts in notes.",
     "Edit this note": "Edit this note",
@@ -271,6 +311,7 @@
     "Right": "Right",
     "Width": "Width",
     "Notes shade": "Notes shade",
+
     "Search bar": "Search bar",
     "Suggestions": "Suggestions",
     "Search engine": "Search engine",
@@ -290,6 +331,7 @@
     "Search": "Search",
     "Opacity": "Opacity",
     "Search bar shade": "Search bar shade",
+
     "Quotes": "Quotes",
     "Use the default quote collections or import your own.": "Use the default quote collections or import your own.",
     "Always show author": "Always show author",
@@ -300,6 +342,7 @@
     "Fetch failed, please check console for more information": "Fetch failed, please check console for more information",
     "Author, Your quote.\nAuthor, Your second quote.": "Author, Your quote.\nAuthor, Your second quote.",
     "Next quote": "Next quote",
+
     "Fonts": "Fonts",
     "Font family": "Font family",
     "Cannot load this font": "Cannot load this font",
@@ -308,6 +351,7 @@
     "Extra Light": "Extra Light",
     "Thin": "Thin",
     "Normal": "Normal",
+
     "Semi Bold": "Semi Bold",
     "Bold": "Bold",
     "Extra Bold": "Extra Bold",
@@ -317,6 +361,7 @@
     "These fonts come from Fontsource.": "These fonts come from Fontsource.",
     "Preview fonts": "Preview fonts",
     "Where can I preview these fonts": "Where can I preview these fonts",
+
     "Page layout": "Page layout",
     "Tips on page grid layout": "Tips on page grid layout",
     "Customise how and where widgets appear.": "Customise how and where widgets appear.",
@@ -330,12 +375,14 @@
     "Simple": "Simple",
     "Double": "Double",
     "Triple": "Triple",
+
     "Custom Style": "Custom Style",
     "Tips on Custom styles": "Tips on Custom styles",
     "Make cool things happen with CSS.": "Make cool things happen with CSS.",
     "Check out our": "Check out our",
     "CSS snippets.": "CSS snippets.",
     "Type in your custom CSS": "Type in your custom CSS",
+
     "Notifications": "Notifications",
     "Updates": "Updates",
     "Major": "Major",
@@ -343,6 +390,7 @@
     "Supporters": "Supporters",
     "What are supporters notifications?": "What are supporters notifications?",
     "Supporters notifications appear monthly at the top of your settings as a thank you to people who donate and support our work.": "Supporters notifications appear monthly at the top of your settings as a thank you to people who donate and support our work.",
+
     "Settings management": "Settings management",
     "Tips on imports & exports": "Tips on imports & exports",
     "Transfer your settings between multiple instances of Bonjourr.": "Transfer your settings between multiple instances of Bonjourr.",
@@ -385,6 +433,7 @@
     "Are you sure?": "Are you sure?",
     "I am sure": "I am sure",
     "No, go back": "No, go back",
+
     "Bonjourr's website": "Bonjourr's website",
     "Join us on Bluesky": "Join us on Bluesky",
     "Bonjourr's GitHub repository": "Bonjourr's GitHub repository",
