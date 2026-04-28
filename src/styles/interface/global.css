@@ -50,3 +50,7 @@
 #pomodoro_container {
     place-self: center;
 }
+
+#linkblocks.in-folder {
+    align-self: start;
+}

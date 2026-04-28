@@ -66,6 +66,7 @@ function openFolder(data: Sync, li: HTMLLIElement): void {
     transition.transition(40)
 
     function hide(): void {
+        domlinkblocks.classList.add('in-folder')
         linkgroup.dataset.folder = li?.id
         linkgroup.classList.add('hiding')
         linkgroup.classList.remove('in-folder')
@@ -111,6 +112,7 @@ async function closeFolder(): Promise<void> {
     }
 
     function show(): void {
+        domlinkblocks.classList.remove('in-folder')
         const groups = document.querySelectorAll<HTMLDivElement>('.link-group')
 
         for (const group of groups) {
