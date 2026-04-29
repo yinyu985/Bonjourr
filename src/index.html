@@ -215,31 +215,6 @@
             <div id="contextActions">
                 <button
                     data-action="openTheseSettings"
-                    data-attribute="time_title"
-                    title="Open the time settings"
-                    aria-label="Open the time settings"
-                >
-                    <svg
-                        clip-rule="evenodd"
-                        fill-rule="evenodd"
-                        fill="currentColor"
-                        stroke-linejoin="round"
-                        stroke-miterlimit="2"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <g transform="translate(0)">
-                            <path d="m9 7h2v5h5v2h-7z" fill-rule="nonzero" />
-                            <path
-                                d="m22 12c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10 10 4.477 10 10zm-2 0c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8z"
-                            />
-                        </g>
-                    </svg>
-                    <span class="trn">Edit time settings</span>
-                </button>
-
-                <button
-                    data-action="openTheseSettings"
                     data-attribute="main_title"
                     title="Open the weather settings"
                     aria-label="Open the weather settings"
@@ -309,59 +284,6 @@
                     </svg>
 
                     <span class="trn">Edit pomodoro settings</span>
-                </button>
-
-                <button
-                    data-action="openTheseSettings"
-                    data-attribute="background_title"
-                    title="Open the background settings"
-                    aria-label="Open the background settings"
-                >
-                    <svg
-                        clip-rule="evenodd"
-                        fill="currentColor"
-                        fill-rule="evenodd"
-                        stroke-linejoin="round"
-                        stroke-miterlimit="2"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <g transform="translate(0 -.00001)">
-                            <path
-                                d="m7 7c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm-1 3c0-.552.448-1 1-1s1 .448 1 1-.448 1-1 1-1-.448-1-1z"
-                            />
-                            <path
-                                d="m3 3c-1.657 0-3 1.343-3 3v12c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3v-12c0-1.657-1.343-3-3-3zm18 2h-18c-.552 0-1 .448-1 1v12c0 .552.448 1 1 1h4.314l6.878-6.879c1.172-1.171 3.072-1.171 4.243 0l3.565 3.565v-9.686c0-.552-.448-1-1-1zm0 14h-10.858l5.465-5.464c.39-.391 1.023-.391 1.414 0l4.886 4.886c-.159.341-.505.578-.907.578z"
-                            />
-                        </g>
-                    </svg>
-
-                    <span class="trn">Edit background settings</span>
-                </button>
-
-                <button data-action="add-new-link" title="Create a new quick link" aria-label="Create a new quick link">
-                    <svg
-                        clip-rule="evenodd"
-                        fill="currentColor"
-                        fill-rule="evenodd"
-                        stroke-linejoin="round"
-                        stroke-miterlimit="2"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <g fill-rule="nonzero">
-                            <path
-                                d="m14.828 12 1.415 1.414 2.828-2.828c1.562-1.562 1.562-4.095 0-5.657s-4.095-1.562-5.657 0l-2.828 2.828 1.414 1.415 2.828-2.829c.782-.781 2.048-.781 2.829 0s.781 2.047 0 2.829z"
-                            />
-                            <path
-                                d="m12 14.829 1.414 1.414-2.828 2.828c-1.562 1.562-4.095 1.562-5.657 0s-1.562-4.095 0-5.657l2.828-2.828 1.415 1.414-2.829 2.829c-.781.781-.781 2.047 0 2.828s2.048.781 2.829 0z"
-                            />
-                            <path
-                                d="m14.829 10.586c.39-.391.39-1.024 0-1.415-.391-.39-1.024-.39-1.415 0l-4.242 4.243c-.391.391-.391 1.024 0 1.414.39.391 1.023.391 1.414 0z"
-                            />
-                        </g>
-                    </svg>
-                    <span class="trn">Add new quick link</span>
                 </button>
             </div>
 
@@ -544,88 +466,6 @@
             </div>
         </dialog>
 
-        <dialog id="element-mover" class="hidden">
-            <div id="grid-selection">
-                <p class="trn">Editing</p>
-                <h3 id="mover-title" class="trn">No selection</h3>
-            </div>
-
-            <div>
-                <p class="trn">Grid position</p>
-                <div id="grid-mover" class="mover">
-                    <button type="button" data-row="-1">
-                        <i class="chevron rotate-half"></i>
-                    </button>
-                    <button type="button" data-col="-1">
-                        <i class="chevron rotate-quart"></i>
-                    </button>
-                    <button type="button" data-col="1">
-                        <i class="chevron rotate-quart-r"></i>
-                    </button>
-                    <button type="button" data-row="1">
-                        <i class="chevron"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="grid-spanner-container">
-                <button class="grid-spanner trn" id="grid-span-rows">Fill row</button>
-                <button class="grid-spanner trn" id="grid-span-cols">Fill column</button>
-            </div>
-            <div>
-                <p class="trn">Box alignment</p>
-                <div id="box-alignment-mover" class="mover">
-                    <button type="button" data-align="baseline">
-                        <i class="box-corner"></i>
-                    </button>
-                    <button type="button" data-align="baseline center">
-                        <i class="box-side rotate-half"></i>
-                    </button>
-                    <button type="button" data-align="baseline end">
-                        <i class="box-corner rotate-quart"></i>
-                    </button>
-                    <button type="button" data-align="center baseline">
-                        <i class="box-side rotate-quart"></i>
-                    </button>
-                    <button type="button" data-align="center">
-                        <i class="box-center"></i>
-                    </button>
-                    <button type="button" data-align="center end">
-                        <i class="box-side rotate-quart-r"></i>
-                    </button>
-                    <button type="button" data-align="end baseline">
-                        <i class="box-corner rotate-quart-r"></i>
-                    </button>
-                    <button type="button" data-align="end center">
-                        <i class="box-side"></i>
-                    </button>
-                    <button type="button" data-align="end">
-                        <i class="box-corner rotate-half"></i>
-                    </button>
-                </div>
-            </div>
-            <div>
-                <p class="trn">Text alignment</p>
-                <div id="text-alignment-mover" class="mover">
-                    <button data-align="left">
-                        <i class="text-left"></i>
-                    </button>
-                    <button data-align="center">
-                        <i class="text-center"></i>
-                    </button>
-                    <button data-align="right">
-                        <i class="text-right"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div id="close-mover-wrapper">
-                <hr />
-
-                <button id="b_resetlayout" class="trn btn-red">Reset layout</button>
-                <button id="close-mover" class="trn">Done</button>
-            </div>
-        </dialog>
-
         <div id="background-wrapper" class="hidden" data-type="images" data-texture="none">
             <div id="background-media"></div>
             <div id="background-color"></div>
@@ -649,9 +489,9 @@
                                 class="digital-ss"
                             ></span><span
                                 class="digital-am"
-                            >am</span><span
+                            >AM</span><span
                                 class="digital-pm"
-                            >pm</span>
+                            >PM</span>
                         </h1>
 
                         <div class="analog" data-hide="clock">
@@ -682,146 +522,10 @@
                 </div>
             </div>
 
-            <div id="main" class="hidden">
-                <h2 id="greetings" data-hide="greetings">
-                    <span id="greeting"></span>
-                    <span id="greeting-name"></span>
-                </h2>
-
-                <a id="weather" class="wait init" rel="noreferrer">
-                    <div id="description" data-hide="weatherdesc">
-                        <p id="current">
-                            <span id="current-desc"></span>
-                            <span id="current-temp"></span>
-                        </p>
-                        <p id="forecast">forecast</p>
-                    </div>
-
-                    <div id="tempContainer" data-hide="weathericon">
-                        <span id="weather-icon" data-daytime="day" data-condition="fewclouds"></span>
-                        <p>00</p>
-                    </div>
-                </a>
-            </div>
-
-            <div id="notes_container" class="hidden"></div>
-
-            <form id="sb_container" class="hidden">
-                <div id="searchbar-wrapper">
-                    <input
-                        id="searchbar"
-                        type="text"
-                        name="searchbar"
-                        autocomplete="off"
-                        spellcheck="false"
-                        aria-label="Search bar"
-                    />
-
-                    <div id="sb-buttons">
-                        <button id="sb_empty" aria-label="Empty search" type="button" disabled>✕</button>
-
-                        <hr />
-
-                        <button id="sb_submit" aria-label="Submit search" type="submit" disabled>
-                            <img
-                                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNDk1IDQ2NiAzODUgMzU2YTIwOSAyMDkgMCAwIDAtMTQtMjgzIDIwOSAyMDkgMCAwIDAtMjk4IDAgMjA5IDIwOSAwIDAgMCAwIDI5OCAyMTAgMjEwIDAgMCAwIDI4MyAxNGwxMTAgMTEwYTIwIDIwIDAgMSAwIDI5LTI5ek0xMDIgMzQyYTE2OSAxNjkgMCAwIDEgMC0yNDAgMTY5IDE2OSAwIDAgMSAyNDAgMCAxNjkgMTY5IDAgMCAxIDAgMjQwIDE2OSAxNjkgMCAwIDEtMjQwIDB6Ii8+PC9zdmc+"
-                                class="default-search-icon"
-                                draggable="false"
-                                alt=""
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                <ul id="sb-suggestions"></ul>
-            </form>
-
-            <div id="pomodoro_container" class="hidden">
-                <fieldset id="pmdr_modes" class="glass">
-                    <div class="pomodoro_mode" tabindex="0">
-                        <input type="radio" id="pmdr-pomodoro" name="pomodoro_modes" value="pomodoro" checked />
-                        <label for="pmdr-pomodoro" class="trn">Pomodoro</label>
-                    </div>
-
-                    <div class="pomodoro_mode" tabindex="0">
-                        <input type="radio" id="pmdr-break" name="pomodoro_modes" value="break" />
-                        <label class="trn" for="pmdr-break">Break</label>
-                    </div>
-
-                    <div class="pomodoro_mode" tabindex="0">
-                        <input type="radio" id="pmdr-longbreak" name="pomodoro_modes" value="longbreak" />
-                        <label class="trn" for="pmdr-longbreak">Long break</label>
-                    </div>
-
-                    <span class="glider"></span>
-                </fieldset>
-
-                <span id="pmdr_timer">00:00</span>
-
-                <div id="bottomControls">
-                    <button id="pmdr_start" class="glass">
-                        <svg
-                            class="w-64 h-64"
-                            fill="currentColor"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 384 512"
-                        >
-                            <path
-                                d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"
-                            >
-                            </path>
-                        </svg>
-                    </button>
-
-                    <button id="pmdr_pause" class="glass">
-                        <svg
-                            class="w-64 h-64"
-                            fill="currentColor"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"
-                        >
-                            <path
-                                d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"
-                            >
-                            </path>
-                        </svg>
-                    </button>
-
-                    <button id="pmdr_reset" class="glass">
-                        <svg
-                            fill="currentColor"
-                            clip-rule="evenodd"
-                            fill-rule="evenodd"
-                            stroke-linejoin="round"
-                            stroke-miterlimit="2"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                d="m20.3 13.43c-.521-.162-1.084.13-1.25.65-.967 2.956-3.76 4.956-6.87 4.92-3.888.044-7.125-3.113-7.18-7 .055-3.887 3.292-7.044 7.18-7 1.697-.004 3.343.587 4.65 1.67l-2.17-.36c-.054-.009-.108-.013-.162-.013-.49 0-.911.359-.988.843-.009.054-.013.108-.013.162 0 .49.359.911.843.988l4.24.7h.17c.116 0 .231-.02.34-.06.037-.014.07-.034.1-.06.072-.027.139-.064.2-.11l.09-.11c0-.05.09-.09.13-.15s0-.1.05-.14c.028-.058.051-.118.07-.18l.75-4c.012-.063.018-.126.018-.19 0-.558-.46-1.018-1.018-1.018-.487 0-.909.35-1 .828l-.27 1.45c-1.674-1.45-3.815-2.25-6.03-2.25-4.985-.044-9.125 4.015-9.18 9 .055 4.985 4.195 9.044 9.18 9 3.999.061 7.593-2.514 8.82-6.32.027-.092.041-.188.041-.284 0-.451-.305-.849-.741-.966z"
-                                fill-rule="nonzero"
-                                transform="matrix(1.33257 0 0 1.33257 -3.99772 -3.98641)"
-                            />
-                        </svg>
-                    </button>
-
-                    <label id="focus-toggle" tabindex="0">
-                        <input type="checkbox" id="pmdr-focus" name="pmdr-focus" value="pmdr-focus" />
-                        <span class="slider" for="pmdr-focus"></span>
-                        <span class="trn">Focus</span>
-                    </label>
-                </div>
-            </div>
-
             <div id="linkblocks">
                 <div id="link-mini">
                     <div></div>
                 </div>
-            </div>
-
-            <div id="quotes_container" class="hidden">
-                <p id="quote"></p>
-                <p id="author"></p>
             </div>
         </main>
 

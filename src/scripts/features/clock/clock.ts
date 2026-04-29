@@ -1,5 +1,4 @@
 import { setUserDate, userDate } from '../../shared/time.ts'
-import { displayGreetings } from './greetings.ts'
 import { clockDate } from './date.ts'
 import { fixunits } from './helpers.ts'
 
@@ -9,7 +8,6 @@ import type { Greetings } from './greetings.ts'
 
 export interface ClockStartOptions {
     clock: Clock
-    world: WorldClock[]
     dateformat: DateFormat
     greetings: Greetings
 }
@@ -17,7 +15,7 @@ export interface ClockStartOptions {
 let clockInterval: number
 
 export function startClock(options: ClockStartOptions): void {
-    const { clock, world, dateformat, greetings } = options
+    const { clock, dateformat } = options
 
     document.getElementById('time')?.classList.toggle('is-analog', clock.analog)
     document.getElementById('time')?.classList.toggle('seconds', clock.seconds)
@@ -28,15 +26,7 @@ export function startClock(options: ClockStartOptions): void {
         }
     })
 
-    const clocks: WorldClock[] = []
-
-    if (clock.worldclocks) {
-        clocks.push(...world.filter(({ region }) => region))
-    }
-
-    if (clocks.length === 0) {
-        clocks.push({ region: '', timezone: clock.timezone })
-    }
+    const clocks: WorldClock[] = [{ region: '', timezone: 'auto' }]
 
     // <!> First timezone becomes global timezone
     // <!> for everything in Bonjourr !
@@ -68,8 +58,6 @@ export function startClock(options: ClockStartOptions): void {
                 domregion.textContent = region
             }
         }
-
-        displayGreetings(greetings)
     }
 }
 
@@ -107,15 +95,11 @@ function digital(wrapper: HTMLElement, clock: Clock, timezone: string): void {
         return
     }
 
-    if (clock.ampmlabel) {
-        domclock.dataset.ampmLabel = ''
-    } else {
-        delete domclock.dataset.ampmLabel
-    }
-
     if (clock.ampm) {
+        domclock.dataset.ampmLabel = ''
         domclock.dataset.ampm = date.getHours() < 12 ? 'am' : 'pm'
     } else {
+        delete domclock.dataset.ampmLabel
         delete domclock.dataset.ampm
     }
 

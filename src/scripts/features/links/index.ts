@@ -1,4 +1,12 @@
-import { addGroup, changeGroupTitle, deleteGroup, initGroups, moveGroups, toggleGroups } from './groups.ts'
+import {
+    addGroup,
+    changeGroupTitle,
+    deleteGroup,
+    initGroups,
+    moveGroups,
+    toggleGroups,
+    updateSelectedGroupPosition,
+} from './groups.ts'
 import { initBookmarkSync, syncBookmarks } from './bookmarks.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { storeIconFile } from './fileicons.ts'
@@ -223,6 +231,7 @@ export function initblocks(sync: Sync, local?: Local): true {
         linkgroup.dataset.group = group.title
         linkgroup.classList.toggle('pinned', group.pinned)
         linkgroup.classList.toggle('synced', group.synced)
+        linklist.querySelector('.link-add-item')?.remove()
         linklist.appendChild(fragment)
         domlinkblocks.insertBefore(linkgroup, domlinkmini)
 
@@ -246,6 +255,7 @@ export function initblocks(sync: Sync, local?: Local): true {
     }
 
     setRadius(sync.linkiconradius)
+    updateSelectedGroupPosition()
     displayInterface('links')
 
     return true

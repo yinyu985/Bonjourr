@@ -96,10 +96,10 @@ export const SYNC_DEFAULT: Sync = {
     greeting: '',
     greetingsize: '3',
     greetingsmode: 'auto',
-    pagegap: 1,
-    pagewidth: 1600,
+    pagegap: 0,
+    pagewidth: Number.MAX_SAFE_INTEGER,
     time: true,
-    main: true,
+    main: false,
     dateformat: 'auto',
     quicklinks: true,
     textShadow: 0.2,
@@ -141,7 +141,6 @@ export const SYNC_DEFAULT: Sync = {
         ampm: false,
         analog: false,
         seconds: false,
-        ampmlabel: false,
         ampmposition: 'top-left',
         worldclocks: false,
         timezone: 'auto',
@@ -216,10 +215,6 @@ export const SYNC_DEFAULT: Sync = {
     },
     supporters: {
         enabled: true,
-    },
-    move: {
-        selection: 'single',
-        layouts: {},
     },
 }
 

@@ -1,4 +1,4 @@
-import { removeLinkgroupDuplicates, removeWorldClocksDuplicate, toggleMoveWidgets } from './filters.ts'
+import { removeLinkgroupDuplicates, removeWorldClocksDuplicate } from './filters.ts'
 import { CURRENT_VERSION, PLATFORM } from '../defaults.ts'
 import { filterByVersion } from './versions.ts'
 import { deepmergeAll } from '@victr/deepmerge'
@@ -37,7 +37,6 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
             // After merge only
             newcurrent = removeLinkgroupDuplicates(newcurrent)
             newcurrent = removeWorldClocksDuplicate(newcurrent, newtarget)
-            newcurrent = toggleMoveWidgets(newcurrent, newtarget)
         } else {
             newcurrent = newtarget as Sync
         }
@@ -65,6 +64,7 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
     delete newcurrent.background_blur
     delete newcurrent.background_bright
     delete newcurrent.background_type
+    delete newcurrent.move
     delete newcurrent.usdate
     //@ts-ignore -> Property '...' does not exist on type '...'
     delete newcurrent?.weather?.location

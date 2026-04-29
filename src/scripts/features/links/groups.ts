@@ -1,7 +1,6 @@
 import { getLinksInGroup } from './helpers.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { initblocks } from './index.ts'
-import { startDrag } from './drag.ts'
 
 import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
@@ -10,6 +9,7 @@ import { storage } from '../../storage.ts'
 import type { LinkGroups, Sync } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
+let positionListenerAdded = false
 
 export function isGroupFocus(): boolean {
     return document.body.classList.contains('group-focus')
@@ -27,6 +27,12 @@ export function initGroups(data: Sync, init?: true): void {
     }
 
     createGroups(data.linkgroups)
+    updateSelectedGroupPosition()
+
+    if (!positionListenerAdded) {
+        positionListenerAdded = true
+        globalThis.addEventListener('resize', updateSelectedGroupPosition)
+    }
 
     // navigating through groups with scroll wheel
     document.querySelector('#link-mini')?.addEventListener('wheel', (event) => {
@@ -68,7 +74,6 @@ function createGroups(linkgroups: LinkGroups): void {
             button.addEventListener('click', openContextMenu)
         } else {
             button.addEventListener('click', changeGroup)
-            button.addEventListener('pointerdown', startDrag)
         }
 
         document.querySelector('#link-mini div')?.appendChild(button)
@@ -110,6 +115,7 @@ function changeGroup(event: Event): void {
     if (button.classList.contains('selected-group')) {
         if (event.type !== 'wheel') {
             setGroupFocus(!isGroupFocus())
+            updateSelectedGroupPosition()
         }
         return
     }
@@ -141,7 +147,23 @@ function changeGroup(event: Event): void {
     function showNewGroup(): void {
         domlinkblocks.classList.remove('hiding')
         setGroupFocus(true)
+        updateSelectedGroupPosition()
     }
+}
+
+export function updateSelectedGroupPosition(): void {
+    const selected = document.querySelector<HTMLElement>('#link-mini .link-title.selected-group')
+    const linkblocks = document.getElementById('linkblocks')
+
+    if (!(selected && linkblocks)) {
+        return
+    }
+
+    const selectedRect = selected.getBoundingClientRect()
+    const blocksRect = linkblocks.getBoundingClientRect()
+    const center = selectedRect.left + selectedRect.width / 2 - blocksRect.left
+
+    linkblocks.style.setProperty('--active-group-x', `${Math.round(center)}px`)
 }
 
 // Updates

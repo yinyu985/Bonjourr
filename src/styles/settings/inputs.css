@@ -1,6 +1,6 @@
 aside hr {
     width: 100%;
-    margin: 8px 0;
+    margin: 2px 0;
     border: none;
     border-bottom: 1px solid var(--color-input);
 }
@@ -19,8 +19,8 @@ aside .param-textarea {
 }
 
 aside .param-btn {
-    height: 29px;
-    padding: 0 0.9em;
+    height: 20px;
+    padding: 0 0.55em;
     color: var(--color-blue);
     border: none;
     border-radius: 6px;
@@ -84,7 +84,7 @@ aside .input-btn.icon-only span {
 }
 
 aside .input-btn.icon-only span svg {
-    height: 18px;
+    height: 13px;
     flex-shrink: 0;
 }
 
@@ -125,16 +125,98 @@ aside button {
 
 aside input,
 aside select {
-    height: 29px;
+    height: 20px;
     width: 155px;
-    padding-inline: 11px;
+    padding-inline: 7px;
     overflow: hidden;
     text-overflow: ellipsis;
     background-color: var(--color-input);
 }
 
+.custom-select-native {
+    display: none !important;
+}
+
+.custom-select {
+    position: relative;
+    width: 155px;
+}
+
+.custom-select-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 20px;
+    padding: 0 24px 0 7px;
+    border: 0;
+    border-radius: 6px;
+    color: var(--color-text);
+    background-color: var(--color-input);
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+}
+
+.custom-select-button::after {
+    content: '';
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    transform: translateY(-65%) rotate(45deg);
+    opacity: 0.7;
+}
+
+.custom-select-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 9999;
+    display: none;
+    padding: 4px;
+    overflow-y: auto;
+    border-radius: 8px;
+    background-color: var(--color-settings-section);
+    border: 1px solid var(--color-settings-section-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    box-sizing: border-box;
+}
+
+.custom-select-options.open {
+    display: grid;
+    gap: 2px;
+}
+
+.custom-select-options button {
+    width: 100%;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 5px;
+    color: var(--color-text);
+    background-color: transparent;
+    cursor: pointer;
+    text-align: left;
+}
+
+.custom-select-options button.selected,
+.custom-select-options button:hover,
+.custom-select-options button:focus-visible {
+    background-color: var(--color-focused);
+    outline: none;
+}
+
 @media only screen and (hover: hover) {
     aside input:focus-visible,
+    aside .custom-select-button:focus-visible,
+    aside .custom-select-button:hover,
     aside .input-btn:active,
     aside .tooltip:active,
     aside .switch:hover {
@@ -159,8 +241,8 @@ aside input[type='checkbox'] {
 aside .switch {
     position: relative;
     display: inline-block;
-    height: 26px;
-    width: 59px;
+    height: 18px;
+    width: 38px;
     border-radius: 6px;
     background-color: #c6c4c7;
     -webkit-appearance: none;
@@ -177,15 +259,15 @@ aside .switch {
 aside .switch:after {
     content: '';
     position: absolute;
-    height: 22px;
-    width: 34px;
+    height: 14px;
+    width: 22px;
     border-radius: 3px;
     background-color: white;
     transition: background-color 0.15s, transform 0.15s;
 
     left: 2px;
     top: 50%;
-    margin-top: -11px;
+    margin-top: -7px;
 }
 
 aside .switch:checked {
@@ -194,7 +276,7 @@ aside .switch:checked {
 }
 
 aside .switch:checked:after {
-    transform: translateX(21px);
+    transform: translateX(12px);
 }
 
 @media only screen and (hover: hover) {
@@ -208,7 +290,7 @@ aside input::-webkit-calendar-picker-indicator {
 }
 
 aside input[type='range'] {
-    height: 2.2em;
+    height: 20px;
     -webkit-appearance: none;
     appearance: none;
     background-color: var(--color-param);
@@ -220,7 +302,7 @@ aside input[type='range'] {
     /* progress support for webkit */
     --range: calc(var(--max) - var(--min));
     --ratio: calc((var(--value) - var(--min)) / var(--range));
-    --sx: calc(0.5 * 2em + var(--ratio) * (100% - 2em));
+    --sx: calc(0.5 * 1.6em + var(--ratio) * (100% - 1.6em));
 }
 
 aside input[type='range']:active {
@@ -234,12 +316,12 @@ aside input[type='range']:focus {
 aside input[type='range']::-webkit-slider-thumb {
     -webkit-appearance: none;
     background: #fff;
-    height: 20px;
-    width: 30px;
+    height: 16px;
+    width: 26px;
     border-radius: 4px;
     border: 0;
     box-shadow: 0px 1px 4px 2px rgba(20, 20, 20, 0.17);
-    margin-top: calc(4px * 0.5 - 20px * 0.5);
+    margin-top: calc(4px * 0.5 - 16px * 0.5);
 }
 
 aside input[type='range']::-webkit-slider-runnable-track {
@@ -261,12 +343,12 @@ aside input[type='range']::-webkit-slider-runnable-track {
 /* firefox */
 aside input[type='range']::-moz-range-thumb {
     background: #fff;
-    height: 20px;
-    width: 30px;
+    height: 16px;
+    width: 26px;
     border-radius: 4px;
     border: 0;
     box-shadow: 0px 1px 4px 2px rgba(20, 20, 20, 0.17);
-    margin-top: calc(4px * 0.5 - 20px * 0.5);
+    margin-top: calc(4px * 0.5 - 16px * 0.5);
 }
 
 aside input[type='range']::-moz-range-track {
@@ -339,7 +421,7 @@ aside .color-button input {
 
 aside .color-button button {
     border: 1px solid black;
-    height: 31px;
+    height: 20px;
     width: 155px;
     text-align: left;
     padding-inline-start: 1em;
@@ -414,8 +496,8 @@ aside form > div {
 }
 
 aside form button {
-    height: 31px;
-    width: 31px;
+    height: 20px;
+    width: 20px;
     padding: 0;
     opacity: 0;
     max-width: 0;
@@ -431,13 +513,13 @@ aside form button:disabled {
 
 aside form button span {
     display: flex;
-    width: 31px;
+    width: 20px;
     justify-content: center;
 }
 
 aside form.valid button {
     opacity: 1;
-    max-width: 31px;
+    max-width: 20px;
     visibility: visible;
 }
 
@@ -459,22 +541,24 @@ aside form.valid.remove span::after {
 }
 
 .param {
-    margin-top: 8px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    background-color: rgb(var(--color-param));
+    margin-top: 4px;
+    padding: 3px 7px;
+    border-radius: 7px;
+    border: 1px solid var(--color-settings-section-border);
+    background-color: var(--color-settings-section);
+    box-shadow: inset 0 1px 0 var(--color-settings-section-highlight);
 }
 
 .param + .param {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .wrapper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 29px;
-    padding: 3px; /* for tabbing outline */
+    min-height: 16px;
+    padding: 1px 2px; /* for tabbing outline */
 }
 
 .wrapper > span {
@@ -497,7 +581,7 @@ aside form.valid.remove span::after {
 }
 
 .split-range {
-    height: 29px;
+    height: 20px;
     align-items: center;
 }
 
@@ -506,7 +590,7 @@ aside form.valid.remove span::after {
 }
 
 .split-range button {
-    height: 29px;
+    height: 20px;
     width: 40px;
     font-size: 20px;
     background-color: transparent;

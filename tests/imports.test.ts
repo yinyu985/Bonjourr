@@ -24,7 +24,7 @@ Deno.test({
 Deno.test('Current version small import', () => {
     const config = filterData('import', defaults, {
         time: false,
-        main: false,
+        main: true,
         lang: 'en',
     })
 

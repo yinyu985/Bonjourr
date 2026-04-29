@@ -1,5 +1,6 @@
 import { applyUrls, getUrlsAsCollection, initUrlsEditor, urlsCacheControl } from './urls.ts'
 import { handleBackgroundActions, initBackgroundActionsEvents } from '../contextmenu.ts'
+import { settingsBackgroundColor } from '../others.ts'
 import { toggleCredits, updateCredits } from './credits.ts'
 import { TEXTURE_RANGES } from './textures.ts'
 import { PROVIDERS } from './providers.ts'
@@ -630,6 +631,7 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
     if (typeof media === 'string') {
         mediaWrapper?.childNodes.forEach((node) => node.remove())
         document.documentElement.style.setProperty('--solid-background', media)
+        settingsBackgroundColor(media)
         return
     }
 
@@ -1006,6 +1008,7 @@ function applyThemeColor(image: BackgroundImage, img: HTMLImageElement): void {
 
         setTimeout(() => {
             document.documentElement.style.setProperty('--average-color', color)
+            settingsBackgroundColor(color)
         }, fadein)
     }
 }

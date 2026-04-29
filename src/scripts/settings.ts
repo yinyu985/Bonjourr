@@ -5,7 +5,6 @@ import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './fea
 import { changeGroupTitle, initGroups } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { interfacePopup } from './features/popup.ts'
-import { moveElements } from './features/move/index.ts'
 import { hideElements } from './features/hide.ts'
 import { linksImport } from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
@@ -15,10 +14,10 @@ import { quotes } from './features/quotes.ts'
 import { notes } from './features/notes.ts'
 import { clock } from './features/clock/index.ts'
 import { pomodoro, setModeGlider } from './features/pomodoro.ts'
-import { togglePomodoroFocus } from './features/pomodoro.ts'
 import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, inputThrottle, turnRefreshButton, webkitRangeTrackColor } from './shared/dom.ts'
+import { initCustomSelects } from './shared/custom-select.ts'
 import { BROWSER, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
@@ -47,6 +46,7 @@ export function settingsInit(sync: Sync, local: Local): void {
 
     settingsInitSync = sync
     settingsInitLocal = local
+    showsettings?.classList.add('he_hidden')
 
     document.addEventListener('updateSettingsBeforeInit', (e) => {
         settingsInitSync = (e as CustomEvent).detail
@@ -117,13 +117,15 @@ function settingsInitEvent(event: Event): void {
     initBackgroundOptions(sync, local)
     initSupportersSettingsNotif(sync)
     initOptionsValues(sync, local)
+    if (settings) {
+        initCustomSelects(settings)
+    }
     initOptionsEvents()
     settingsFooter()
 
     // 3. Can be deferred
 
     setTimeout(() => {
-        initWorldClocksAndTimezone(sync)
         updateSettingsJson(sync)
         updateSettingsEvent()
         translateAriaLabels()
@@ -174,8 +176,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_blur', data.backgrounds.blur ?? 15)
     setInput('i_bright', data.backgrounds.bright ?? 0.8)
     setInput('i_fadein', data.backgrounds.fadein ?? 400)
-    setInput('i_row', data.linksrow || 8)
-    setInput('i_icon_radius', data.linkiconradius || 1.1)
     setInput('i_linkstyle', data.linkstyle || 'default')
     setInput('i_type', data.backgrounds.type || 'images')
     setInput('i_freq', data.backgrounds?.frequency || 'hour')
@@ -195,7 +195,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_greetafternoon', data.greetingscustom?.afternoon ?? '')
     setInput('i_greetevening', data.greetingscustom?.evening ?? '')
     setInput('i_greetnight', data.greetingscustom?.night ?? '')
-    setInput('i_textshadow', data.textShadow ?? 0.2)
     setInput('i_noteswidth', data.notes?.width || 50)
     setInput('i_notes-opacity', opacityFromHex(data.notes?.background ?? '#fff2'))
     setInput('i_notesalign', data.notes?.align || 'left')
@@ -217,7 +216,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_clocksize', data.clock?.size ?? 5)
     setInput('i_greetsize', data.greetingsize ?? 3)
     setInput('i_greetmode', data.greetingsmode ?? 'auto')
-    setInput('i_timezone', data.clock?.timezone || 'auto')
     setInput('i_geol', data.weather?.geolocation || 'approximate')
     setInput('i_units', data.weather?.unit ?? 'metric')
     setInput('i_forecast', data.weather?.forecast || 'auto')
@@ -225,7 +223,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_moreinfo', data.weather?.moreinfo || 'none')
     setInput('i_provider', data.weather?.provider ?? '')
     setInput('i_weight', data.font?.weight || '300')
-    setInput('i_size', data.font?.size || (IS_MOBILE ? '11' : '14'))
+    setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
     setInput('i_announce', data.announcements ?? 'major')
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'browser'))
     setInput('i_pmdr_volume', data.pomodoro?.volume ?? 0.7)
@@ -241,7 +239,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setFormInput('i_urlsync', 'https://pastebin.com/raw/y7XhhiDs', local?.distantUrl)
 
     setCheckbox('i_showall', data.showall)
-    setCheckbox('i_settingshide', data.hide?.settingsicon ?? false)
     setCheckbox('i_background-mute-videos', data.backgrounds.mute ?? true)
     setCheckbox('i_quicklinks', data.quicklinks)
     setCheckbox('i_linkgroups', data?.linkgroups?.on)
@@ -249,7 +246,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_time', data.time)
     setCheckbox('i_analog', data.clock?.analog ?? false)
     setCheckbox('i_seconds', data.clock?.seconds ?? false)
-    setCheckbox('i_worldclocks', data.clock?.worldclocks ?? false)
     setCheckbox('i_main', data.main)
     setCheckbox('i_greethide', !data.hide?.greetings)
     setCheckbox('i_notes', data.notes?.on ?? false)
@@ -258,7 +254,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_pomodoro', data.pomodoro?.on ?? false)
     setCheckbox('i_pmdr_sound', data.pomodoro?.sound ?? true)
     setCheckbox('i_ampm', data.clock?.ampm ?? false)
-    setCheckbox('i_ampm-label', data.clock?.ampmlabel ?? false)
     setCheckbox('i_sbsuggestions', data.searchbar?.suggestions ?? true)
     setCheckbox('i_sbnewtab', data.searchbar?.newtab ?? false)
     setCheckbox('i_qtauthor', data.quotes?.author ?? false)
@@ -274,7 +269,6 @@ function initOptionsValues(data: Sync, local: Local): void {
         'on',
         (data.analogstyle?.background ?? '#fff').includes('#000'),
     )
-
 
     // Change edit tips on mobile
     if (IS_MOBILE) {
@@ -305,9 +299,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('greetings_options')?.classList.toggle('shown', !data.hide?.greetings)
     paramId('greetingscustom_options')?.classList.toggle('shown', data.greetingsmode === 'custom')
     paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
-    paramId('ampm_label')?.classList.toggle('shown', data.clock.ampm)
-    paramId('ampm_position')?.classList.toggle('shown', data.clock.ampmlabel)
-    paramId('worldclocks_options')?.classList.toggle('shown', data.clock.worldclocks)
+    paramId('ampm_position')?.classList.toggle('shown', data.clock.ampm)
     paramId('main_options')?.classList.toggle('shown', data.main)
     paramId('weather_provider')?.classList.toggle('shown', data.weather?.moreinfo === 'custom')
     paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
@@ -317,14 +309,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('searchbar_options')?.classList.toggle('shown', data.searchbar?.on)
     paramId('searchbar_request')?.classList.toggle('shown', data.searchbar?.engine === 'custom')
     paramId('quotes_options')?.classList.toggle('shown', data.quotes?.on)
-
-    // Page layout
-    const gridLayoutButtons = domsettings.querySelectorAll<HTMLButtonElement>('#grid-layout button')
-    const selectedLayout = data.move?.selection || 'single'
-
-    for (const button of gridLayoutButtons) {
-        button?.classList.toggle('selected', button.dataset.layout === selectedLayout)
-    }
 
     // Link show title
     paramId('b_showtitles').classList.toggle('on', data?.linktitles ?? true)
@@ -445,31 +429,11 @@ function initOptionsEvents(): void {
         darkmode(this.value as 'auto' | 'system' | 'enable' | 'disable', true)
     })
 
-    onclickdown(paramId('i_settingshide'), (_, target) => {
-        hideElements({ settingsicon: target.checked }, { isEvent: true })
-    })
-
     // Quick links
 
     onclickdown(paramId('i_quicklinks'), (_, target) => {
-        moveElements(undefined, { widget: ['quicklinks', target.checked] })
-    })
-
-    paramId('f_addlink').addEventListener('submit', function (this, event: SubmitEvent): void {
-        event.preventDefault()
-
-        quickLinks(undefined, {
-            addLinks: [
-                {
-                    title: paramId('i_addlink-title').value,
-                    url: paramId('i_addlink-url').value,
-                },
-            ],
-        })
-
-        paramId('i_addlink-url').value = ''
-        paramId('i_addlink-title').value = ''
-        this.classList.remove('valid')
+        document.getElementById('linkblocks')?.classList.toggle('hidden', !target.checked)
+        storage.sync.set({ quicklinks: target.checked })
     })
 
     onclickdown(paramId('i_linkgroups'), (_, target) => {
@@ -495,14 +459,6 @@ function initOptionsEvents(): void {
         quickLinks(undefined, {
             styles: { backgrounds: !target.classList.contains('on') },
         })
-    })
-
-    paramId('i_row').addEventListener('input', function (this): void {
-        quickLinks(undefined, { row: this.value })
-    })
-
-    paramId('i_icon_radius').addEventListener('input', function (this): void {
-        quickLinks(undefined, { iconradius: this.value })
     })
 
     onclickdown(paramId('b_importbookmarks'), async () => {
@@ -600,7 +556,8 @@ function initOptionsEvents(): void {
     // Time and date
 
     onclickdown(paramId('i_time'), (_, target) => {
-        moveElements(undefined, { widget: ['time', target.checked] })
+        document.getElementById('time')?.classList.toggle('hidden', !target.checked)
+        storage.sync.set({ time: target.checked })
     })
 
     onclickdown(paramId('i_analog'), (_, target) => {
@@ -609,11 +566,6 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('i_seconds'), (_, target) => {
         clock(undefined, { seconds: target.checked })
-    })
-
-    onclickdown(paramId('i_worldclocks'), (_, target) => {
-        paramId('worldclocks_options')?.classList.toggle('shown', target.checked)
-        clock(undefined, { worldclocks: target.checked })
     })
 
     paramId('i_clockface').addEventListener('change', function (this: HTMLInputElement): void {
@@ -651,23 +603,12 @@ function initOptionsEvents(): void {
     onclickdown(paramId('i_ampm'), (_, target) => {
         clock(undefined, { ampm: target.checked })
 
-        // shows/hides ampm_label option
-        paramId('ampm_label')?.classList.toggle('shown', target.checked)
-    })
-
-    onclickdown(paramId('i_ampm-label'), (_, target) => {
-        clock(undefined, { ampmlabel: target.checked })
-
         // shows/hides ampm_position option
         paramId('ampm_position')?.classList.toggle('shown', target.checked)
     })
 
     paramId('i_ampm_position').addEventListener('change', function (this: HTMLInputElement): void {
         clock(undefined, { ampmposition: this.value })
-    })
-
-    paramId('i_timezone').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { timezone: this.value })
     })
 
     paramId('i_dateformat').addEventListener('change', function (this): void {
@@ -681,7 +622,7 @@ function initOptionsEvents(): void {
     // Weather
 
     onclickdown(paramId('i_main'), (_, target) => {
-        moveElements(undefined, { widget: ['main', target.checked] })
+        toggleWidget('main', target.checked)
     })
 
     paramId('i_geol').addEventListener('change', function (this: HTMLInputElement): void {
@@ -777,7 +718,7 @@ function initOptionsEvents(): void {
     // Notes
 
     onclickdown(paramId('i_notes'), (_, target) => {
-        moveElements(undefined, { widget: ['notes', target.checked] })
+        toggleWidget('notes', target.checked)
     })
 
     paramId('i_notesalign').addEventListener('change', function (this: HTMLInputElement): void {
@@ -799,7 +740,7 @@ function initOptionsEvents(): void {
     // Searchbar
 
     onclickdown(paramId('i_sb'), (_, target) => {
-        moveElements(undefined, { widget: ['searchbar', target.checked] })
+        toggleWidget('searchbar', target.checked)
         getPermissions('search')
     })
 
@@ -843,7 +784,7 @@ function initOptionsEvents(): void {
     // Quotes
 
     onclickdown(paramId('i_quotes'), (_, target) => {
-        moveElements(undefined, { widget: ['quotes', target.checked] })
+        toggleWidget('quotes', target.checked)
     })
 
     paramId('i_qtfreq').addEventListener('change', function (): void {
@@ -877,11 +818,10 @@ function initOptionsEvents(): void {
     // Pomodoro
 
     onclickdown(paramId('i_pomodoro'), (_, target) => {
-        moveElements(undefined, { widget: ['pomodoro', target.checked] })
+        toggleWidget('pomodoro', target.checked)
 
         const glider = document.querySelector('#pomodoro_container .glider') as HTMLDivElement
         if (glider.style.width === '0px') {
-            // mode glider needs pomodoro to be rendered to know the button sizes, so delay is required
             setTimeout(() => {
                 setModeGlider()
             }, 333)
@@ -935,24 +875,6 @@ function initOptionsEvents(): void {
         customFont(undefined, { size: this.value })
     })
 
-    paramId('i_textshadow').addEventListener('input', function (): void {
-        textShadow(undefined, Number.parseFloat(this.value))
-    })
-
-    // Page layout
-
-    onclickdown(paramId('b_editmove'), () => {
-        togglePomodoroFocus(false)
-
-        moveElements(undefined, {
-            toggle: !document.getElementById('interface')?.classList.contains('move-edit'),
-        })
-    })
-
-    paramId('i_pagecolumns').addEventListener('change', function (): void {
-        moveElements(undefined, { layout: this.value, toggle: true })
-    })
-
     paramId('i_pagewidth').addEventListener('input', function (): void {
         pageControl({ width: Number.parseInt(this.value) }, true)
     })
@@ -960,13 +882,6 @@ function initOptionsEvents(): void {
     paramId('i_pagegap').addEventListener('input', function (): void {
         pageControl({ gap: Number.parseFloat(this.value) }, true)
     })
-
-    paramId('i_pagewidth').addEventListener('touchstart', () => moveElements(undefined, { overlay: true }), {
-        passive: true,
-    })
-    paramId('i_pagewidth').addEventListener('mousedown', () => moveElements(undefined, { overlay: true }))
-    paramId('i_pagewidth').addEventListener('touchend', () => moveElements(undefined, { overlay: false }))
-    paramId('i_pagewidth').addEventListener('mouseup', () => moveElements(undefined, { overlay: false }))
 
     // Updates
 
@@ -1119,52 +1034,6 @@ function initOptionsEvents(): void {
     }
 }
 
-function initWorldClocksAndTimezone(data: Sync): void {
-    const template = document.getElementById('timezones-select-template') as HTMLTemplateElement
-    const citiesSelector = 'input[name="worldclock-city"]'
-    const timezonesSelector = '.worldclocks-item select'
-    const cities = document.querySelectorAll<HTMLSelectElement>(citiesSelector)
-    const timezone = document.querySelector<HTMLSelectElement>('#i_timezone')
-    const timezones = document.querySelectorAll<HTMLSelectElement>(timezonesSelector)
-    const zones = ['Europe/Paris', 'America/Sao_Paulo', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Kolkata']
-
-    // 1. Add options to selects
-
-    for (const select of timezones) {
-        select.appendChild(template.content.cloneNode(true))
-    }
-
-    if (timezone) {
-        timezone.appendChild(template.content.cloneNode(true))
-    }
-
-    // 2. Add events & values
-
-    cities?.forEach((input, i) => {
-        input.addEventListener('input', () => {
-            clock(undefined, { world: { index: i, region: input.value } })
-        })
-
-        if (data.worldclocks[i]) {
-            input.value = data.worldclocks[i].region
-        }
-    })
-
-    timezones?.forEach((select, i) => {
-        select.addEventListener('change', (event: Event) => {
-            const select = event.target as HTMLSelectElement
-            const timezone = select.value
-            clock(undefined, { world: { index: i, timezone: timezone } })
-        })
-
-        select.value = data.worldclocks[i]?.timezone ?? zones[i]
-    })
-
-    if (timezone) {
-        timezone.value = data.clock.timezone
-    }
-}
-
 function translatePlaceholders(): void {
     const cases = [
         ['i_title', 'Name'],
@@ -1178,8 +1047,6 @@ function translatePlaceholders(): void {
         ['i_sbplaceholder', 'Search'],
         ['css-editor-textarea', 'Type in your custom CSS'],
         ['i_importtext', 'or paste as text'],
-        ['i_addlink-title', 'Title'],
-        ['i_addlink-url', 'example.com'],
         ['i_qtlist', 'Author, Your quote.\nAuthor, Your second quote.'],
     ]
 
@@ -1330,7 +1197,7 @@ function drawerDragEvents(): void {
             clientY = (e as TouchEvent).touches[0].clientY
         }
 
-        // element is below max height: move
+        // element is below max height: keep dragging
         if (clientY > 60) {
             const touchPosition = clientY - 25
             const inverseHeight = 100 - (touchPosition / globalThis.innerHeight) * 100
@@ -1572,6 +1439,52 @@ async function toggleSettingsChangesButtons(action: string): Promise<void> {
 
 //	Helpers
 
+async function toggleWidget(
+    widget: 'main' | 'notes' | 'searchbar' | 'quotes' | 'pomodoro',
+    on: boolean,
+): Promise<void> {
+    const data = await storage.sync.get()
+
+    if (widget === 'main') {
+        data.main = on
+        document.getElementById('main')?.classList.toggle('hidden', !on)
+
+        const local = await storage.local.get('lastWeather')
+        weather({ sync: data, lastWeather: local.lastWeather })
+        storage.sync.set({ main: on })
+        return
+    }
+
+    if (widget === 'notes' && data.notes) {
+        data.notes = { ...data.notes, on }
+        notes(data.notes)
+        storage.sync.set({ notes: data.notes })
+        return
+    }
+
+    if (widget === 'searchbar') {
+        data.searchbar = { ...data.searchbar, on }
+        searchbar(data.searchbar)
+        storage.sync.set({ searchbar: data.searchbar })
+        return
+    }
+
+    if (widget === 'quotes') {
+        data.quotes = { ...data.quotes, on }
+
+        const local = await storage.local.get(['quotesCache', 'userQuoteSelection'])
+        quotes({ sync: data, local })
+        storage.sync.set({ quotes: data.quotes })
+        return
+    }
+
+    if (widget === 'pomodoro') {
+        data.pomodoro = { ...data.pomodoro, on }
+        pomodoro(data.pomodoro)
+        storage.sync.set({ pomodoro: data.pomodoro })
+    }
+}
+
 function paramId(str: string): HTMLInputElement {
     return document.getElementById(str) as HTMLInputElement
 }
@@ -1584,6 +1497,10 @@ function setCheckbox(id: string, cat: boolean): void {
 function setInput(id: string, val: string | number): void {
     const input = paramId(id) as HTMLInputElement
     input.value = typeof val === 'string' ? val : val?.toString()
+}
+
+function clampFontSize(size: string): string {
+    return Math.min(20, Math.max(10, Number.parseFloat(size))).toString()
 }
 
 function setFormInput(id: string, defaults: string, value?: string): void {

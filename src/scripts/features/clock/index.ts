@@ -1,9 +1,7 @@
 import { isAmpmPosition, isDateFormat, isFace, isHands, isShape } from './helpers.ts'
-import { toggleTimezoneOptions, toggleWorldClocksOptions } from './world.ts'
 import { hexColorFromSplitRange } from '../../shared/dom.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { displayGreetings } from './greetings.ts'
-import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { eventDebounce } from '../../utils/debounce.ts'
 import { stringMaxSize } from '../../shared/generic.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
@@ -16,7 +14,6 @@ import type { Greetings } from './greetings.ts'
 
 interface ClockUpdate {
     ampm?: boolean
-    ampmlabel?: boolean
     ampmposition?: string
     analog?: boolean
     seconds?: boolean
@@ -30,19 +27,12 @@ interface ClockUpdate {
         evening?: string
         night?: string
     }
-    timezone?: string
     shape?: string
     face?: string
     hands?: string
     size?: number
     border?: 'opacity' | 'shade'
     background?: 'opacity' | 'shade'
-    worldclocks?: boolean
-    world?: {
-        index: number
-        region?: string
-        timezone?: string
-    }
 }
 
 const defaultAnalogStyle: AnalogStyle = {
@@ -54,8 +44,6 @@ const defaultAnalogStyle: AnalogStyle = {
 }
 
 const sinogramRegex = /zh-CN|zh-HK|ja/
-const defaultTimezones = ['Europe/Paris', 'America/Sao_Paulo', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Kolkata']
-const defaultRegions = ['Paris', 'New York', 'Tokyo', 'Lisbon', 'Los Angeles']
 
 export function clock(init?: Sync, event?: ClockUpdate): void {
     if (event) {
@@ -64,7 +52,6 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
     }
 
     const clock = init?.clock ?? { ...SYNC_DEFAULT.clock }
-    const world = init?.worldclocks ?? { ...SYNC_DEFAULT.worldclocks }
     const dateformat = init?.dateformat || 'eu'
     const greetings: Greetings = {
         name: init?.greeting || '',
@@ -73,12 +60,11 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
     }
 
     try {
-        startClock({ clock, world, greetings, dateformat })
+        startClock({ clock, greetings, dateformat })
         greetingSize(init?.greetingsize)
         analogStyle(init?.analogstyle)
         clockSize(clock.size)
         displayInterface('clock')
-        onSettingsLoad(toggleWorldClocksOptions)
     } catch (err) {
         console.info(err)
     }
@@ -172,38 +158,14 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
         return
     }
 
-    if (update.worldclocks !== undefined) {
-        data.clock.worldclocks = update.worldclocks
-        toggleTimezoneOptions(data)
-    }
-
-    if (update.world !== undefined) {
-        const index = update.world.index
-        const baseclock = { region: defaultRegions[index], timezone: defaultTimezones[index] }
-        const worldclock = data.worldclocks?.[index] ?? baseclock
-        const { region, timezone } = update.world
-
-        if (region !== undefined) {
-            worldclock.region = region
-        }
-        if (timezone !== undefined) {
-            worldclock.timezone = timezone
-        }
-
-        data.worldclocks[index] = worldclock
-        toggleWorldClocksOptions()
-        toggleTimezoneOptions(data)
-    }
-
     data.clock = {
         ampm: update.ampm ?? data.clock.ampm,
         size: update.size ?? data.clock.size,
         analog: update.analog ?? data.clock.analog,
         seconds: update.seconds ?? data.clock.seconds,
-        timezone: update.timezone ?? data.clock.timezone,
-        ampmlabel: update.ampmlabel ?? data.clock.ampmlabel,
+        timezone: data.clock.timezone,
         ampmposition: isAmpmPosition(update.ampmposition) ? update.ampmposition : data.clock.ampmposition,
-        worldclocks: update.worldclocks ?? data.clock.worldclocks,
+        worldclocks: data.clock.worldclocks,
     }
 
     storage.sync.set({
@@ -215,7 +177,6 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
 
     startClock({
         clock: data.clock,
-        world: data.worldclocks,
         dateformat: data.dateformat,
         greetings: {
             name: data.greeting,
@@ -275,7 +236,7 @@ function analogStyle(style: AnalogStyle = structuredClone(defaultAnalogStyle)): 
 }
 
 function clockSize(size = 5): void {
-    document.documentElement.style.setProperty('--clock-size', `${size.toString()}em`)
+    document.documentElement.style.setProperty('--clock-size', `${size.toString()}rem`)
 }
 
 function greetingSize(size = '3'): void {

@@ -90,6 +90,13 @@ export function tradThis(str: string): string {
 export function countryCodeToLanguageCode(lang: string): string {
     let sanitizedLang = lang
 
+    if (lang === 'zh' || lang.includes('zh-CN') || lang.includes('zh-Hans') || lang.includes('zh-SG')) {
+        sanitizedLang = 'zh-CN'
+    }
+    if (lang.includes('zh-TW') || lang.includes('zh-HK') || lang.includes('zh-MO') || lang.includes('zh-Hant')) {
+        sanitizedLang = 'zh-TW'
+    }
+
     if (lang.includes('ES')) {
         sanitizedLang = 'es'
     }

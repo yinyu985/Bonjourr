@@ -10,7 +10,7 @@ if (globalThis.chrome) {
 }
 
 const CACHE_KEY = '22.1.0'
-const API_URLS = ['unsplash.com', 'jsdelivr.net', 'api.bonjourr']
+const API_URLS = ['unsplash.com', 'jsdelivr.net', 'api.bonjourr', 'api.fontsource.org']
 
 // Web Extension
 

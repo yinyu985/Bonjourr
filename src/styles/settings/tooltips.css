@@ -15,7 +15,7 @@ aside h2 {
     display: grid;
     place-items: baseline;
     grid-template-columns: 1fr min-content;
-    margin: 24px 16px 0 16px;
+    margin: 10px 10px 0 10px;
     color: var(--color-light-text);
     /* offset for when section is automatically getting scrolled to */
     scroll-margin-top: 20px;
@@ -26,9 +26,9 @@ aside h2 {
 }
 
 aside .tooltip {
-    width: 20px;
-    min-width: 20px;
-    height: 20px;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
     padding: 0;
     border-radius: 100%;
     border: 1px solid;
@@ -54,8 +54,8 @@ aside .settings-title .tooltip {
 
 .tooltiptext {
     color: var(--color-light-text);
-    font-size: 13px;
-    line-height: 1.4em;
+    font-size: 12px;
+    line-height: 1.3em;
 }
 
 .param .tooltiptext {
@@ -67,9 +67,9 @@ aside .settings-title .tooltip {
 }
 
 .settings-title .tooltiptext.shown {
-    padding-top: 0.8em;
+    padding-top: 0.45em;
 }
 
 .param .tooltiptext.shown {
-    padding-top: 4px;
+    padding-top: 2px;
 }

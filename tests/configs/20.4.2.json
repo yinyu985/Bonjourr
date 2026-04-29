@@ -111,15 +111,6 @@
         "closed": true,
         "month": 5
     },
-    "move": {
-        "selection": "single",
-        "layouts": {
-            "single": {
-                "items": {},
-                "grid": [["time"], ["main"], ["quicklinks"]]
-            }
-        }
-    },
     "linkscgnoff": {
         "_id": "linkscgnoff",
         "order": 0,

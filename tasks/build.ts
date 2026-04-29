@@ -1,6 +1,7 @@
 import { ensureDirSync, existsSync } from '@std/fs'
 import { buildSync } from 'esbuild'
 import { httpServer } from './serve.ts'
+import { langList } from '../src/scripts/langs.ts'
 
 type Platform = 'chrome' | 'firefox' | 'safari' | 'edge' | 'online'
 type Env = 'dev' | 'prod' | 'test'
@@ -250,9 +251,7 @@ function manifests(platform: Platform): void {
 }
 
 function locales(platform: Platform): void {
-    const langs = Array.from(Deno.readDirSync('_locales'))
-        .filter((entry) => entry.isDirectory && entry.name !== '.DS_Store')
-        .map((entry) => entry.name)
+    const langs = Object.keys(langList)
 
     for (const lang of langs) {
         const output = `release/${platform}/_locales/${lang}`

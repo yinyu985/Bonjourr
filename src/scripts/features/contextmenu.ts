@@ -2,6 +2,7 @@ import { populateDialogWithEditLink } from './links/edit.ts'
 import { IS_MOBILE, SYSTEM_OS } from '../defaults.ts'
 import { transitioner } from '../utils/transitioner.ts'
 import { debounce } from '../utils/debounce.ts'
+import { initCustomSelects } from '../shared/custom-select.ts'
 import { onclickdown } from 'clickdown/mod'
 import { backgroundUpdate, toggleMuteStatus } from './backgrounds/index.ts'
 import { storage } from '../storage.ts'
@@ -11,8 +12,8 @@ import type { Backgrounds } from '../../types/sync.ts'
 interface EventLocation {
     widgets: {
         link: boolean
-        time: boolean
         main: boolean
+        time: boolean
         quotes: boolean
         pomodoro: boolean
     }
@@ -25,13 +26,13 @@ interface Section {
 }
 
 const sectionMatching: Record<string, Section> = {
-    time: {
-        section: '#time',
-        scrollto: 'time_title',
-    },
     main: {
         section: '#main',
         scrollto: 'main_title',
+    },
+    time: {
+        section: '#time',
+        scrollto: 'time_title',
     },
     quotes: {
         section: '#quotes_container',
@@ -55,13 +56,13 @@ export function openContextMenu(event: Event): void {
         return
     }
 
-    const target = event.target as HTMLElement
+    const target = getContextTarget(event)
 
     eventLocation = {
         widgets: {
             link: !!target.closest('#linkblocks'),
-            time: !!target.closest(sectionMatching.time.section),
             main: !!target.closest(sectionMatching.main.section),
+            time: !!target.closest(sectionMatching.time.section),
             quotes: !!target.closest(sectionMatching.quotes.section),
             pomodoro: !!target.closest(sectionMatching.pomodoro.section),
         },
@@ -73,7 +74,7 @@ export function openContextMenu(event: Event): void {
     const notPressingE = event.type === 'keyup' && (event as KeyboardEvent).code !== 'KeyE'
 
     const clickedOnWidgets = Object.values(eventLocation.widgets).some((v) => v)
-    const menuWillOpen = !(ctrlRightClick || notPressingE) && clickedOnWidgets || eventLocation.interface
+    const menuWillOpen = !(ctrlRightClick || notPressingE) && (clickedOnWidgets || eventLocation.interface)
 
     if (!menuWillOpen) {
         return
@@ -100,7 +101,7 @@ export function openContextMenu(event: Event): void {
     contextmenuTransition.transition(10)
 
     if (eventLocation.widgets.link) {
-        populateDialogWithEditLink(event, domdialog)
+        populateDialogWithEditLink(event, domdialog, target)
         return
     }
 
@@ -117,21 +118,50 @@ export function openContextMenu(event: Event): void {
             populateDialogWithAction('openTheseSettings', section.scrollto)
         }
 
+        if (!hasVisibleContent()) {
+            closeContextMenu()
+            return
+        }
+
         positionContextMenu(event)
         return
     }
 
     if (eventLocation.interface) {
-        populateDialogWithAction('openTheseSettings', 'background_title')
+        showTheseElements('#background-actions')
 
-        // add new link button if quick links are enabled
-        if (!document.querySelector('#linkblocks.hidden')) {
-            populateDialogWithAction('add-new-link')
+        if (!hasVisibleContent()) {
+            closeContextMenu()
+            return
         }
 
-        showTheseElements('#background-actions')
         positionContextMenu(event)
     }
+}
+
+function getContextTarget(event: Event): HTMLElement {
+    const originalTarget = event.target as HTMLElement
+
+    if (originalTarget && originalTarget !== mainInterface) {
+        return originalTarget
+    }
+
+    if (document.body.classList.contains('group-focus') && event.type === 'contextmenu') {
+        const activeGroup = document.querySelector<HTMLElement>('#linkblocks > .link-group:not(.pinned)')
+        const pointer = event as PointerEvent
+
+        if (activeGroup) {
+            const rect = activeGroup.getBoundingClientRect()
+            const insideGroup = pointer.clientX >= rect.left && pointer.clientX <= rect.right &&
+                pointer.clientY >= rect.top && pointer.clientY <= rect.bottom
+
+            if (insideGroup) {
+                return activeGroup.querySelector<HTMLElement>('.link-list') ?? activeGroup
+            }
+        }
+    }
+
+    return originalTarget
 }
 
 function populateDialogWithAction(actionType: string, attribute?: string): void {
@@ -216,7 +246,17 @@ function showTheseElements(query: string): void {
     })
 }
 
+function hasVisibleContent(): boolean {
+    const visible = domdialog.querySelectorAll<HTMLElement>(
+        'label.on, button.on, hr.on, #background-actions.on, #pomodoro-info.on',
+    )
+
+    return Array.from(visible).some((element) => element.getClientRects().length > 0)
+}
+
 queueMicrotask(() => {
+    initCustomSelects(domdialog)
+
     document.addEventListener('contextmenu', (event) => {
         if (event.altKey) { // if alt + right click, then regular OS context menu
             closeContextMenu()
@@ -261,9 +301,6 @@ queueMicrotask(() => {
     openSettingsButtons?.forEach((btn) => {
         btn?.addEventListener('click', openSettingsButtonEvent)
     })
-
-    const addNewLinkButton = domdialog.querySelector<HTMLButtonElement>(`[data-action="add-new-link"]`)
-    addNewLinkButton?.addEventListener('click', (event) => populateDialogWithEditLink(event, domdialog, true))
 
     if (SYSTEM_OS === 'ios' || !IS_MOBILE) {
         const handleLongPress = debounce((event: TouchEvent) => {

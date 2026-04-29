@@ -2,7 +2,6 @@ import { BROWSER, IS_MOBILE, PLATFORM, SYSTEM_OS } from '../defaults.ts'
 import { backgroundsInit } from '../features/backgrounds/index.ts'
 import { onSettingsLoad } from '../utils/onsettingsload.ts'
 import { needsChange } from '../shared/time.ts'
-import { weather } from '../features/weather/index.ts'
 import { storage } from '../storage.ts'
 import { clock } from '../features/clock/index.ts'
 
@@ -52,7 +51,7 @@ export function onlineAndMobile(): void {
 
         const sync = await storage.sync.get()
         const local = await storage.local.get()
-        const { backgroundLastChange, lastWeather } = local
+        const { backgroundLastChange } = local
 
         if (!sync.clock || !sync.weather) {
             return
@@ -63,7 +62,6 @@ export function onlineAndMobile(): void {
         const notColor = sync.backgrounds.type !== 'color'
 
         clock(sync)
-        weather({ sync, lastWeather })
 
         if (notColor && needNew) {
             backgroundsInit(sync, local)

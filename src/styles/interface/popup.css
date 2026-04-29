@@ -24,7 +24,7 @@
 
 #popup_text,
 #popup_buttons a {
-    border-radius: 14px;
+    border-radius: 10px;
     opacity: 0;
     cursor: pointer;
     backdrop-filter: blur(2em);

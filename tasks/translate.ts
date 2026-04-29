@@ -1,8 +1,6 @@
 import { langList } from '../src/scripts/langs.ts'
 
-const langs = Array.from(Deno.readDirSync('./_locales/'))
-    .filter((entry) => entry.isDirectory)
-    .map((entry) => entry.name)
+const langs = Object.keys(langList)
 
 const englishDict = JSON.parse(Deno.readTextFileSync('./_locales/en/translations.json'))
 const files = []

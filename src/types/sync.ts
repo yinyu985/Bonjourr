@@ -1,4 +1,4 @@
-import type { BackgroundImage, BackgroundVideo, Frequency, Link, PomodoroMode, Widgets } from './shared.ts'
+import type { BackgroundImage, BackgroundVideo, Frequency, Link, PomodoroMode } from './shared.ts'
 
 export interface Sync {
     showall: boolean
@@ -46,7 +46,6 @@ export interface Sync {
     quotes: Quotes
     pomodoro: Pomodoro
     font: Font
-    move: Move
     about: {
         browser: string
         version: string
@@ -121,7 +120,6 @@ export interface Clock {
     seconds: boolean
     timezone: string
     size: number
-    ampmlabel: boolean
     ampmposition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
     worldclocks: boolean
     face?: 'none' | 'number' | 'roman' | 'marks'
@@ -154,6 +152,7 @@ export interface Searchbar {
 }
 
 export interface Font {
+    id?: string
     family: string
     size: string
     weight: string
@@ -180,25 +179,6 @@ export interface Quotes {
     frequency: Frequency
     userlist?: string
     url?: string
-}
-
-export interface Move {
-    selection: 'single' | 'double' | 'triple'
-    layouts: {
-        single?: MoveLayout
-        double?: MoveLayout
-        triple?: MoveLayout
-    }
-}
-
-export interface MoveLayout {
-    grid: string[][]
-    items: Record<Widgets, MoveAlign | undefined>
-}
-
-export interface MoveAlign {
-    box: string
-    text: string
 }
 
 export interface Supporters {

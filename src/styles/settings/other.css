@@ -17,19 +17,6 @@
 
 /*  Links  */
 
-#f_addlink > div > div {
-    display: flex;
-    gap: 4px;
-}
-
-#f_addlink {
-    width: 66%;
-}
-
-#i_addlink-title {
-    width: 40%;
-}
-
 #b_showtitles,
 #b_showbackgrounds {
     opacity: 0.7;
@@ -79,27 +66,6 @@
 #b_showbackgrounds.on {
     opacity: 1;
     background-color: var(--color-input);
-}
-
-/*  Others  */
-
-#worldclocks_options .wrapper {
-    padding: 0 0 0 4px;
-}
-
-#worldclocks-list {
-    width: 66%;
-}
-
-#worldclocks-list .split-inputs {
-    width: 100%;
-    padding: 2px;
-    box-sizing: border-box;
-}
-
-#worldclocks-list input,
-#worldclocks-list select {
-    width: 100%;
 }
 
 #i_city {

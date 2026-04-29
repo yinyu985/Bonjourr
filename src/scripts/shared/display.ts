@@ -17,13 +17,6 @@ export function displayInterface(ready?: InterfaceWidgetName, data?: Sync): void
         if (data?.font?.family) {
             features.push('fonts')
         }
-        if (data?.quotes?.on) {
-            features.push('quotes')
-        }
-        if (data?.pomodoro?.on) {
-            features.push('pomodoro')
-        }
-
         return
     }
 

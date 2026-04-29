@@ -51,11 +51,11 @@ let editStates: EditStates
 export async function populateDialogWithEditLink(
     event: Event,
     domdialog: HTMLDialogElement,
-    newLinkFromGlobal?: boolean,
+    targetOverride?: HTMLElement,
 ): Promise<void> {
     domeditlink = domdialog
 
-    const path = getComposedPath(event.target)
+    const path = getComposedPath(targetOverride ?? event.target)
     const classNames = path.map((element) => element.className ?? '')
     const linkelem = path.find((el) => el?.className?.includes('link') && el?.tagName === 'LI')
     const linkgroup = path.find((el) => el?.className?.includes('link-group'))
@@ -63,7 +63,7 @@ export async function populateDialogWithEditLink(
 
     const container: EditStates['container'] = {
         mini: path.some((element) => element?.id?.includes('link-mini')),
-        group: newLinkFromGlobal ?? classNames.some((cl) => cl.includes('link-group') && !cl.includes('in-folder')),
+        group: classNames.some((cl) => cl.includes('link-group') && !cl.includes('in-folder')),
         folder: classNames.some((cl) => cl.includes('link-group') && cl.includes('in-folder')),
     }
 
@@ -169,9 +169,7 @@ export async function populateDialogWithEditLink(
     editStates.selected = getSelectedIds()
 
     // Once dialog is populated, calculates its position
-    if (!newLinkFromGlobal) {
-        positionContextMenu(event)
-    }
+    positionContextMenu(event)
 
     inputToFocus?.focus()
 }
@@ -179,6 +177,7 @@ export async function populateDialogWithEditLink(
 function toggleEditInputs(): string[] {
     const deleteButtonTxt = document.querySelector<HTMLButtonElement>('#edit-delete span')
     const addButtonTxt = document.querySelector<HTMLButtonElement>('#edit-add span')
+    const refreshButtonTxt = document.querySelector<HTMLButtonElement>('#edit-refresh span')
     const { container, target, selectall } = editStates
     let inputs: string[] = []
 
@@ -276,6 +275,10 @@ function toggleEditInputs(): string[] {
         }
     }
 
+    if (refreshButtonTxt) {
+        refreshButtonTxt.textContent = tradThis('Refresh icon')
+    }
+
     return inputs
 }
 
@@ -307,6 +310,8 @@ function setSubmitOnEnter(theButton: string): void {
 }
 
 function toggleIconType(iconType: Event | string): void {
+    const fromEvent = iconType instanceof Event
+
     if (iconType instanceof Event) { // figures out the needed icon type if it's from event change
         const target = iconType.target as HTMLInputElement
         iconType = target.value
@@ -315,6 +320,10 @@ function toggleIconType(iconType: Event | string): void {
     const selectIconType = document.getElementById('e-icon-type') as HTMLSelectElement
     if (selectIconType) {
         selectIconType.value = iconType
+
+        if (!fromEvent) {
+            selectIconType.dispatchEvent(new Event('change'))
+        }
     }
 
     const editIconUrl = document.getElementById('e-icon-url') as HTMLInputElement

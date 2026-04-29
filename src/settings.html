@@ -106,26 +106,6 @@
         </div>
 
         <hr />
-
-        <div class="settingshide wrapper">
-            <span>
-                <label for="i_settingshide" class="trn">Hide settings icon</label>
-                <button class="tooltip tthidesettingsicon" title="What does this do?" aria-label="What does this do?">
-                    ?
-                </button>
-            </span>
-            <input id="i_settingshide" class="switch" type="checkbox" />
-        </div>
-
-        <p class="tooltiptext dropdown tthidesettingsicon">
-            <span class="trn">When this is enabled, clicking the bottom right corner will still open settings.</span>
-            <a
-                class="trn"
-                href="https://bonjourr.fr/docs/overview/#hide-settings"
-                rel="noreferrer noopener"
-                target="_blank"
-            >Learn more</a>
-        </p>
     </div>
 </div>
 
@@ -580,45 +560,6 @@
     </div>
 
     <div id="quicklinks_options" class="dropdown">
-        <hr />
-
-        <div class="wrapper">
-            <label for="i_addlink" class="trn">Add link</label>
-            <form id="f_addlink">
-                <div>
-                    <div>
-                        <input
-                            type="text"
-                            name="addlink-title"
-                            id="i_addlink-title"
-                            maxlength="64"
-                            placeholder="Title"
-                            aria-label="Add title to new link"
-                            autocomplete="off"
-                        />
-                        <input
-                            type="text"
-                            name="addlink-url"
-                            id="i_addlink-url"
-                            minlength="3"
-                            maxlength="512"
-                            placeholder="example.com"
-                            aria-label="Add URL to new link"
-                            autocomplete="off"
-                            autocorrect="off"
-                            autocapitalize="off"
-                            spellcheck="false"
-                            required="true"
-                        />
-                    </div>
-
-                    <button type="submit" id="i_addlink">
-                        <span></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-
         <div class="not-safari not-online">
             <hr />
 
@@ -657,29 +598,6 @@
             <hr />
 
             <div class="wrapper">
-                <label for="i_icon_radius" class="trn">Icon corner radius</label>
-                <input
-                    id="i_icon_radius"
-                    type="range"
-                    name="i_icon_radius"
-                    min="0"
-                    max="2.4"
-                    step="0.1"
-                    value="1.1"
-                    class="range"
-                />
-            </div>
-
-            <hr />
-
-            <div class="wrapper">
-                <label for="i_row" class="trn">Links per row</label>
-                <input id="i_row" type="range" name="i_row" min="1" max="16" step="1" value="8" class="range" />
-            </div>
-
-            <hr />
-
-            <div class="linkstyle wrapper">
                 <label for="i_linkstyle" class="trn">Style</label>
 
                 <div class="split-inputs">
@@ -866,15 +784,6 @@
                     <input id="i_ampm" class="switch" type="checkbox" />
                 </div>
 
-                <div id="ampm_label" class="dropdown">
-                    <hr />
-
-                    <div id="w_ampm-label" class="wrapper">
-                        <label for="i_ampm-label" class="trn">Show AM/PM</label>
-                        <input id="i_ampm-label" class="switch" type="checkbox" />
-                    </div>
-                </div>
-
                 <div id="ampm_position" class="dropdown">
                     <hr />
 
@@ -918,92 +827,6 @@
                     value="1"
                     class="range"
                 />
-            </div>
-
-            <hr />
-
-            <div class="wrapper">
-                <label for="i_worldclocks" class="trn">World clocks</label>
-                <input id="i_worldclocks" class="switch" type="checkbox" />
-            </div>
-
-            <div id="worldclocks_options" class="dropdown">
-                <hr />
-
-                <div class="wrapper">
-                    <span class="trn">Regions</span>
-
-                    <div id="worldclocks-list">
-                        <div class="worldclocks-item split-inputs dropdown shown">
-                            <input
-                                type="text"
-                                name="worldclock-city"
-                                maxlength="24"
-                                placeholder="Paris"
-                                aria-label="Add city"
-                            />
-                            <select name="worldclock-timezone"></select>
-                        </div>
-
-                        <div class="worldclocks-item split-inputs dropdown">
-                            <input
-                                type="text"
-                                name="worldclock-city"
-                                maxlength="24"
-                                placeholder="São Paulo"
-                                aria-label="Add city"
-                            />
-                            <select name="worldclock-timezone"></select>
-                        </div>
-
-                        <div class="worldclocks-item split-inputs dropdown">
-                            <input
-                                type="text"
-                                name="worldclock-city"
-                                maxlength="24"
-                                placeholder="Los Angeles"
-                                aria-label="Add city"
-                            />
-                            <select name="worldclock-timezone"></select>
-                        </div>
-
-                        <div class="worldclocks-item split-inputs dropdown">
-                            <input
-                                type="text"
-                                name="worldclock-city"
-                                maxlength="24"
-                                placeholder="Tokyo"
-                                aria-label="Add city"
-                            />
-                            <select name="worldclock-timezone"></select>
-                        </div>
-
-                        <div class="worldclocks-item split-inputs dropdown">
-                            <input
-                                type="text"
-                                name="worldclock-city"
-                                maxlength="24"
-                                placeholder="Kolkata"
-                                aria-label="Add city"
-                            />
-                            <select name="worldclock-timezone"></select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="timezone_options" class="dropdown shown">
-                <hr />
-
-                <div class="wrapper">
-                    <label for="i_timezone" class="trn">Time zone</label>
-                    <select id="i_timezone" class="">
-                        <optgroup label="Automatic">
-                            <option value="auto" class="trn">Automatic</option>
-                        </optgroup>
-                        <optgroup></optgroup>
-                    </select>
-                </div>
             </div>
 
             <hr />
@@ -1851,14 +1674,7 @@
 
         <div class="wrapper">
             <label for="i_size" class="trn">Size</label>
-            <input id="i_size" type="range" name="fontsize" min="5" max="26" step=".05" class="range" />
-        </div>
-
-        <hr />
-
-        <div class="wrapper">
-            <label for="i_textshadow" class="trn">Shadow</label>
-            <input id="i_textshadow" type="range" name="textshadow" min="0" max="1" step=".025" class="range" />
+            <input id="i_size" type="range" name="fontsize" min="10" max="20" step=".05" class="range" />
         </div>
     </div>
 </div>
@@ -1866,41 +1682,10 @@
 <div class="as as_page dropdown">
     <div class="settings-title" id="layout_title">
         <h2 class="trn">Page layout</h2>
-
-        <button class="tooltip ttgrid" title="Tips on page grid layout" aria-label="Tips on page grid layout">?</button>
-
-        <p class="tooltiptext dropdown ttgrid">
-            <span class="trn">Customise how and where widgets appear.</span>
-            <span class="trn instructions">Open the toolbox and select a widget to modify on the page.</span>
-            <a
-                class="trn"
-                href="https://bonjourr.fr/docs/overview#page-layouts"
-                rel="noreferrer noopener"
-                target="_blank"
-            >Learn more</a>
-        </p>
     </div>
 
     <div class="param">
-        <div class="wrapper">
-            <label for="b_editmove" class="trn">Open layout toolbox</label>
-            <button id="b_editmove" class="param-btn trn">Open</button>
-        </div>
-
         <div class="not-mobile">
-            <hr />
-
-            <div class="wrapper">
-                <span class="trn">Page columns</span>
-                <select id="i_pagecolumns">
-                    <option class="trn" value="single">Simple</option>
-                    <option class="trn" value="double">Double</option>
-                    <option class="trn" value="triple">Triple</option>
-                </select>
-            </div>
-
-            <hr />
-
             <div class="wrapper">
                 <label for="i_pagewidth" class="trn">Page width</label>
                 <input

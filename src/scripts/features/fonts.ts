@@ -4,7 +4,6 @@ import { onSettingsLoad } from '../utils/onsettingsload.ts'
 import { eventDebounce } from '../utils/debounce.ts'
 import { networkForm } from '../shared/form.ts'
 import { SYSTEM_OS } from '../defaults.ts'
-import { apiFetch } from '../shared/api.ts'
 import { subsets } from '../langs.ts'
 import { storage } from '../storage.ts'
 import { clock } from './clock/index.ts'
@@ -12,6 +11,7 @@ import { clock } from './clock/index.ts'
 import type { Font, Sync } from '../../types/sync.ts'
 
 interface Fontsource {
+    id: string
     family: string
     subsets: string[]
     weights: number[]
@@ -27,6 +27,9 @@ type CustomFontUpdate = {
 }
 
 const familyForm = networkForm('f_customfont')
+const FONTS_API = 'https://api.fontsource.org/v1/fonts'
+const FONTS_CDN = 'https://cdn.jsdelivr.net/fontsource/fonts'
+let fontlistCache: Fontsource[] | undefined
 
 export const systemfont = (() => {
     const fonts = {
@@ -188,7 +191,7 @@ async function handleLangSwitch(font: Font): Promise<void> {
 }
 
 async function getNewFont(font: Font, newfamily: string): Promise<Font | undefined> {
-    const fontlist = (await (await apiFetch('/fonts'))?.json()) ?? []
+    const fontlist = await getFontList()
     let newfont: Fontsource | undefined
 
     for (const item of fontlist as Fontsource[]) {
@@ -203,7 +206,8 @@ async function getNewFont(font: Font, newfamily: string): Promise<Font | undefin
     if (newfont) {
         font.weight = '400'
         font.system = false
-        font.family = newfamily
+        font.family = newfont.family
+        font.id = newfont.id
         font.weightlist = newfont.weights.map((w) => w.toString())
         return font
     }
@@ -213,19 +217,20 @@ async function getNewFont(font: Font, newfamily: string): Promise<Font | undefin
     return
 }
 
-function displayFont({ family, size, weight, system }: Font): void {
+function displayFont({ family, id, size, weight, system }: Font): void {
     // Weight: default bonjourr lowers font weight on clock (because we like it)
     const clockWeight = Number.parseInt(weight) > 100
         ? systemfont.weights[systemfont.weights.indexOf(weight) - 1]
         : weight
     const subset = getRequiredSubset()
-    const id = family.toLocaleLowerCase().replaceAll(' ', '-')
+    const fontId = id ?? family.toLocaleLowerCase().replaceAll(' ', '-')
     const fontfacedom = document.getElementById('fontface')
 
     if (!system) {
         let fontface = `
 			@font-face {font-family: "${family}";
-				src: url(https://cdn.jsdelivr.net/fontsource/fonts/${id}@latest/latin-${weight}-normal.woff2) format('woff2');
+				font-display: swap;
+				src: url(${FONTS_CDN}/${fontId}@latest/latin-${weight}-normal.woff2) format('woff2');
 			}
 		`
 
@@ -245,7 +250,8 @@ function displayFont({ family, size, weight, system }: Font): void {
 }
 
 function setFontSize(size: string): void {
-    document.documentElement.style.setProperty('--font-size', `${Number.parseInt(size) / 16}em`)
+    const clamped = Math.min(20, Math.max(10, Number.parseFloat(size)))
+    document.documentElement.style.setProperty('--font-size', `${clamped / 16}em`)
 }
 
 //
@@ -268,7 +274,7 @@ async function setAutocompleteSettings(isLangSwitch?: boolean): Promise<void> {
     }
 
     if (dlFontfamily?.childElementCount === 0) {
-        const fontlist = (await (await apiFetch('/fonts'))?.json()) ?? []
+        const fontlist = await getFontList()
         const fragment = new DocumentFragment()
         const requiredSubset = getRequiredSubset()
 
@@ -298,11 +304,30 @@ function setWeightSettings(weights: string[]): void {
 //
 
 export async function fontIsAvailableInSubset(lang?: string, family?: string): Promise<boolean | undefined> {
-    const fontlist = (await (await apiFetch('/fonts'))?.json()) as Fontsource[]
+    const fontlist = await getFontList()
     const font = fontlist?.find((item) => item.family === family)
     const subset = getRequiredSubset(lang)
 
     return font?.subsets.includes(subset)
+}
+
+async function getFontList(): Promise<Fontsource[]> {
+    if (fontlistCache) {
+        return fontlistCache
+    }
+
+    try {
+        const response = await fetch(FONTS_API)
+
+        if (!response.ok) {
+            return []
+        }
+
+        fontlistCache = await response.json() as Fontsource[]
+        return fontlistCache
+    } catch (_) {
+        return []
+    }
 }
 
 function systemFontChecker(family: string): boolean {

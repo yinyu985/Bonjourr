@@ -61,7 +61,8 @@
     text-overflow: ellipsis;
     border: none;
     background-color: transparent;
-    background: url('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg') no-repeat 10px center;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg') no-repeat 10px
+        center;
     background-size: 20px;
     padding-left: 40px;
 }
@@ -89,7 +90,7 @@
     color: #fff;
     font-size: inherit;
     padding: 0.3em 1.5em;
-    border-radius: 0.5em;
+    border-radius: 6px;
     background-color: transparent;
     transition: opacity 0.2s;
 }
@@ -135,7 +136,7 @@
     align-items: center;
     margin: 0;
     padding: 0.4em 1em 0.4em 0.6em;
-    border-radius: 0.4em;
+    border-radius: 6px;
     column-gap: 0.6em;
     border: 1px solid transparent;
     cursor: pointer;

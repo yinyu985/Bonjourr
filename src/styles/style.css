@@ -37,12 +37,7 @@
 
 /* Baked-in features and dialogs */
 @import './features/time';
-@import './features/main';
-@import './features/searchbar';
-@import './features/notes';
 @import './features/links';
-@import './features/quotes';
-@import './features/pomodoro';
 @import './features/grid';
 @import './features/editlink';
 @import './features/contextmenu';

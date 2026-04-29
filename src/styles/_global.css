@@ -1,8 +1,8 @@
 :root {
     --app-height: 100vh;
     --notes-width: 50em;
-    --page-width: 1600px;
-    --page-gap: 1em;
+    --page-width: none;
+    --page-gap: 0;
     --links-width: auto;
     --link-padding: 0.3em;
     --link-outer-radius: 0.6em;
@@ -33,7 +33,7 @@
     --color-green: #2ed058;
     --color-blue: #2990ff;
     --color-orange: #fe9030;
-    --border-radius: 25px; /* global border-radius value */
+    --border-radius: 10px; /* global border-radius value */
     --out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
@@ -41,6 +41,9 @@
     --color-text: #222222;
     --color-param: 255, 255, 255;
     --color-settings: #f2f2f7;
+    --color-settings-section: #ffffff;
+    --color-settings-section-border: #d7d8df;
+    --color-settings-section-highlight: #ffffffb3;
     --color-areas: #f2f2f7;
     --color-areas-text: var(--color-blue);
     --color-input: #eaeaee;
@@ -61,6 +64,9 @@
     --color-light-text: #929294;
     --color-param: 28, 28, 30;
     --color-settings: #000000;
+    --color-settings-section: #2b2b2f;
+    --color-settings-section-border: #4c4d55;
+    --color-settings-section-highlight: #ffffff14;
     --color-input: #39383d;
     --color-input-outside: #39383d;
     --color-border: var(--color-input);
@@ -193,9 +199,7 @@ body.init #show-settings button {
 }
 
 body.potato #bookmarks,
-body.potato #bookmarks::backdrop,
-body.potato #element-mover,
-body.potato .move-overlay {
+body.potato #bookmarks::backdrop {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     transition: none;
@@ -219,12 +223,10 @@ body.potato #bookmarks::backdrop {
 }
 
 body.potato #editlink,
-body.potato #bookmarks,
-body.potato #element-mover {
+body.potato #bookmarks {
     background-color: rgb(var(--color-param));
 }
 
-body.blurred .move-overlay,
 body.blurred .link-folder > div {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -246,7 +248,7 @@ input {
 dialog a,
 aside a {
     color: var(--color-blue);
-    border-radius: 4px;
+    border-radius: 6px;
     text-decoration: none;
 }
 

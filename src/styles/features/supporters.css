@@ -326,7 +326,7 @@ html[data-supporters] #show-settings.shown:after {
 }
 
 #supporters-modal footer a {
-    border-radius: 2em;
+    border-radius: 6px;
     background-color: rgba(var(--blue));
     border: 1px solid rgba(var(--blue));
     color: white;

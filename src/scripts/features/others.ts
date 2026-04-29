@@ -1,6 +1,6 @@
 import { BROWSER, SYNC_DEFAULT } from '../defaults.ts'
 import { minutator, suntime } from '../shared/time.ts'
-import { stringMaxSize } from '../shared/generic.ts'
+import { getReadableTextColor, hexToRGB, stringMaxSize } from '../shared/generic.ts'
 import { eventDebounce } from '../utils/debounce.ts'
 import { tradThis } from '../utils/translations.ts'
 import { storage } from '../storage.ts'
@@ -105,6 +105,70 @@ export function darkmode(value: 'auto' | 'system' | 'enable' | 'disable', isEven
     globalThis.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
         document.documentElement.dataset.theme = event.matches ? 'dark' : 'light'
     })
+}
+
+export function settingsBackgroundColor(color?: string): void {
+    if (!color?.startsWith('#')) {
+        return
+    }
+
+    const sourceRgb = hexToRGB(color)
+    const panelRgb = mixWithWhite(sourceRgb, 0.3)
+    const sectionRgb = mixWithWhite(sourceRgb, 0.5)
+    const inputRgb = mixWithWhite(sourceRgb, 0.42)
+    const outsideRgb = mixWithWhite(sourceRgb, 0.36)
+    const focusedRgb = mixWithWhite(sourceRgb, 0.46)
+    const borderRgb = mixWithWhite(sourceRgb, 0.58)
+    const isDarkPanel = getReadableTextColor(panelRgb) === 'white'
+    const textHex = isDarkPanel ? '#f5f7fa' : '#1e232b'
+    const lightTextHex = isDarkPanel ? '#c4c9d2' : '#5d6672'
+    const placeholderHex = isDarkPanel ? '#9ca4b0' : '#6d7682'
+    const linkTextHex = isDarkPanel ? '#9ed0ff' : '#1f5fba'
+    const dialogAlpha = isDarkPanel ? 'd9' : 'cc'
+    const dialogInputAlpha = isDarkPanel ? 0.22 : 0.12
+    const rootStyle = document.documentElement.style
+
+    rootStyle.setProperty('--color-settings', cssRgb(panelRgb))
+    rootStyle.setProperty('--color-settings-section', cssRgb(sectionRgb))
+    rootStyle.setProperty('--color-settings-section-border', cssRgb(borderRgb))
+    rootStyle.setProperty(
+        '--color-settings-section-highlight',
+        isDarkPanel ? '#ffffff14' : '#ffffffb3',
+    )
+    rootStyle.setProperty('--color-text', textHex)
+    rootStyle.setProperty('--color-light-text', lightTextHex)
+    rootStyle.setProperty('--color-placeholder', placeholderHex)
+    rootStyle.setProperty('--color-blue', linkTextHex)
+    rootStyle.setProperty('--color-param', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`)
+    rootStyle.setProperty('--color-areas', cssRgb(sectionRgb))
+    rootStyle.setProperty('--color-input', cssRgb(inputRgb))
+    rootStyle.setProperty('--color-input-outside', cssRgb(outsideRgb))
+    rootStyle.setProperty('--color-focused', cssRgb(focusedRgb))
+    rootStyle.setProperty('--color-border', cssRgb(borderRgb))
+    rootStyle.setProperty('--color-areas-text', textHex)
+    rootStyle.setProperty('--color-dialog', `${color}${dialogAlpha}`)
+    rootStyle.setProperty('--color-dialog-border', isDarkPanel ? '#ffffff30' : '#1a1f2b22')
+    rootStyle.setProperty('--color-dialog-highlight', isDarkPanel ? '#ffffff1a' : '#ffffff66')
+    rootStyle.setProperty('--color-dialog-input-text', textHex)
+    rootStyle.setProperty(
+        '--color-dialog-input-bg',
+        `rgba(${sourceRgb.r}, ${sourceRgb.g}, ${sourceRgb.b}, ${dialogInputAlpha})`,
+    )
+}
+
+function mixWithWhite(
+    rgb: { r: number; g: number; b: number },
+    whiteRatio: number,
+): { r: number; g: number; b: number } {
+    return {
+        r: Math.round(rgb.r * (1 - whiteRatio) + 255 * whiteRatio),
+        g: Math.round(rgb.g * (1 - whiteRatio) + 255 * whiteRatio),
+        b: Math.round(rgb.b * (1 - whiteRatio) + 255 * whiteRatio),
+    }
+}
+
+function cssRgb(rgb: { r: number; g: number; b: number }): string {
+    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`
 }
 
 export function textShadow(init?: number, event?: number): void {

@@ -13,7 +13,7 @@
     padding: 50px;
     opacity: 0;
     color: #fff;
-    border-radius: 20px;
+    border-radius: 10px;
     background-color: rgba(0, 0, 0, 0.1333333333);
     backdrop-filter: blur(2em);
     -webkit-backdrop-filter: blur(2em);
@@ -53,7 +53,7 @@
 #error button {
     cursor: pointer;
     padding: 5px 10px;
-    border-radius: 5px;
+    border-radius: 6px;
     border: none;
     background-color: var(--color-red);
     color: #fff;

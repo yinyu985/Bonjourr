@@ -35,10 +35,18 @@
 }
 
 #credit {
+    visibility: hidden;
+    opacity: 0;
     text-align: left;
     font-size: 13px;
     line-height: 18px;
     color: #fff9;
+    transition: opacity 0.4s, visibility 0.4s;
+}
+
+#credit-container.shown:hover #credit {
+    visibility: visible;
+    opacity: 1;
 }
 
 #credit a {

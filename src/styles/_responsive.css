@@ -35,10 +35,6 @@
         max-width: 80%;
     }
 
-    #link-list {
-        padding: 2em;
-    }
-
     #linkblocks.medium,
     #linkblocks.large {
         --folder-padding: 1.5em 1em;
@@ -50,23 +46,12 @@
         --folder-padding: 1.5em;
     }
 
-    #element-mover {
-        font-size: 12px;
-    }
-
     #interface {
         padding-bottom: 77px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around;
     }
 
     body #interface.pushed {
         transform: none;
-    }
-
-    #quotes_container {
-        width: 90vw;
     }
 
     #show-settings button {
@@ -119,21 +104,10 @@
         }
     }
 
-    #f_addlink > div {
-        align-items: center;
-    }
-
-    #f_addlink > div > div {
-        width: 100%;
-        flex-direction: column;
-    }
-
     aside::-webkit-scrollbar {
         display: none;
     }
 
-    #i_addlink-title,
-    #i_addlink-url,
     #i_city {
         width: 100%;
     }
@@ -181,7 +155,6 @@
         overflow-y: scroll;
     }
 
-    #main,
     #time {
         min-height: unset;
     }
@@ -218,6 +191,10 @@
 
     #link-mini .link-title.add-group {
         visibility: visible;
+        max-width: 3em;
+        padding-right: 1em;
+        padding-left: 1em;
+        opacity: 1;
     }
 
     [data-pocket-editor] [data-todo] p {
@@ -254,7 +231,7 @@
     aside form button,
     aside select {
         min-height: 36px;
-        border-radius: 13px;
+        border-radius: 10px;
     }
 
     aside .input-btn.icon-only:hover {

@@ -134,10 +134,7 @@ export function startDrag(event: PointerEvent): void {
         for (const element of elements) {
             const type = findTypeFromElement(element)
             const id = findIdFromElement(element, type)
-            let { x, y, w, h } = dropzones[type].get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
-
-            x -= rect?.x
-            y -= rect?.y
+            const { x, y, w, h } = dropzones[type].get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
 
             ids.push(id)
             initids.push(id)
@@ -152,8 +149,8 @@ export function startDrag(event: PointerEvent): void {
             if (id === draggedId) {
                 cox = pos.x - x + (groupSizeOffsets.get(id) ?? 0)
                 coy = pos.y - y
-                dx = pos.x
-                dy = pos.y
+                dx = x
+                dy = y
                 element.classList.add('on')
             }
         }
@@ -177,7 +174,7 @@ export function startDrag(event: PointerEvent): void {
 }
 
 function beforeStartDrag(event: PointerEvent, type: 'mini' | 'link'): void {
-    // Prevent drag move event if user slips on click
+    // Prevent accidental drag start if user slips on click
     // By only starting drag if pointer moves more than 10px deadzone
 
     const target = type === 'mini' ? getTitleFromEvent(event) : getLiFromEvent(event)
@@ -295,11 +292,11 @@ function applyDragMoveBlocks(id: string): void {
 
     lastIndex = targetIndex
 
-    // move dragged element to target position in array
+    // place dragged element at the target index in the array
     ids.splice(ids.indexOf(draggedId), 1)
     ids.splice(targetIndex, 0, draggedId)
 
-    // move all clones to new position
+    // place all clones at their new positions
     for (let i = 0; i < ids.length; i++) {
         if (ids[i] !== draggedId) {
             deplaceElem(blocks.get(ids[i]), coords[i].x, coords[i].y)
@@ -451,61 +448,62 @@ function deplaceDraggedElem(): void {
 }
 
 function isDraggingOver({ x, y }: { x: number; y: number }): [DropArea, string, DropType] | undefined {
-    const findArea = (zones: Dropzones) => {
+    const findArea = (zones: Dropzones, direction: 'horizontal' | 'vertical' | 'center') => {
         for (const [id, zone] of zones) {
-            // Detect 20% left edge of dropzones ( left + corner )
-            const ll = zone.x
-            const lr = zone.x + zone.w * 0.2
-            const lt = zone.y
-            const lb = zone.y + zone.h
-            const isInLeftEdge = x > ll && x < lr && y > lt && y < lb
+            const inBox = x > zone.x && x < zone.x + zone.w && y > zone.y && y < zone.y + zone.h
 
-            // Detect 20% right edge of dropzones ( right + corner )
-            const rl = zone.x + zone.w * 0.8
-            const rr = zone.x + zone.w
-            const rt = zone.y + 0
-            const rb = zone.y + zone.h
-            const isInRightEdge = x > rl && x < rr && y > rt && y < rb
-
-            // Detect 80% center of dropzones ( center + corner )
-            const cl = zone.x + zone.w * 0.2
-            const cr = zone.x + zone.w * 0.8
-            const ct = zone.y
-            const cb = zone.y + zone.h
-            const isInCenter = x > cl && x < cr && y > ct && y < cb
+            if (!inBox) {
+                continue
+            }
 
             let area: DropArea = ''
 
-            if (isInLeftEdge) {
-                area = 'left'
-            }
-            if (isInRightEdge) {
-                area = 'right'
-            }
-            if (isInCenter) {
+            if (direction === 'center') {
                 area = 'center'
             }
+            if (direction === 'horizontal') {
+                const leftEdge = zone.x + zone.w * 0.2
+                const rightEdge = zone.x + zone.w * 0.8
 
-            if (area) {
-                return { area, id }
+                if (x < leftEdge) {
+                    area = 'left'
+                } else if (x > rightEdge) {
+                    area = 'right'
+                } else {
+                    area = 'center'
+                }
             }
+            if (direction === 'vertical') {
+                const topEdge = zone.y + zone.h * 0.2
+                const bottomEdge = zone.y + zone.h * 0.8
+
+                if (y < topEdge) {
+                    area = 'left'
+                } else if (y > bottomEdge) {
+                    area = 'right'
+                } else {
+                    area = 'center'
+                }
+            }
+
+            return { area, id }
         }
     }
 
     // moche pcq cerveau qui brûle
     // <!> doit etre dans l'ordre "link", "mini", "group"
 
-    const linkarea = findArea(dropzones.link)
+    const linkarea = findArea(dropzones.link, 'vertical')
     if (linkarea) {
         return [linkarea.area, linkarea.id, 'link']
     }
 
-    const miniarea = findArea(dropzones.mini)
+    const miniarea = findArea(dropzones.mini, 'horizontal')
     if (miniarea) {
         return [miniarea.area, miniarea.id, 'mini']
     }
 
-    const grouparea = findArea(dropzones.group)
+    const grouparea = findArea(dropzones.group, 'center')
     if (grouparea) {
         return [grouparea.area, grouparea.id, 'group']
     }

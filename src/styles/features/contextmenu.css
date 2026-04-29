@@ -49,7 +49,7 @@ dialog#contextmenu select {
     height: 2.3em;
     padding: 0 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     box-sizing: border-box;
     color: var(--color-text);
 }
@@ -62,8 +62,42 @@ dialog#contextmenu select {
     background-color: transparent;
 }
 
+dialog#contextmenu input[type='hidden'] {
+    display: none;
+}
+
 dialog#contextmenu select option {
     color: black;
+}
+
+dialog#contextmenu .custom-select {
+    width: 100%;
+}
+
+dialog#contextmenu .custom-select-button {
+    min-height: 2.3em;
+    padding: 0 24px 0 10px;
+    color: var(--color-text);
+    background-color: transparent;
+}
+
+.custom-select-options.contextmenu-options {
+    background-color: var(--color-dialog);
+    border-color: #fff2;
+}
+
+.custom-select-options.contextmenu-options button {
+    display: flex;
+    padding: 6px 8px;
+}
+
+dialog#contextmenu .custom-select.open .custom-select-button,
+dialog#contextmenu .custom-select-button:focus-visible,
+dialog#contextmenu .custom-select-button:hover,
+.custom-select-options.contextmenu-options button.selected,
+.custom-select-options.contextmenu-options button:hover,
+.custom-select-options.contextmenu-options button:focus-visible {
+    background-color: var(--color-dialog-input-bg);
 }
 
 dialog#contextmenu input::placeholder {
@@ -75,8 +109,8 @@ dialog#contextmenu input:focus {
     opacity: 1;
     color: var(--color-text);
     background-color: var(--color-dialog-input-bg);
-    outline: 3px solid rgba(var(--blue), 0.5);
-    outline-offset: -2px;
+    outline: none;
+    box-shadow: inset 0 0 0 1px #fff3;
     transition: background-color 0.1s;
 }
 
@@ -145,6 +179,11 @@ dialog#contextmenu button.on {
 
 dialog#contextmenu label.on {
     display: grid;
+}
+
+dialog#contextmenu label.on .custom-select-button,
+dialog#contextmenu label.on .custom-select-options button {
+    display: flex;
 }
 
 /* background actions */

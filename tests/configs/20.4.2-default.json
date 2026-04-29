@@ -103,9 +103,5 @@
         "enabled": true,
         "closed": true,
         "month": 5
-    },
-    "move": {
-        "selection": "single",
-        "layouts": {}
     }
 }
