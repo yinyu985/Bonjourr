@@ -103,6 +103,8 @@ aside #settings-data,
 aside .param-textarea,
 aside .prism-code-editor textarea {
     resize: none;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 aside textarea::-webkit-resizer,
