@@ -381,7 +381,6 @@ function endDrag(event: Event): void {
     const type = findTypeFromElement(blocks.get(draggedId))
     const group = domlinkgroup?.dataset.group ?? ''
     const newIndex = ids.indexOf(draggedId)
-    const block = blocks.get(draggedId)
     const coord = coords[newIndex]
 
     const isDroppable = !!document.querySelector('.drop-source')

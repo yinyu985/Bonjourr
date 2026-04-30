@@ -116,7 +116,7 @@ export function initCustomSelects(root: ParentNode = document): void {
 
         const aside = document.getElementById('settings')
         aside?.addEventListener('scroll', closeCustomSelects, { passive: true })
-        window.addEventListener('resize', closeCustomSelects)
+        globalThis.addEventListener('resize', closeCustomSelects)
     }
 }
 

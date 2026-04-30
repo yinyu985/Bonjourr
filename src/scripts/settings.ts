@@ -1,4 +1,4 @@
-import { darkmode, favicon, pageControl, tabTitle, textShadow } from './features/others.ts'
+import { darkmode, favicon, pageControl, tabTitle } from './features/others.ts'
 import { initSupportersSettingsNotif, supportersNotifications } from './features/supporters.ts'
 import { customFont, fontIsAvailableInSubset, systemfont } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
