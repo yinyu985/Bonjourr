@@ -114,20 +114,8 @@ function digital(wrapper: HTMLElement, clock: Clock, timezone: string): void {
     ss.textContent = s.toString()
 
     if (clock.ampm) {
-        if (clock.ampmposition) {
-            domclock.dataset.ampmposition = clock.ampmposition
-        } else {
-            domclock.dataset.ampmposition = 'top-left'
-        }
-
-        if (clock.ampmposition === 'top-right' || clock.ampmposition === 'bottom-right') {
-            if (ampm && domclock.lastElementChild !== ampm) {
-                domclock.insertBefore(ampm, domclock.lastElementChild)
-            }
-        } else if (clock.ampmposition === 'top-left' || clock.ampmposition === 'bottom-left') {
-            if (ampm && domclock.firstElementChild !== ampm) {
-                domclock.insertBefore(ampm, domclock.firstElementChild)
-            }
+        if (ampm && domclock.firstElementChild !== ampm) {
+            domclock.insertBefore(ampm, domclock.firstElementChild)
         }
     }
 }

@@ -1,4 +1,4 @@
-import { isAmpmPosition, isDateFormat, isFace, isHands, isShape } from './helpers.ts'
+import { isDateFormat, isFace, isHands, isShape } from './helpers.ts'
 import { hexColorFromSplitRange } from '../../shared/dom.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { displayGreetings } from './greetings.ts'
@@ -14,7 +14,6 @@ import type { Greetings } from './greetings.ts'
 
 interface ClockUpdate {
     ampm?: boolean
-    ampmposition?: string
     analog?: boolean
     seconds?: boolean
     dateformat?: string
@@ -164,7 +163,6 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
         analog: update.analog ?? data.clock.analog,
         seconds: update.seconds ?? data.clock.seconds,
         timezone: data.clock.timezone,
-        ampmposition: isAmpmPosition(update.ampmposition) ? update.ampmposition : data.clock.ampmposition,
         worldclocks: data.clock.worldclocks,
     }
 
@@ -235,7 +233,7 @@ function analogStyle(style: AnalogStyle = structuredClone(defaultAnalogStyle)): 
     time.style.setProperty('--analog-background', style.background)
 }
 
-function clockSize(size = 5): void {
+function clockSize(size = 1): void {
     document.documentElement.style.setProperty('--clock-size', `${size.toString()}rem`)
 }
 

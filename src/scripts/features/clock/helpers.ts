@@ -21,7 +21,3 @@ export function isShape(str?: string): str is AnalogStyle['shape'] {
 export function isDateFormat(str = ''): str is DateFormat {
     return ['auto', 'eu', 'us', 'cn'].includes(str)
 }
-
-export function isAmpmPosition(str?: string): str is 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' {
-    return ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(str ?? '')
-}
