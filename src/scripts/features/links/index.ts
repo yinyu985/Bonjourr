@@ -85,6 +85,7 @@ type LinksUpdate = {
     addFolder?: { ids: string[]; group?: string }
     updateLink?: UpdateLink
     moveLinks?: string[]
+    moveFavorites?: string[]
     moveGroups?: string[]
     concatFolders?: MoveToFolder
     moveToFolder?: MoveToFolder
@@ -113,6 +114,7 @@ type LinksInit = {
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 const domlinkmini = document.getElementById('link-mini') as HTMLDivElement
+export const FAVORITES_GROUP = '__favorites'
 let initIconList: [HTMLImageElement, string][] = []
 let selectallTimer = 0
 
@@ -254,11 +256,54 @@ export function initblocks(sync: Sync, local?: Local): true {
         })
     }
 
+    initFavorites(sync)
     setRadius(sync.linkiconradius)
     updateSelectedGroupPosition()
     displayInterface('links')
 
     return true
+}
+
+function initFavorites(sync: Sync): void {
+    const container = document.getElementById('link-favorites')
+
+    if (!container) {
+        return
+    }
+
+    // Clear existing favorites
+    container.innerHTML = ''
+
+    const favorites = getLinksInGroup(sync, '__favorites')
+
+    for (const link of favorites) {
+        if (!isElem(link)) {
+            continue
+        }
+
+        const li = getHTMLTemplate<HTMLLIElement>('link-elem-template', 'li')
+        const span = li.querySelector('span')
+        const anchor = li.querySelector('a')
+
+        if (!(li && span && anchor)) {
+            continue
+        }
+
+        li.id = link._id
+        li.classList.add('link-favorite')
+        anchor.href = stringMaxSize(link.url, 512)
+        span.textContent = createTitle(link)
+
+        if (sync.linknewtab) {
+            anchor.target = '_blank'
+        }
+
+        li.addEventListener('pointerdown', startDrag)
+
+        container.appendChild(li)
+    }
+
+    container.classList.toggle('has-links', favorites.length > 0)
 }
 
 function createFolder(link: LinkFolder, folderChildren: Link[], _style: Sync['linkstyle']): HTMLLIElement {
@@ -434,6 +479,9 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
     }
     if (update.moveLinks) {
         data = moveLinks(update.moveLinks, data)
+    }
+    if (update.moveFavorites) {
+        data = moveFavorites(update.moveFavorites, data)
     }
     if (update.moveGroups) {
         data = moveGroups(update.moveGroups, data)
@@ -742,13 +790,63 @@ function moveLinks(ids: string[], data: Sync): Sync {
     return data
 }
 
-function moveToGroup({ ids, target }: MoveToGroup, data: Sync): Sync {
+function moveFavorites(ids: string[], data: Sync): Sync {
+    // Check if this is a reorder (all ids already in favorites) or adding new links
+    const existingFavorites = getLinksInGroup(data, FAVORITES_GROUP)
+    const existingIds = new Set(existingFavorites.map((l) => l._id))
+    const isReorder = ids.every((id) => existingIds.has(id))
+
     for (const id of ids) {
-        ;(data[id] as Link).parent = target
-        ;(data[id] as Link).order = Date.now()
+        const link = data[id] as Link
+        if (!isElem(link)) continue
+        link.parent = FAVORITES_GROUP
+    }
+
+    if (isReorder) {
+        // Reorder: set order based on the new ids array
+        ids.forEach((id, i) => {
+            ;(data[id] as Link).order = i
+        })
+    } else {
+        // Adding new links: append after existing favorites
+        const maxOrder = existingFavorites.length > 0 ? Math.max(...existingFavorites.map((l) => l.order)) : -1
+
+        for (const [index, id] of ids.entries()) {
+            if (!existingIds.has(id)) {
+                ;(data[id] as Link).order = maxOrder + index + 1
+            }
+        }
     }
 
     const correctdata = correctLinksOrder(data)
+    initblocks(correctdata)
+    return correctdata
+}
+
+function moveToGroup({ ids, target, source }: MoveToGroup, data: Sync): Sync {
+    // Get existing links in the target group, sorted by order
+    const targetLinks = getLinksInGroup(data, target)
+
+    // Parse insertion position from source (used by cross-group drag)
+    const insertAt = source !== undefined ? Number.parseInt(source) : -1
+
+    for (const id of ids) {
+        ;(data[id] as Link).parent = target
+
+        if (insertAt >= 0 && insertAt < targetLinks.length) {
+            // Insert at specific position: use the order of the link at that position minus 0.5
+            ;(data[id] as Link).order = targetLinks[insertAt].order - 0.5
+        } else {
+            ;(data[id] as Link).order = Date.now()
+        }
+    }
+
+    const correctdata = correctLinksOrder(data)
+
+    if (correctdata.linkgroups.groups.includes(target)) {
+        correctdata.linkgroups.selected = target
+        initGroups(correctdata)
+    }
 
     initblocks(correctdata)
     return correctdata
@@ -877,7 +975,7 @@ function correctLinksOrder(data: Sync): Sync {
         }
     }
 
-    for (const group of data.linkgroups.groups) {
+    for (const group of [...data.linkgroups.groups, FAVORITES_GROUP]) {
         const linksInGroup = getLinksInGroup(data, group)
 
         for (const [i, link] of linksInGroup.entries()) {

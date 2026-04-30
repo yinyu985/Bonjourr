@@ -5,10 +5,12 @@
     --active-group-x: 50%;
     position: fixed;
     right: max(16px, env(safe-area-inset-right));
-    bottom: max(24px, env(safe-area-inset-bottom));
+    bottom: max(8px, env(safe-area-inset-bottom));
     left: max(16px, env(safe-area-inset-left));
     z-index: 3;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    row-gap: 4px;
     text-align: center;
     pointer-events: none;
 }
@@ -171,12 +173,12 @@
 }
 
 #linkblocks > .link-group:not(.pinned) .link div {
-    width: 1.4em;
-    height: 1.4em;
+    width: max(14px, 1.4em);
+    height: max(14px, 1.4em);
 }
 
 #linkblocks > .link-group:not(.pinned) .link-folder > div {
-    height: 1.4em;
+    height: max(14px, 1.4em);
 }
 
 #linkblocks > .link-group:not(.pinned) .link span {
@@ -252,7 +254,7 @@
     pointer-events: none;
     transform: translate(-50%, 32px);
     z-index: 10;
-    transition: opacity 0.25s var(--out-cubic), transform 0.4s var(--out-cubic);
+    transition: opacity 0.12s var(--out-cubic), transform 0.18s var(--out-cubic);
 }
 
 #linkblocks > .link-group.pinned {
@@ -295,6 +297,12 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
     background-color: #fff2;
     backdrop-filter: blur(2em);
     -webkit-backdrop-filter: blur(2em);
+}
+
+.link-title.drop-target {
+    opacity: 1;
+    border-color: #fff6;
+    background-color: #fff3;
 }
 
 .link-group.in-folder .link-title {
@@ -428,7 +436,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 }
 
 .link-folder img[src] {
-    display: initial;
+    display: block;
 }
 
 .link-folder img {
@@ -436,6 +444,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
     /* border-radius: 4px; */
     /* padding: 2px; */
     user-select: none;
+    object-fit: contain;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
 }
@@ -447,7 +456,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 }
 
 #linkblocks.backgrounds .link-folder img {
-    background-color: white;
+    background-color: transparent;
 }
 
 /* Link styles */
@@ -477,14 +486,14 @@ dialog a {
     --block-size: 2em;
     --column-gap: 14px;
     --row-gap: 8px;
-    --icon-size: 1.6em;
+    --icon-size: max(14px, 1.6em);
     --folder-padding: 16px;
     justify-content: flex-start;
 }
 
 .inline .link-folder div {
     display: block;
-    padding: 4px;
+    padding: max(1px, 0.25em);
 }
 
 .inline .link-folder img {
@@ -570,7 +579,7 @@ dialog a {
 
 /* Links drag and drop */
 
-.link.drop-target img,
+.link.drop-target:not(.link-folder) img,
 .link.drop-source div {
     transform: scale(0.8);
 }
@@ -585,8 +594,7 @@ dialog a {
     background-color: #fff3;
 }
 
-.drop-target.link-group,
-.drop-target.link-folder img {
+.drop-target.link-group {
     opacity: 0.5;
 }
 
@@ -600,10 +608,10 @@ dialog a {
     transform: scale(0.8);
 }
 
-.inline .drop-target span,
-.inline .drop-target div,
-.text .drop-target span,
-.text .drop-target div {
+.inline .drop-target:not(.link-folder) span,
+.inline .drop-target:not(.link-folder) div,
+.text .drop-target:not(.link-folder) span,
+.text .drop-target:not(.link-folder) div {
     opacity: 0.5;
 }
 
@@ -622,6 +630,8 @@ dialog a {
     margin: 0;
     pointer-events: none;
     z-index: 3;
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 .links-drag-layer .link-title {
@@ -658,8 +668,14 @@ dialog a {
     transform: none;
 }
 
+.links-drag-layer .link-favorite div,
+.links-drag-layer .link-favorite img {
+    display: none;
+}
+
 .links-drag-layer .on {
     z-index: 4;
+    opacity: 0.62;
     transition: none;
 }
 
@@ -672,7 +688,10 @@ dialog a {
     overflow: visible;
 }
 
-#linkblocks > .in-drag.link-group .link-list,
+#linkblocks > .in-drag.link-group .link-list {
+    overflow: hidden;
+}
+
 .in-drag.link-group.in-folder .link-list {
     box-sizing: border-box;
     width: var(--drag-width);
@@ -705,6 +724,8 @@ dialog a {
 .in-drag#link-mini .link-title,
 .in-drag .link {
     pointer-events: none;
+    backface-visibility: hidden;
+    will-change: transform;
 }
 
 .in-drag#link-mini .link-title {
@@ -778,4 +799,68 @@ dialog a {
 .with-groups #link-mini,
 .in-folder #link-mini {
     display: block;
+}
+
+/* Link favorites (below group tabs) */
+
+#link-favorites {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: min(100%, calc(100vw - 2em));
+    min-height: 28px;
+    margin: 0 auto;
+    padding: 2px 5px;
+    column-gap: 12px;
+    row-gap: 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+
+#link-favorites.has-links {
+    min-height: 28px;
+}
+
+#link-favorites .link {
+    width: auto;
+    cursor: pointer;
+}
+
+#link-favorites .link a {
+    color: white;
+    text-decoration: none;
+}
+
+#link-favorites .link div,
+#link-favorites .link img {
+    display: none;
+}
+
+#link-favorites .link span {
+    display: inline-block;
+    font-size: 1.1em;
+    line-height: 1.6;
+    padding: 0 4px;
+    white-space: pre;
+    opacity: 0.8;
+    max-width: 16em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#link-favorites .link:hover span {
+    opacity: 1;
+}
+
+#link-favorites.drop-target {
+    border-color: #fff6;
+    border-style: dashed;
+}
+
+#link-favorites.drop-target:not(.has-links) {
+    justify-content: center;
 }
