@@ -1,6 +1,5 @@
 import { getLink, getSelectedIds, isLinkIconType } from './helpers.ts'
 import { closeContextMenu, positionContextMenu } from '../contextmenu.ts'
-import { togglePinGroup } from './groups.ts'
 import { quickLinks } from './index.ts'
 
 import { getComposedPath } from '../../shared/dom.ts'
@@ -193,12 +192,12 @@ function toggleEditInputs(): string[] {
 
     if (container.mini) {
         if (target.synced) {
-            inputs = ['pin', 'delete']
+            inputs = ['delete']
         } else if (target.addgroup) {
             inputs = ['title*', 'add'] // * for required inputs
             setSubmitOnEnter('edit-add')
         } else if (target.title) {
-            inputs = ['title', 'delete', 'pin', 'apply']
+            inputs = ['title', 'delete', 'apply']
         }
     }
 
@@ -206,12 +205,12 @@ function toggleEditInputs(): string[] {
         if (target.synced && !target.title) {
             inputs = ['synced']
         } else if (target.synced && target.title) {
-            inputs = ['unpin', 'delete']
+            inputs = ['delete']
         } else if (selectall) {
             inputs = ['delete', 'refresh', 'add']
             setSubmitOnEnter('edit-add')
         } else if (target.title) {
-            inputs = ['title', 'delete', 'unpin', 'apply']
+            inputs = ['title', 'delete', 'apply']
         } else if (target.folder) {
             inputs = ['title', 'delete', 'apply']
         } else if (target.link) {
@@ -410,14 +409,6 @@ function submitChanges(event: SubmitEvent): void {
                 group: editStates.group,
             },
         })
-    }
-
-    if (change === 'edit-pin') {
-        togglePinGroup(group, 'pin')
-    }
-
-    if (change === 'edit-unpin') {
-        togglePinGroup(group, 'unpin')
     }
 
     event.preventDefault()

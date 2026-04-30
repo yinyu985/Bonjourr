@@ -61,6 +61,10 @@ function clickUserActions(event: MouseEvent): void {
         return
     }
 
+    if (isLinkDragActive()) {
+        return
+    }
+
     const open = isOpen()
     const composedPath = (event.composedPath() as Element[]) ?? [document.body]
     const path = composedPath.filter((node) => node?.className?.includes)
@@ -132,6 +136,12 @@ function clickUserActions(event: MouseEvent): void {
 }
 
 // Handlers
+
+function isLinkDragActive(): boolean {
+    return !!document.querySelector(
+        '#linkblocks .in-drag, #linkblocks .dragging, #linkblocks .dropping, #link-mini.in-drag, #link-mini.dragging, #link-mini.dropping',
+    )
+}
 
 function isOpen(): {
     settings: boolean

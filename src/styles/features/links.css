@@ -797,15 +797,94 @@ dialog a {
     opacity: 0.5;
 }
 
-.in-drag#link-mini,
-.in-drag.link-group .link-list,
-.in-drag.link-group.in-folder .link-list {
+.links-drag-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.links-drag-layer .link,
+.links-drag-layer .link-title {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.links-drag-layer .link-title {
+    display: initial;
+    border-color: #fff2;
+}
+
+.links-drag-layer .link a,
+.links-drag-layer .link-folder {
+    display: flex;
+    align-items: center;
+    column-gap: 0.75em;
+    width: max-content;
+    max-width: none;
+}
+
+.links-drag-layer .link span {
+    position: static;
+    display: block;
+    visibility: visible;
+    width: max-content;
+    max-width: none;
+    max-height: none;
+    padding: 0 0.2em;
+    overflow: visible;
+    opacity: 1;
+    white-space: pre;
+    text-align: left;
+    text-overflow: clip;
+    background-color: transparent;
+    border: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: none;
+}
+
+.links-drag-layer .on {
+    z-index: 4;
+    transition: none;
+}
+
+.in-drag#link-mini {
     padding: 0;
     max-width: none;
     box-sizing: border-box;
-    will-change: transform;
     width: var(--drag-width);
     height: var(--drag-height);
+    overflow: visible;
+}
+
+#linkblocks > .in-drag.link-group .link-list,
+.in-drag.link-group.in-folder .link-list {
+    box-sizing: border-box;
+    width: var(--drag-width);
+    height: var(--drag-height);
+}
+
+.in-drag.link-group .link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 3;
+}
+
+.in-drag.link-group .link.on {
+    z-index: 4;
+}
+
+.in-drag.link-group .link.on a,
+.in-drag.link-group .link-folder.on {
+    border-radius: 6px;
+    outline: 1px solid #fff4;
+    background-color: #fff2;
 }
 
 .in-drag a,
@@ -817,10 +896,6 @@ dialog a {
 .in-drag#link-mini .link-title,
 .in-drag .link {
     pointer-events: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 3;
 }
 
 .in-drag#link-mini .link-title {

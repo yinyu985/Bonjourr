@@ -15,6 +15,7 @@ type DropArea = 'left' | 'right' | 'center' | ''
 type Dropzones = Map<string, Coords>
 
 const blocks: Map<string, HTMLElement> = new Map()
+const blockContainers: Map<string, Coords> = new Map()
 const groups: Map<string, HTMLElement> = new Map()
 const dropzones: Record<DropType, Dropzones> = {
     group: new Map(),
@@ -34,12 +35,26 @@ let coords: Coords[] = []
 let dragContainers: NodeListOf<HTMLElement>
 let dragChangeParentTimeout = 0
 let dragAnimationFrame = 0
+let dragLayer: HTMLDivElement | undefined
+let layeredIds: Set<string> = new Set()
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 let domlinklinks: NodeListOf<HTMLLIElement>
 let domlinktitles: NodeListOf<HTMLButtonElement>
 let domlinkgroups: NodeListOf<HTMLDivElement>
 let domlinkgroup: HTMLDivElement
+
+queueMicrotask(() => {
+    document.getElementById('link-mini')?.addEventListener('pointerdown', (event) => {
+        const target = getTitleFromEvent(event)
+
+        if (!target || target.classList.contains('add-group')) {
+            return
+        }
+
+        startDrag(event)
+    })
+})
 
 export function startDrag(event: PointerEvent): void {
     const path = event.composedPath() as HTMLElement[]
@@ -59,10 +74,18 @@ export function startDrag(event: PointerEvent): void {
     coords = []
     initids = []
     lastdropAreas = []
+    lastIndex = 0
+    targetId = ''
     blocks.clear()
+    blockContainers.clear()
     dropzones.group.clear()
     dropzones.link.clear()
     dropzones.mini.clear()
+    layeredIds = new Set()
+    dragLayer?.remove()
+    dragLayer = document.createElement('div')
+    dragLayer.className = 'links-drag-layer'
+    domlinkblocks.appendChild(dragLayer)
 
     //
 
@@ -79,29 +102,6 @@ export function startDrag(event: PointerEvent): void {
     draggedId = findIdFromElement(target)
     draggedGroup = findIdFromElement(isMini ? target : domlinkgroup)
     targetGroup = draggedGroup
-
-    // START RANT
-    // HOW DO I CENTER THE DRAGGED GROUP ON THE CURSOR
-    // AFTER UPDATING THEIR WIDTH ????????????????????
-    const groupSizeOffsets: Map<string, number> = new Map()
-
-    if (isMini) {
-        const beforeMap: Map<string, number> = new Map()
-
-        for (const group of domlinktitles) {
-            beforeMap.set(group.dataset.group ?? '', group.getBoundingClientRect().x)
-            group.style.width = '12ch'
-        }
-
-        for (const group of domlinktitles) {
-            const id = group.dataset.group ?? ''
-            const before = beforeMap.get(id) ?? 0
-            const after = group.getBoundingClientRect().x
-
-            groupSizeOffsets.set(id, after - before)
-        }
-    }
-    // END RANT
 
     for (const element of [...domlinkgroups, ...domlinktitles, ...domlinklinks]) {
         const type = findTypeFromElement(element)
@@ -124,10 +124,10 @@ export function startDrag(event: PointerEvent): void {
 
     for (const container of Object.values(dragContainers)) {
         const elements = container.querySelectorAll<HTMLElement>(tagName)
-        const wrapper = isMini ? container : container.querySelector('.link-list')
+        const wrapper = isMini ? container : container.querySelector<HTMLElement>('.link-list')
         const rect = wrapper?.getBoundingClientRect()
 
-        if (!rect) {
+        if (!(wrapper && rect)) {
             continue
         }
 
@@ -140,18 +140,41 @@ export function startDrag(event: PointerEvent): void {
             initids.push(id)
             coords.push({ x, y, w, h })
 
+            const useDragLayer = isMini
+            const block = useDragLayer ? createDragClone(element, { x, y, w, h }) : element
+
+            if (useDragLayer) {
+                layeredIds.add(id)
+                dragLayer?.appendChild(block)
+            }
+
+            blocks.set(id, block)
+            blockContainers.set(id, {
+                x: rect.x - wrapper.scrollLeft,
+                y: rect.y - wrapper.scrollTop,
+                w: rect.width,
+                h: rect.height,
+            })
+
             // Only disable transitions for a few frames
             element.style.transition = 'none'
+            block.style.transition = 'none'
             setTimeout(() => element.style.removeProperty('transition'), 10)
+            setTimeout(() => block.style.removeProperty('transition'), 10)
 
-            deplaceElem(element, x, y)
+            if (useDragLayer) {
+                element.style.visibility = 'hidden'
+                deplaceElem(block, x, y)
+            } else {
+                deplaceBlock(id, { x, y, w, h })
+            }
 
             if (id === draggedId) {
-                cox = pos.x - x + (groupSizeOffsets.get(id) ?? 0)
+                cox = pos.x - x
                 coy = pos.y - y
                 dx = x
                 dy = y
-                element.classList.add('on')
+                block.classList.add('on')
             }
         }
 
@@ -299,7 +322,7 @@ function applyDragMoveBlocks(id: string): void {
     // place all clones at their new positions
     for (let i = 0; i < ids.length; i++) {
         if (ids[i] !== draggedId) {
-            deplaceElem(blocks.get(ids[i]), coords[i].x, coords[i].y)
+            deplaceBlock(ids[i], coords[i])
         }
     }
 }
@@ -377,7 +400,7 @@ function endDrag(event: Event): void {
     if (outOfFolder || toFolder || toTab) {
         blocks.get(draggedId)?.classList.add('removed')
     } else {
-        deplaceElem(block, coord.x, coord.y)
+        deplaceBlock(draggedId, coord)
     }
 
     for (const block of groups.values()) {
@@ -426,11 +449,40 @@ function endDrag(event: Event): void {
                 container?.removeAttribute('style')
                 container?.classList.remove('in-drag', 'dropping')
             }
+
+            dragLayer?.remove()
+            dragLayer = undefined
         }, 1)
     }, 200)
 }
 
 //	Small stuff
+
+function createDragClone(element: HTMLElement, { w, h }: Coords): HTMLElement {
+    const clone = element.cloneNode(true) as HTMLElement
+
+    clone.removeAttribute('id')
+    clone.style.width = `${Math.ceil(w)}px`
+    clone.style.height = `${Math.ceil(h)}px`
+
+    return clone
+}
+
+function deplaceBlock(id: string, coord: Coords): void {
+    const block = blocks.get(id)
+
+    if (!block) {
+        return
+    }
+
+    if (layeredIds.has(id)) {
+        deplaceElem(block, coord.x, coord.y)
+        return
+    }
+
+    const container = blockContainers.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+    deplaceElem(block, coord.x - container.x, coord.y - container.y)
+}
 
 function deplaceElem(dom?: HTMLElement, x = 0, y = 0): void {
     if (dom) {
@@ -442,7 +494,7 @@ function deplaceDraggedElem(): void {
     const block = blocks.get(draggedId)
 
     if (block) {
-        block.style.transform = `translate(${dx}px, ${dy}px)`
+        deplaceBlock(draggedId, { x: dx, y: dy, w: 0, h: 0 })
         dragAnimationFrame = globalThis.requestAnimationFrame(deplaceDraggedElem)
     }
 }
