@@ -100,14 +100,8 @@ export function countryCodeToLanguageCode(lang: string): string {
     if (lang.includes('ES')) {
         sanitizedLang = 'es'
     }
-    if (lang === 'gr') {
-        sanitizedLang = 'el'
-    }
     if (lang === 'jp') {
         sanitizedLang = 'ja'
-    }
-    if (lang === 'cz') {
-        sanitizedLang = 'cs'
     }
 
     sanitizedLang = sanitizedLang.replace('_', '-')

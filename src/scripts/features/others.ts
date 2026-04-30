@@ -113,12 +113,12 @@ export function settingsBackgroundColor(color?: string): void {
     }
 
     const sourceRgb = hexToRGB(color)
-    const panelRgb = mixWithWhite(sourceRgb, 0.3)
-    const sectionRgb = mixWithWhite(sourceRgb, 0.5)
-    const inputRgb = mixWithWhite(sourceRgb, 0.42)
-    const outsideRgb = mixWithWhite(sourceRgb, 0.36)
-    const focusedRgb = mixWithWhite(sourceRgb, 0.46)
-    const borderRgb = mixWithWhite(sourceRgb, 0.58)
+    const panelRgb = mixWithWhite(sourceRgb, 0.15)
+    const sectionRgb = mixWithWhite(sourceRgb, 0.28)
+    const inputRgb = mixWithWhite(sourceRgb, 0.22)
+    const outsideRgb = mixWithWhite(sourceRgb, 0.18)
+    const focusedRgb = mixWithWhite(sourceRgb, 0.25)
+    const borderRgb = mixWithWhite(sourceRgb, 0.35)
     const isDarkPanel = getReadableTextColor(panelRgb) === 'white'
     const textHex = isDarkPanel ? '#f5f7fa' : '#1e232b'
     const lightTextHex = isDarkPanel ? '#c4c9d2' : '#5d6672'

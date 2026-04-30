@@ -212,8 +212,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_clockshape', data.analogstyle?.shape || 'round')
     setInput('i_analog-border-opacity', opacityFromHex(data.analogstyle?.border ?? '#ffff'))
     setInput('i_analog-background-opacity', opacityFromHex(data.analogstyle?.background ?? '#fff2'))
-    setInput('i_ampm_position', data.clock.ampmposition || 'top-left')
-    setInput('i_clocksize', data.clock?.size ?? 5)
+    setInput('i_clocksize', data.clock?.size ?? 1)
     setInput('i_greetsize', data.greetingsize ?? 3)
     setInput('i_greetmode', data.greetingsmode ?? 'auto')
     setInput('i_geol', data.weather?.geolocation || 'approximate')
@@ -299,7 +298,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('greetings_options')?.classList.toggle('shown', !data.hide?.greetings)
     paramId('greetingscustom_options')?.classList.toggle('shown', data.greetingsmode === 'custom')
     paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
-    paramId('ampm_position')?.classList.toggle('shown', data.clock.ampm)
     paramId('main_options')?.classList.toggle('shown', data.main)
     paramId('weather_provider')?.classList.toggle('shown', data.weather?.moreinfo === 'custom')
     paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
@@ -309,10 +307,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('searchbar_options')?.classList.toggle('shown', data.searchbar?.on)
     paramId('searchbar_request')?.classList.toggle('shown', data.searchbar?.engine === 'custom')
     paramId('quotes_options')?.classList.toggle('shown', data.quotes?.on)
-
-    // Link show title
-    paramId('b_showtitles').classList.toggle('on', data?.linktitles ?? true)
-    paramId('b_showbackgrounds').classList.toggle('on', data?.linkbackgrounds ?? true)
 
     // Time & main hide elems
     const disableWeather = data.hide?.weatherdesc && data.hide?.weathericon
@@ -447,18 +441,6 @@ function initOptionsEvents(): void {
 
     paramId('i_linkstyle').addEventListener('change', function (this): void {
         quickLinks(undefined, { styles: { style: this.value } })
-    })
-
-    onclickdown(paramId('b_showtitles'), (_, target) => {
-        quickLinks(undefined, {
-            styles: { titles: !target.classList.contains('on') },
-        })
-    })
-
-    onclickdown(paramId('b_showbackgrounds'), (_, target) => {
-        quickLinks(undefined, {
-            styles: { backgrounds: !target.classList.contains('on') },
-        })
     })
 
     onclickdown(paramId('b_importbookmarks'), async () => {
@@ -602,13 +584,6 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('i_ampm'), (_, target) => {
         clock(undefined, { ampm: target.checked })
-
-        // shows/hides ampm_position option
-        paramId('ampm_position')?.classList.toggle('shown', target.checked)
-    })
-
-    paramId('i_ampm_position').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { ampmposition: this.value })
     })
 
     paramId('i_dateformat').addEventListener('change', function (this): void {
@@ -1499,10 +1474,6 @@ function setInput(id: string, val: string | number): void {
     input.value = typeof val === 'string' ? val : val?.toString()
 }
 
-function clampFontSize(size: string): string {
-    return Math.min(20, Math.max(10, Number.parseFloat(size))).toString()
-}
-
 function setFormInput(id: string, defaults: string, value?: string): void {
     const input = paramId(id) as HTMLInputElement
 
@@ -1512,4 +1483,8 @@ function setFormInput(id: string, defaults: string, value?: string): void {
     } else {
         input.setAttribute('placeholder', defaults)
     }
+}
+
+function clampFontSize(size: string): string {
+    return Math.min(15, Math.max(5, Number.parseFloat(size))).toString()
 }

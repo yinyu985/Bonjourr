@@ -9,7 +9,7 @@ export interface Sync {
     pagewidth: number
     linksrow: number
     linkiconradius: number
-    linkstyle: 'large' | 'medium' | 'small' | 'inline' | 'text'
+    linkstyle: 'inline' | 'text'
     linknewtab: boolean
     linktitles: boolean
     linkbackgrounds: boolean
@@ -120,7 +120,6 @@ export interface Clock {
     seconds: boolean
     timezone: string
     size: number
-    ampmposition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
     worldclocks: boolean
     face?: 'none' | 'number' | 'roman' | 'marks'
     style?: 'round' | 'square' | 'transparent'

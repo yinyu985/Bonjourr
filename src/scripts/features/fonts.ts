@@ -250,7 +250,7 @@ function displayFont({ family, id, size, weight, system }: Font): void {
 }
 
 function setFontSize(size: string): void {
-    const clamped = Math.min(20, Math.max(10, Number.parseFloat(size)))
+    const clamped = Math.min(15, Math.max(5, Number.parseFloat(size)))
     document.documentElement.style.setProperty('--font-size', `${clamped / 16}em`)
 }
 
