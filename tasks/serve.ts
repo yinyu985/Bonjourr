@@ -36,11 +36,11 @@ export function httpServer(port: number, baseUrl = 'release/online'): void {
         // Find content type
 
         const headers: HeadersInit = { 'cache-control': 'no-cache' }
-        const fileExt = filePath.split('.').at(-1) ?? ''
+        const fileExt = `.${filePath.split('.').at(-1) ?? ''}`
         const contentType = contentTypeList[fileExt]
 
         if (contentType) {
-            headers.contentType = contentType
+            headers['content-type'] = contentType
         }
 
         // Read data
