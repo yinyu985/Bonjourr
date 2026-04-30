@@ -2,8 +2,8 @@
     position: fixed;
     bottom: 0;
     right: 0;
-    padding-right: 20px;
-    padding-bottom: 20px;
+    padding-right: 14px;
+    padding-bottom: 14px;
     z-index: 1;
     transition: opacity 0.1s var(--out-cubic);
 }
@@ -12,8 +12,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 4em;
-    width: 4em;
+    height: 44px;
+    width: 44px;
     padding: 0;
     border: 0;
     background-color: transparent;
@@ -22,7 +22,7 @@
 }
 
 #show-settings img {
-    width: 2.6em;
+    width: 28px;
     transition: transform 0.33s var(--out-cubic);
 }
 

@@ -600,33 +600,10 @@
             <div class="wrapper">
                 <label for="i_linkstyle" class="trn">Style</label>
 
-                <div class="split-inputs">
-                    <button
-                        id="b_showtitles"
-                        class="input-btn on"
-                        aria-label="Toggle link titles"
-                        title="Toggle link titles"
-                    >
-                        <span>T</span>
-                    </button>
-
-                    <button
-                        id="b_showbackgrounds"
-                        class="input-btn on"
-                        aria-label="Toggle link backgrounds"
-                        title="Toggle link backgrounds"
-                    >
-                        <span></span>
-                    </button>
-
-                    <select id="i_linkstyle">
-                        <option value="large" class="trn">Large</option>
-                        <option value="medium" class="trn">Medium</option>
-                        <option value="small" class="trn">Small</option>
-                        <option value="inline" class="trn">Inline</option>
-                        <option value="text" class="trn">Text</option>
-                    </select>
-                </div>
+                <select id="i_linkstyle">
+                    <option value="inline" class="trn">Inline</option>
+                    <option value="text" class="trn">Text</option>
+                </select>
             </div>
         </div>
     </div>
@@ -783,20 +760,6 @@
                     <label for="i_ampm" class="trn">12-Hour Time</label>
                     <input id="i_ampm" class="switch" type="checkbox" />
                 </div>
-
-                <div id="ampm_position" class="dropdown">
-                    <hr />
-
-                    <div class="wrapper">
-                        <label for="i_ampm_position" class="trn">AM/PM position</label>
-                        <select id="i_ampm_position">
-                            <option value="top-left" class="trn">Top left</option>
-                            <option value="top-right" class="trn">Top right</option>
-                            <option value="bottom-left" class="trn">Bottom left</option>
-                            <option value="bottom-right" class="trn">Bottom right</option>
-                        </select>
-                    </div>
-                </div>
             </div>
 
             <hr />
@@ -821,9 +784,9 @@
                     id="i_clocksize"
                     name="i_clocksize"
                     type="range"
-                    min="0.25"
-                    max="2.25"
-                    step=".125"
+                    min="0.5"
+                    max="2"
+                    step=".1"
                     value="1"
                     class="range"
                 />
@@ -1674,7 +1637,7 @@
 
         <div class="wrapper">
             <label for="i_size" class="trn">Size</label>
-            <input id="i_size" type="range" name="fontsize" min="10" max="20" step=".05" class="range" />
+            <input id="i_size" type="range" name="fontsize" min="5" max="15" step=".05" class="range" />
         </div>
     </div>
 </div>

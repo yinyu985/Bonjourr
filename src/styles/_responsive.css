@@ -35,15 +35,9 @@
         max-width: 80%;
     }
 
-    #linkblocks.medium,
-    #linkblocks.large {
-        --folder-padding: 1.5em 1em;
-    }
-
     #linkblocks.text,
-    #linkblocks.inline,
-    #linkblocks.small {
-        --folder-padding: 1.5em;
+    #linkblocks.inline {
+        --folder-padding: 24px;
     }
 
     #interface {
@@ -55,13 +49,13 @@
     }
 
     #show-settings button {
-        height: 3.3em;
-        width: 3.3em;
+        height: 40px;
+        width: 40px;
         border-radius: 10px;
     }
 
     #show-settings img {
-        width: 2em;
+        width: 24px;
     }
 
     aside {
@@ -192,8 +186,8 @@
     #link-mini .link-title.add-group {
         visibility: visible;
         max-width: 3em;
-        padding-right: 1em;
-        padding-left: 1em;
+        padding-right: 0.5em;
+        padding-left: 0.5em;
         opacity: 1;
     }
 

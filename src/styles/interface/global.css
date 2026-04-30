@@ -36,10 +36,11 @@
 }
 
 #time {
-    transition: opacity 0.1s var(--out-cubic);
+    transition: opacity 0.3s var(--out-cubic), transform 0.35s var(--out-cubic);
 }
 
 body.group-focus #time {
     opacity: 0;
     pointer-events: none;
+    transform: translateY(-3em);
 }

@@ -39,7 +39,6 @@
 @import './features/time';
 @import './features/links';
 @import './features/grid';
-@import './features/editlink';
 @import './features/contextmenu';
 @import './features/bookmarks';
 @import './features/csseditor';
