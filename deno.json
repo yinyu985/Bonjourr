@@ -10,8 +10,9 @@
         "serve": "deno run --allow-net --allow-read ./tasks/serve.ts 8000",
         "translate": "deno run --allow-all ./tasks/translate.ts && deno fmt",
         "test": "deno test --allow-read --allow-env --reporter=dot",
-        "types": "deno check",
+        "types": "deno check src/ tasks/ tests/",
         "format": "deno fmt",
+        "check": "deno fmt && deno lint && deno check src/ tasks/ tests/ && deno test --allow-read --allow-env --reporter=dot",
         "app": "docker compose -f docker/compose.app.yaml up",
         "archive": "docker compose -f docker/compose.archive.yaml up --build"
     },

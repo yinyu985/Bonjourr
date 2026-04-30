@@ -3,6 +3,7 @@
 .vscode
 .zed
 .idea
+.history
 .prettierignore
 .wrangler
 config.codekit3
