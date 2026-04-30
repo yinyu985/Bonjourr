@@ -1,12 +1,10 @@
-import { getLink, getSelectedIds, isLinkIconType } from './helpers.ts'
+import { getLink, getSelectedIds } from './helpers.ts'
 import { closeContextMenu, positionContextMenu } from '../contextmenu.ts'
 import { quickLinks } from './index.ts'
 
 import { getComposedPath } from '../../shared/dom.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
-
-import type { LinkIconType } from '../../../types/shared.ts'
 
 interface EditStates {
     group: string
@@ -32,11 +30,6 @@ let domeditlink: HTMLDialogElement
 
 const domtitle = document.getElementById('e-title') as HTMLInputElement
 const domurl = document.getElementById('e-url') as HTMLInputElement
-
-const domiconfilelabel = document.getElementById('e-icon-file-label') as HTMLSpanElement
-const domiconfile = document.getElementById('e-icon-file') as HTMLInputElement
-const domicontype = document.getElementById('e-icon-type') as HTMLInputElement
-const domiconurl = document.getElementById('e-icon-url') as HTMLInputElement
 
 let inputToFocus: HTMLInputElement
 let buttonToSubmit: HTMLButtonElement
@@ -139,21 +132,6 @@ export async function populateDialogWithEditLink(
 
         if (link && !link.folder) {
             domurl.value = link.url ?? ''
-
-            const iconType = link.icon?.type ?? 'auto'
-            const iconValue = link.icon?.value ?? ''
-
-            domiconurl.value = ''
-            domiconfilelabel.textContent = tradThis('No file chosen')
-
-            if (iconType === 'url' && iconValue) {
-                domiconurl.value = iconValue
-            }
-            if (iconType === 'file') {
-                domiconfilelabel.textContent = iconValue
-            }
-
-            toggleIconType(link.icon ? link.icon.type : 'auto')
         }
     }
 
@@ -176,7 +154,6 @@ export async function populateDialogWithEditLink(
 function toggleEditInputs(): string[] {
     const deleteButtonTxt = document.querySelector<HTMLButtonElement>('#edit-delete span')
     const addButtonTxt = document.querySelector<HTMLButtonElement>('#edit-add span')
-    const refreshButtonTxt = document.querySelector<HTMLButtonElement>('#edit-refresh span')
     const { container, target, selectall } = editStates
     let inputs: string[] = []
 
@@ -187,7 +164,6 @@ function toggleEditInputs(): string[] {
     document.querySelector('#edit-pin')?.removeAttribute('disabled')
 
     domurl.value = ''
-    domiconurl.value = ''
     domtitle.value = ''
 
     if (container.mini) {
@@ -207,14 +183,14 @@ function toggleEditInputs(): string[] {
         } else if (target.synced && target.title) {
             inputs = ['delete']
         } else if (selectall) {
-            inputs = ['delete', 'refresh', 'add']
+            inputs = ['delete', 'add']
             setSubmitOnEnter('edit-add')
         } else if (target.title) {
             inputs = ['title', 'delete', 'apply']
         } else if (target.folder) {
             inputs = ['title', 'delete', 'apply']
         } else if (target.link) {
-            inputs = ['title', 'url*', 'icon', 'icon-url*', 'delete', 'refresh', 'apply']
+            inputs = ['title', 'url*', 'delete', 'apply']
         } else {
             inputs = ['title', 'url*', 'add']
             inputToFocus = domurl
@@ -228,7 +204,7 @@ function toggleEditInputs(): string[] {
         } else if (selectall) {
             inputs = ['delete', 'unfolder']
         } else if (target.link) {
-            inputs = ['title', 'url*', 'icon', 'icon-url*', 'delete', 'apply', 'unfolder']
+            inputs = ['title', 'url*', 'delete', 'apply', 'unfolder']
         } else {
             inputs = ['title', 'url*', 'add']
             inputToFocus = domurl
@@ -248,8 +224,7 @@ function toggleEditInputs(): string[] {
         }
     }
 
-    const hasLabels = inputs.includes('title') || inputs.includes('title*') || inputs.includes('url*') ||
-        inputs.includes('icon')
+    const hasLabels = inputs.includes('title') || inputs.includes('title*') || inputs.includes('url*')
     domeditlink.querySelector('hr')?.classList.toggle('on', hasLabels)
 
     if (deleteButtonTxt) {
@@ -274,10 +249,6 @@ function toggleEditInputs(): string[] {
         }
     }
 
-    if (refreshButtonTxt) {
-        refreshButtonTxt.textContent = tradThis('Refresh icon')
-    }
-
     return inputs
 }
 
@@ -286,7 +257,6 @@ function toggleEditInputs(): string[] {
 //
 queueMicrotask(() => {
     document.getElementById('editlink-form')?.addEventListener('submit', submitChanges)
-    domicontype?.addEventListener('change', toggleIconType)
 })
 
 /**
@@ -308,55 +278,12 @@ function setSubmitOnEnter(theButton: string): void {
     }
 }
 
-function toggleIconType(iconType: Event | string): void {
-    const fromEvent = iconType instanceof Event
-
-    if (iconType instanceof Event) { // figures out the needed icon type if it's from event change
-        const target = iconType.target as HTMLInputElement
-        iconType = target.value
-    }
-
-    const selectIconType = document.getElementById('e-icon-type') as HTMLSelectElement
-    if (selectIconType) {
-        selectIconType.value = iconType
-
-        if (!fromEvent) {
-            selectIconType.dispatchEvent(new Event('change'))
-        }
-    }
-
-    const editIconUrl = document.getElementById('e-icon-url') as HTMLInputElement
-    if (editIconUrl) { // disables the input when it's hidden, otherwise HTML complains
-        editIconUrl.disabled = iconType !== 'url'
-    }
-
-    // only shows refresh button when auto or url type
-    const refreshButton = document.getElementById('edit-refresh') as HTMLButtonElement
-    if (refreshButton) {
-        const showsRefreshButton = ['auto', 'url'].includes(iconType)
-        refreshButton.disabled = !showsRefreshButton
-        refreshButton?.classList.toggle('on', showsRefreshButton)
-    }
-
-    document.getElementById('edit-icon-url')?.classList.toggle('on', iconType === 'url')
-    document.getElementById('edit-icon-svg')?.classList.toggle('on', iconType === 'svg')
-    document.getElementById('edit-icon-file')?.classList.toggle('on', iconType === 'file')
-}
-
 function submitChanges(event: SubmitEvent): void {
     const change = event.submitter?.id
     const { container, target, group, folder, selected, selectall } = editStates
 
     if (change === 'edit-apply') {
         applyLinkChanges('button')
-    }
-
-    if (change === 'edit-icon') {
-        toggleIconType(event)
-    }
-
-    if (change === 'edit-refresh') {
-        quickLinks(undefined, { refreshIcons: selected })
     }
 
     if (change === 'edit-delete') {
@@ -465,31 +392,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
         return
     }
 
-    // Step: Handle icon input data
-
-    let iconType: LinkIconType = 'auto'
-    let iconValue: string | undefined = undefined
-    const iconUrl = domiconurl.value
-    const iconFile = domiconfile.files?.[0]
-
-    if (isLinkIconType(domicontype.value)) {
-        iconType = domicontype.value
-        iconValue = undefined
-
-        if (iconType === 'url') {
-            iconValue = iconUrl
-        }
-
-        if (iconType === 'file' && iconFile) {
-            iconValue = iconFile.name
-        }
-
-        if (iconType === 'file' && !iconFile) {
-            iconType = 'file'
-            iconValue = undefined
-        }
-    }
-
     // Step: Send data to link update
 
     quickLinks(undefined, {
@@ -497,11 +399,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
             id: id,
             title: document.querySelector<HTMLInputElement>('#e-title')?.value ?? '',
             url: document.querySelector<HTMLInputElement>('#e-url')?.value,
-            icon: {
-                type: iconType,
-                value: iconValue,
-            },
-            file: iconFile,
         },
     })
 

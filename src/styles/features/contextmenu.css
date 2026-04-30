@@ -3,11 +3,12 @@ dialog#contextmenu {
     left: 0;
     top: 0;
     opacity: 0;
-    width: 240px;
-    padding: 6px;
+    width: 210px;
+    padding: 3px;
     margin: 0;
     z-index: 4;
     transition: opacity 0.05s;
+    border-radius: 8px;
 }
 
 dialog#contextmenu:focus-visible {
@@ -18,21 +19,25 @@ dialog#contextmenu.shown {
     opacity: 1;
 }
 
+dialog#contextmenu hr {
+    margin: 3px 4px;
+}
+
 dialog#contextmenu label {
     width: 100%;
     opacity: 0.7;
-    column-gap: 4px;
-    margin-top: 6px;
-    padding-inline: 12px 4px;
+    column-gap: 2px;
+    margin-top: 3px;
+    padding-inline: 8px 2px;
     place-items: center;
-    grid-template-columns: 42px 1fr;
+    grid-template-columns: 36px 1fr;
     box-sizing: border-box;
 }
 
 dialog#contextmenu label span {
-    font-size: 12px;
+    font-size: 11px;
     justify-self: start;
-    max-width: 45px;
+    max-width: 40px;
     overflow: hidden;
     display: inline-block;
     white-space: nowrap;
@@ -43,22 +48,14 @@ dialog#contextmenu label:focus-within {
     opacity: 1;
 }
 
-dialog#contextmenu input,
-dialog#contextmenu select {
+dialog#contextmenu input {
     width: 100%;
-    height: 2.3em;
-    padding: 0 10px;
+    height: 1.9em;
+    padding: 0 6px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     box-sizing: border-box;
     color: var(--color-text);
-}
-
-dialog#contextmenu input {
-    background-color: transparent;
-}
-
-dialog#contextmenu select {
     background-color: transparent;
 }
 
@@ -66,45 +63,10 @@ dialog#contextmenu input[type='hidden'] {
     display: none;
 }
 
-dialog#contextmenu select option {
-    color: black;
-}
-
-dialog#contextmenu .custom-select {
-    width: 100%;
-}
-
-dialog#contextmenu .custom-select-button {
-    min-height: 2.3em;
-    padding: 0 24px 0 10px;
-    color: var(--color-text);
-    background-color: transparent;
-}
-
-.custom-select-options.contextmenu-options {
-    background-color: var(--color-dialog);
-    border-color: #fff2;
-}
-
-.custom-select-options.contextmenu-options button {
-    display: flex;
-    padding: 6px 8px;
-}
-
-dialog#contextmenu .custom-select.open .custom-select-button,
-dialog#contextmenu .custom-select-button:focus-visible,
-dialog#contextmenu .custom-select-button:hover,
-.custom-select-options.contextmenu-options button.selected,
-.custom-select-options.contextmenu-options button:hover,
-.custom-select-options.contextmenu-options button:focus-visible {
-    background-color: var(--color-dialog-input-bg);
-}
-
 dialog#contextmenu input::placeholder {
     color: var(--color-dialog-input-text);
 }
 
-dialog#contextmenu select:focus,
 dialog#contextmenu input:focus {
     opacity: 1;
     color: var(--color-text);
@@ -114,32 +76,17 @@ dialog#contextmenu input:focus {
     transition: background-color 0.1s;
 }
 
-dialog#contextmenu input[type='file'] {
-    color: transparent;
-}
-
-dialog#contextmenu input[type='file'],
-dialog#contextmenu input[type='file'] + span {
-    grid-area: 1 / 2;
-}
-
-dialog#contextmenu input[type='file'] + span {
-    display: inline-block;
-    font-size: 13px;
-    padding-inline: 10px;
-    width: calc(100% - 20px);
-    max-width: unset;
-    cursor: pointer;
-    text-align: left;
-}
-
 dialog#contextmenu button {
     flex-direction: row;
     align-items: center;
     width: 100%;
-    padding: 4px 12px;
+    padding: 1px 8px;
     font-weight: 400;
-    gap: 0.5em;
+    gap: 0.35em;
+    font-size: 12px;
+    line-height: 1.3;
+    border-width: 2px;
+    border-radius: 5px;
 }
 
 /* so that it doesn't break JS events when clicking on elements inside the buttons */
@@ -148,8 +95,9 @@ dialog#contextmenu button * {
 }
 
 dialog#contextmenu button > svg, dialog#contextmenu button .iconContainer {
-    height: 18px;
-    width: 18px;
+    height: 14px;
+    width: 14px;
+    flex-shrink: 0;
 }
 
 dialog#contextmenu button .iconContainer svg {
@@ -157,7 +105,7 @@ dialog#contextmenu button .iconContainer svg {
 }
 
 dialog#contextmenu button .iconContainer {
-    padding: 2px; /* other icons have natural padding in the svg file */
+    padding: 1px; /* other icons have natural padding in the svg file */
     box-sizing: border-box;
     display: flex;
     justify-content: center;
@@ -179,11 +127,6 @@ dialog#contextmenu button.on {
 
 dialog#contextmenu label.on {
     display: grid;
-}
-
-dialog#contextmenu label.on .custom-select-button,
-dialog#contextmenu label.on .custom-select-options button {
-    display: flex;
 }
 
 /* background actions */
@@ -270,12 +213,12 @@ dialog#contextmenu #background-actions button:disabled {
     flex-direction: column;
     opacity: 0.8;
     font-style: italic;
-    font-size: 0.8em;
+    font-size: 0.75em;
     text-align: left;
 }
 
 #pomodoro-info > div {
-    padding: 4px 12px;
+    padding: 1px 8px;
 }
 
 dialog#contextmenu #pomodoro-info hr,

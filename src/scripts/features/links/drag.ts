@@ -14,8 +14,10 @@ type DropArea = 'left' | 'right' | 'center' | ''
 
 type Dropzones = Map<string, Coords>
 
+// Maps element id -> its DOM element (or a clone for mini tabs)
 const blocks: Map<string, HTMLElement> = new Map()
-const blockContainers: Map<string, Coords> = new Map()
+// Maps element id -> its original rect at drag start (viewport coords)
+const originRects: Map<string, Coords> = new Map()
 const groups: Map<string, HTMLElement> = new Map()
 const dropzones: Record<DropType, Dropzones> = {
     group: new Map(),
@@ -77,7 +79,7 @@ export function startDrag(event: PointerEvent): void {
     lastIndex = 0
     targetId = ''
     blocks.clear()
-    blockContainers.clear()
+    originRects.clear()
     dropzones.group.clear()
     dropzones.link.clear()
     dropzones.mini.clear()
@@ -149,25 +151,23 @@ export function startDrag(event: PointerEvent): void {
             }
 
             blocks.set(id, block)
-            blockContainers.set(id, {
-                x: rect.x - wrapper.scrollLeft,
-                y: rect.y - wrapper.scrollTop,
-                w: rect.width,
-                h: rect.height,
-            })
 
-            // Only disable transitions for a few frames
+            // Store the original viewport rect for each element.
+            // For non-layered (link) elements, we keep them in normal flow
+            // and use transform offsets from their original position.
+            // No coordinate system conversion needed — no absolute positioning.
+            originRects.set(id, { x, y, w, h })
+
+            // Disable transitions so initial placement is instant
             element.style.transition = 'none'
             block.style.transition = 'none'
-            setTimeout(() => element.style.removeProperty('transition'), 10)
-            setTimeout(() => block.style.removeProperty('transition'), 10)
 
             if (useDragLayer) {
                 element.style.visibility = 'hidden'
                 deplaceElem(block, x, y)
-            } else {
-                deplaceBlock(id, { x, y, w, h })
             }
+            // For non-layered elements: no transform needed at start,
+            // they stay in their flow position (transform offset = 0)
 
             if (id === draggedId) {
                 cox = pos.x - x
@@ -178,10 +178,23 @@ export function startDrag(event: PointerEvent): void {
             }
         }
 
-        container.style.setProperty('--drag-width', `${Math.floor(rect?.width ?? 0)}px`)
-        container.style.setProperty('--drag-height', `${Math.floor(rect?.height ?? 0)}px`)
+        container.style.setProperty('--drag-width', `${rect?.width ?? 0}px`)
+        container.style.setProperty('--drag-height', `${rect?.height ?? 0}px`)
         container.classList.add('in-drag', 'dragging')
     }
+
+    // Re-enable transitions after a frame so reorder animations are smooth
+    requestAnimationFrame(() => {
+        for (const [id, block] of blocks) {
+            if (id !== draggedId) {
+                block.style.transition = ''
+                const original = document.getElementById(id)
+                if (original && original !== block) {
+                    original.style.transition = ''
+                }
+            }
+        }
+    })
 
     document.dispatchEvent(new Event('remove-select-all'))
     dragAnimationFrame = globalThis.requestAnimationFrame(deplaceDraggedElem)
@@ -319,7 +332,7 @@ function applyDragMoveBlocks(id: string): void {
     ids.splice(ids.indexOf(draggedId), 1)
     ids.splice(targetIndex, 0, draggedId)
 
-    // place all clones at their new positions
+    // Move non-dragged elements to their new visual positions
     for (let i = 0; i < ids.length; i++) {
         if (ids[i] !== draggedId) {
             deplaceBlock(ids[i], coords[i])
@@ -399,6 +412,11 @@ function endDrag(event: Event): void {
     if (outOfFolder || toFolder || toTab) {
         blocks.get(draggedId)?.classList.add('removed')
     } else {
+        // Animate dragged element to its final slot position
+        const dragBlock = blocks.get(draggedId)
+        if (dragBlock) {
+            dragBlock.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)'
+        }
         deplaceBlock(draggedId, coord)
     }
 
@@ -474,18 +492,24 @@ function deplaceBlock(id: string, coord: Coords): void {
         return
     }
 
+    // Layered elements (mini tabs) use fixed positioning in the drag layer,
+    // so they get absolute viewport coordinates directly.
     if (layeredIds.has(id)) {
         deplaceElem(block, coord.x, coord.y)
         return
     }
 
-    const container = blockContainers.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
-    deplaceElem(block, coord.x - container.x, coord.y - container.y)
+    // Non-layered elements (links) stay in normal document flow.
+    // We compute the transform as the difference between the target
+    // viewport position and the element's original viewport position.
+    // This means at rest (target == origin), transform is (0, 0) — no shift.
+    const origin = originRects.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+    deplaceElem(block, coord.x - origin.x, coord.y - origin.y)
 }
 
 function deplaceElem(dom?: HTMLElement, x = 0, y = 0): void {
     if (dom) {
-        dom.style.transform = `translate(${Math.floor(x)}px, ${Math.floor(y)}px)`
+        dom.style.transform = `translate(${x}px, ${y}px)`
     }
 }
 

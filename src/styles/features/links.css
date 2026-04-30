@@ -4,9 +4,9 @@
     --in-out-bounce: cubic-bezier(0.68, -0.2, 0.265, 1.2);
     --active-group-x: 50%;
     position: fixed;
-    right: max(1em, env(safe-area-inset-right));
-    bottom: max(1.5em, env(safe-area-inset-bottom));
-    left: max(1em, env(safe-area-inset-left));
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: max(16px, env(safe-area-inset-left));
     z-index: 3;
     display: block;
     text-align: center;
@@ -66,11 +66,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    row-gap: 0.5em;
+    row-gap: 8px;
 }
 
 .link-group.pinned {
-    margin-bottom: 3em;
+    margin-bottom: 40px;
 }
 
 .link-group.hiding .link-list {
@@ -123,7 +123,7 @@
     row-gap: var(--row-gap);
     column-gap: var(--column-gap);
     min-height: var(--min-height);
-    min-width: 6em;
+    min-width: 6rem;
     padding: 0;
     margin: 0;
     max-width: var(--links-width);
@@ -138,9 +138,9 @@
     justify-content: flex-start;
     align-items: flex-start;
     width: max-content;
-    max-width: min(36em, calc(100vw - 2em));
-    max-height: calc(100dvh - 9em);
-    padding: 1em;
+    max-width: min(36rem, calc(100vw - 2em));
+    max-height: calc(100dvh - 9rem);
+    padding: 16px;
     row-gap: calc(var(--row-gap) * 0.5);
     overflow: auto;
     scrollbar-width: none;
@@ -165,9 +165,18 @@
 #linkblocks > .link-group:not(.pinned) .link-folder {
     display: flex;
     align-items: center;
-    column-gap: 0.75em;
+    column-gap: 0.6em; /* scale gap between icon and text with font-size */
     width: max-content;
     max-width: none;
+}
+
+#linkblocks > .link-group:not(.pinned) .link div {
+    width: 1.4em;
+    height: 1.4em;
+}
+
+#linkblocks > .link-group:not(.pinned) .link-folder > div {
+    height: 1.4em;
 }
 
 #linkblocks > .link-group:not(.pinned) .link span {
@@ -177,9 +186,11 @@
     width: max-content;
     max-width: none;
     max-height: none;
-    padding: 0 0.2em;
+    padding: 0 3px;
     overflow: visible;
     opacity: 1;
+    font-size: 1.3em; /* keep popup list text in sync with font-size slider */
+    line-height: 1.4;
     white-space: pre;
     text-align: left;
     text-overflow: clip;
@@ -195,7 +206,7 @@
 .link-title {
     display: none;
     max-width: 26ch;
-    padding: 0.25em 1em 0.3em;
+    padding: 2px 8px 2px;
     overflow: hidden;
     white-space: nowrap;
     text-align: center;
@@ -204,24 +215,17 @@
     color: white;
     font-size: 1em;
     line-height: 1.25;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid transparent;
     background-color: transparent;
     cursor: pointer;
     transition: transform 0.2s var(--in-out-bounce);
 }
 
-.small .link-title {
-    font-size: 0.9em;
-}
-
-.inline .link-title {
-    font-size: 1.2em;
-    line-height: 2em;
-}
-
+.inline .link-title,
 .text .link-title {
-    font-size: 1.5em;
+    font-size: 1.2em;
+    line-height: 1.6;
 }
 
 .link-group .link-title {
@@ -239,16 +243,16 @@
 
 #linkblocks > .link-group {
     position: absolute;
-    bottom: calc(100% + 1em);
+    bottom: calc(100% + 12px);
     left: var(--active-group-x);
     display: flex;
     justify-content: center;
     max-width: calc(100vw - 2em);
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, 1em);
+    transform: translate(-50%, 32px);
     z-index: 10;
-    transition: opacity 0.2s var(--out-cubic), transform 0.34s var(--out-cubic);
+    transition: opacity 0.25s var(--out-cubic), transform 0.4s var(--out-cubic);
 }
 
 #linkblocks > .link-group.pinned {
@@ -325,6 +329,8 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
     width: var(--icon-size);
     height: var(--icon-size);
     box-sizing: border-box;
+    overflow: hidden;
+    border-radius: 22%;
 }
 
 .link a {
@@ -338,12 +344,14 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 .link img {
     width: 100%;
     height: 100%;
+    border-radius: 22%;
+    object-fit: cover;
 }
 
 .link span {
     display: none;
     width: 100%;
-    padding: 0.4em 0 0.12em;
+    padding: 6px 0 2px;
     line-height: 1.3em;
     max-height: 3.6em;
     overflow: hidden;
@@ -354,12 +362,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 
 .titles .link span {
     display: block;
-}
-
-.titles.small .link span {
-    display: inline;
-    width: unset;
-    top: 3.5em;
 }
 
 .backgrounds .link div {
@@ -388,13 +390,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 
 .link.removed div {
     transform: scale(0.6);
-}
-
-#linkblocks.select-all.large .link.selected div,
-#linkblocks.select-all.medium .link.selected div,
-#linkblocks.select-all.small .link.selected div {
-    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
-    outline: 0.3em solid var(--color-blue);
 }
 
 #linkblocks.select-all.inline .link-folder.selected,
@@ -466,10 +461,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 }
 
 /* Remove link border-radius to avoid text clipping */
-.link div,
-.link img,
-.inline .link div,
-.inline .link img,
 .text .link span {
     border-radius: 0 !important;
 }
@@ -479,142 +470,15 @@ dialog a {
     border-radius: 0 !important;
 }
 
-/* Large */
-
-#linkblocks.large {
-    --min-height: 5.2em;
-    --column-gap: 0.6em;
-    --row-gap: 1em;
-    --icon-size: 4.8em;
-    --block-size: 6.5em;
-    --folder-padding: 2em;
-}
-
-.large .link div {
-    padding: var(--link-padding);
-    border-radius: var(--link-outer-radius);
-}
-
-.large .link img {
-    border-radius: calc(var(--link-outer-radius) - var(--link-padding));
-}
-
-.large .link-folder div {
-    padding: 5px;
-}
-
-.large .link-folder img {
-    /* 0.45 cause they're about 45% smaller than the large links themselves */
-    border-radius: calc(var(--link-outer-radius) * 0.45);
-    padding: calc(var(--link-padding) * 0.45);
-    width: 100%;
-    aspect-ratio: 1/1;
-    height: auto;
-    box-sizing: border-box;
-}
-
-/* Medium */
-
-#linkblocks.medium {
-    --min-height: 3.9em;
-    --column-gap: 0.6em;
-    --row-gap: 1em;
-    --icon-size: 3.5em;
-    --block-size: 4.7em;
-    --folder-padding: 1.6em;
-}
-
-.medium .link div {
-    /* .77 because they're about 77% the size of large links */
-    padding: calc(var(--link-padding) * 0.77);
-    border-radius: calc(var(--link-outer-radius) * 0.77);
-}
-
-.medium .link img {
-    border-radius: calc((var(--link-outer-radius) - var(--link-padding)) * 0.77);
-}
-
-/* Small */
-
-#linkblocks.small {
-    --min-height: 2.5em;
-    --block-size: 2.5em;
-    --column-gap: 1.5em;
-    --row-gap: 1.5em;
-    --folder-padding: 1.2em;
-}
-
-.small #link-list {
-    min-height: 2em;
-    gap: 1.5em;
-}
-
-.small a,
-.small .link {
-    position: relative;
-}
-
-.small .link {
-    width: var(--block-size);
-}
-
-.small .link div {
-    width: var(--block-size);
-    height: var(--block-size);
-
-    /* .77 because they're about 77% the size of large links */
-    padding: calc(var(--link-padding) * 0.57);
-    border-radius: calc(var(--link-outer-radius) * 0.57);
-}
-
-.small .link img {
-    border-radius: calc((var(--link-outer-radius) - var(--link-padding)) * 0.57);
-}
-
-.small .link span {
-    position: absolute;
-    visibility: hidden;
-    top: 3em;
-    transform: translateX(-50%);
-    padding: 0.08em 0.6em 0.18em;
-    opacity: 0;
-    color: white;
-    font-size: 0.9em;
-    line-height: 1.3em;
-    max-height: 3.9em;
-    text-shadow: none;
-    border-radius: 6px;
-    background-color: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.075);
-    backdrop-filter: blur(1em);
-    -webkit-backdrop-filter: blur(1em);
-    transition: opacity 0.2s;
-    z-index: 1;
-}
-
-.small .link span:empty {
-    display: none;
-}
-
-.small .link:hover span {
-    opacity: 1;
-    visibility: visible;
-}
-
-.small.removed {
-    margin-right: -1em;
-    margin-left: -1em;
-}
-
 /* Inline */
 
 #linkblocks.inline {
-    --min-height: 2.4em;
+    --min-height: 2em;
     --block-size: 2em;
-    --column-gap: 1em;
-    --row-gap: 1em;
-    --icon-size: 2em;
-    --folder-padding: 1.2em;
+    --column-gap: 14px;
+    --row-gap: 8px;
+    --icon-size: 1.6em;
+    --folder-padding: 16px;
     justify-content: flex-start;
 }
 
@@ -632,7 +496,7 @@ dialog a {
 }
 
 .inline .link span {
-    padding: 0 0.2em;
+    padding: 0 3px;
     outline: 3px solid transparent;
 }
 
@@ -650,27 +514,25 @@ dialog a {
     display: flex;
     flex-direction: row;
     align-items: center;
-    column-gap: 0.6em;
+    column-gap: 0.6em; /* scale gap between icon and text with font-size */
 }
 
 .inline .link div {
-    /* it's 43% the size of a big ass link icon */
-    padding: calc(var(--link-padding) * 0.43);
-    border-radius: calc(var(--link-outer-radius) * 0.43);
+    border-radius: 22%;
 }
 
 .inline .link img {
-    border-radius: calc((var(--link-outer-radius) - var(--link-padding)) * 0.43);
+    border-radius: 22%;
 }
 
 .inline .link span {
     display: block;
-    max-width: 8.4em;
-    font-size: 1.2em;
+    max-width: 16em;
+    font-size: 1.3em;
     text-overflow: ellipsis;
     white-space: pre;
-    line-height: 1.9em;
-    padding: 0.05em 0.25em 0.15em;
+    line-height: 1.8em;
+    padding: 0 4px;
     box-sizing: border-box;
 }
 
@@ -678,9 +540,9 @@ dialog a {
 
 .text {
     --min-height: 2em;
-    --column-gap: 1.8em;
-    --row-gap: 1em;
-    --folder-padding: 1em;
+    --column-gap: 14px;
+    --row-gap: 8px;
+    --folder-padding: 16px;
     justify-content: flex-start;
 }
 
@@ -697,61 +559,13 @@ dialog a {
     display: inline-block;
     width: 100%;
     max-width: 16em;
-    font-size: 1.5em;
+    font-size: 1.3em;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: pre;
-    padding: 0 0.25em;
+    line-height: 1.8em;
+    padding: 0 4px;
     box-sizing: border-box;
-    border-radius: 6px;
-}
-
-/* Folder styles for medium and small */
-
-.medium .link-folder div,
-.small .link-folder div {
-    position: relative;
-    display: block;
-}
-
-.medium .link-folder img,
-.small .link-folder img {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    box-sizing: border-box;
-}
-
-.medium .link-folder img {
-    /* because they're about 42% the size of large icons */
-    padding: calc(var(--link-padding) * 0.42);
-    border-radius: calc(var(--link-outer-radius) * 0.42);
-}
-
-.small .link-folder img {
-    padding: calc(var(--link-padding) * 0.27);
-    border-radius: calc(var(--link-outer-radius) * 0.27);
-}
-
-.medium .link-folder img:nth-child(1),
-.small .link-folder img:nth-child(1) {
-    top: 15%;
-    left: 15%;
-    z-index: 5;
-}
-
-.medium .link-folder img:nth-child(2),
-.small .link-folder img:nth-child(2) {
-    top: 30%;
-    left: 30%;
-    z-index: 4;
-}
-
-.medium .link-folder img:nth-child(3),
-.medium .link-folder img:nth-child(4),
-.small .link-folder img:nth-child(3),
-.small .link-folder img:nth-child(4) {
-    display: none;
 }
 
 /* Links drag and drop */
@@ -774,10 +588,6 @@ dialog a {
 .drop-target.link-group,
 .drop-target.link-folder img {
     opacity: 0.5;
-}
-
-.large .drop-target.link-folder img {
-    transform: none;
 }
 
 .inline .link.drop-source div,
@@ -823,7 +633,7 @@ dialog a {
 .links-drag-layer .link-folder {
     display: flex;
     align-items: center;
-    column-gap: 0.75em;
+    column-gap: 12px;
     width: max-content;
     max-width: none;
 }
@@ -835,7 +645,7 @@ dialog a {
     width: max-content;
     max-width: none;
     max-height: none;
-    padding: 0 0.2em;
+    padding: 0 3px;
     overflow: visible;
     opacity: 1;
     white-space: pre;
@@ -867,13 +677,12 @@ dialog a {
     box-sizing: border-box;
     width: var(--drag-width);
     height: var(--drag-height);
+    overflow: hidden;
 }
 
 .in-drag.link-group .link {
-    position: absolute;
-    top: 0;
-    left: 0;
     z-index: 3;
+    pointer-events: none;
 }
 
 .in-drag.link-group .link.on {
@@ -923,10 +732,10 @@ dialog a {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    column-gap: 1em;
-    row-gap: 0.5em;
+    column-gap: 5px;
+    row-gap: 3px;
     max-width: min(100%, calc(100vw - 2em));
-    padding: 0.4em 4.2em 0.4em 0.6em;
+    padding: 2px 40px 2px 5px;
     overflow-x: auto;
     overflow-y: hidden;
     box-sizing: border-box;
@@ -940,11 +749,11 @@ dialog a {
     visibility: hidden;
     position: absolute;
     top: 50%;
-    right: 0.6em;
+    right: 5px;
     flex: 0 0 auto;
     font-weight: bold;
     width: auto;
-    padding: 0.2em 1em;
+    padding: 2px 8px;
     opacity: 0;
     transform: translateY(-50%);
     transition: opacity 0.15s var(--out-cubic);

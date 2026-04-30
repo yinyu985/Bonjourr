@@ -129,7 +129,7 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
     const { sync, local } = init
 
     // set class before appendBlock, cannot be moved
-    domlinkblocks.classList.add(sync.linkstyle ?? 'large')
+    domlinkblocks.classList.add(sync.linkstyle ?? 'inline')
     domlinkblocks.classList.toggle('titles', sync.linktitles)
     domlinkblocks.classList.toggle('backgrounds', sync.linkbackgrounds)
     domlinkblocks.classList.toggle('hidden', !sync.quicklinks)
@@ -261,7 +261,7 @@ export function initblocks(sync: Sync, local?: Local): true {
     return true
 }
 
-function createFolder(link: LinkFolder, folderChildren: Link[], style: Sync['linkstyle']): HTMLLIElement {
+function createFolder(link: LinkFolder, folderChildren: Link[], _style: Sync['linkstyle']): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-folder-template', 'li')
     const imgs = li.querySelectorAll('img')
     const span = li.querySelector('span')
@@ -282,7 +282,7 @@ function createFolder(link: LinkFolder, folderChildren: Link[], style: Sync['lin
     for (let i = 0; i < linksInThisFolder.length; i++) {
         const img = imgs[i]
         const elem = linksInThisFolder[i]
-        const isIconShown = img && isElem(elem) && style !== 'text'
+        const isIconShown = img && isElem(elem)
 
         if (isIconShown) {
             initIconList.push([img, getIconFromLinkElem(elem)])
@@ -292,7 +292,7 @@ function createFolder(link: LinkFolder, folderChildren: Link[], style: Sync['lin
     return li
 }
 
-function createElem(link: LinkElem, openInNewtab: boolean, style: Sync['linkstyle']): HTMLLIElement {
+function createElem(link: LinkElem, openInNewtab: boolean, _style: Sync['linkstyle']): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-elem-template', 'li')
     const span = li.querySelector('span')
     const anchor = li.querySelector('a')
@@ -306,9 +306,7 @@ function createElem(link: LinkElem, openInNewtab: boolean, style: Sync['linkstyl
     anchor.href = stringMaxSize(link.url, 512)
     span.textContent = createTitle(link)
 
-    if (style !== 'text') {
-        initIconList.push([img, getIconFromLinkElem(link)])
-    }
+    initIconList.push([img, getIconFromLinkElem(link)])
 
     if (openInNewtab) {
         anchor.target = '_blank'
@@ -365,16 +363,13 @@ function createIcons(local: Local): void {
 
 function initRows(row: number, style: string): void {
     const sizes = {
-        large: { width: 4.8, gap: 2.3 },
-        medium: { width: 3.5, gap: 2 },
-        small: { width: 2.5, gap: 2 },
         inline: { width: 11, gap: 2 },
         text: { width: 5, gap: 2 }, // arbitrary width because width is auto
     }
 
     if (style in sizes) {
         const { width, gap } = sizes[style as keyof typeof sizes]
-        document.documentElement.style.setProperty('--links-width', `${Math.ceil((width + gap) * row)}em`)
+        document.documentElement.style.setProperty('--links-width', `${Math.ceil((width + gap) * row)}rem`)
     }
 }
 
@@ -798,37 +793,28 @@ function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
     return data
 }
 
-async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrounds?: boolean }): Promise<void> {
+async function setLinkStyle(
+    styles: { style?: string; titles?: boolean; backgrounds?: boolean },
+): Promise<void> {
     const data = await storage.sync.get()
-    const style = styles.style ?? 'large'
+    const style = styles.style ?? 'inline'
     const { titles } = styles
     const { backgrounds } = styles
 
     if (styles.style && isLinkStyle(style)) {
-        const wasText = domlinkblocks?.className.includes('text')
-
-        domlinkblocks.classList.remove('large', 'medium', 'small', 'inline', 'text')
+        domlinkblocks.classList.remove('inline', 'text')
         domlinkblocks.classList.add(style)
 
         data.linkstyle = style
         storage.sync.set({ linkstyle: style })
 
-        // remove from DOM to re-draw icons
-        if (wasText) {
-            for (const el of document.querySelectorAll('#link-list li') ?? []) {
-                el.remove()
-            }
-        }
-
         initRows(data.linksrow, style)
-        initblocks(data)
     }
 
     if (typeof titles === 'boolean') {
         data.linktitles = titles
         storage.sync.set({ linktitles: titles })
 
-        document.getElementById('b_showtitles')?.classList?.toggle('on', titles)
         domlinkblocks.classList.toggle('titles', titles)
     }
 
@@ -836,7 +822,6 @@ async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrou
         data.linkbackgrounds = backgrounds
         storage.sync.set({ linkbackgrounds: backgrounds })
 
-        document.getElementById('b_showbackgrounds')?.classList?.toggle('on', backgrounds)
         domlinkblocks.classList.toggle('backgrounds', backgrounds)
     }
 }
@@ -846,7 +831,7 @@ function setRadius(radius: string | number): void {
 }
 
 function setRows(row: string): void {
-    const style = [...domlinkblocks.classList].filter(isLinkStyle)[0] ?? 'large'
+    const style = [...domlinkblocks.classList].filter(isLinkStyle)[0] ?? 'inline'
     const val = Number.parseInt(row ?? '6')
     initRows(val, style)
     eventDebounce({ linksrow: row })
@@ -922,5 +907,5 @@ function getIconFromLinkElem(link: LinkElem): string {
 }
 
 function isLinkStyle(s: string): s is Sync['linkstyle'] {
-    return ['large', 'medium', 'small', 'inline', 'text'].includes(s)
+    return ['inline', 'text'].includes(s)
 }
