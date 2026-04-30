@@ -59,6 +59,11 @@ export async function populateDialogWithEditLink(
         folder: classNames.some((cl) => cl.includes('link-group') && cl.includes('in-folder')),
     }
 
+    const isFavorite = classNames.some((cl) => cl.includes('link-favorite'))
+    if (isFavorite) {
+        container.group = true
+    }
+
     const target: EditStates['target'] = {
         link: classNames.some((cl) => cl.includes('link-elem')),
         folder: classNames.some((cl) => cl.includes('link-folder')),

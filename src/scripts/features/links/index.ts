@@ -298,6 +298,7 @@ function initFavorites(sync: Sync): void {
             anchor.target = '_blank'
         }
 
+        li.addEventListener('keyup', openContextMenu)
         li.addEventListener('pointerdown', startDrag)
 
         container.appendChild(li)
