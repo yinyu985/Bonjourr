@@ -810,7 +810,7 @@ dialog a {
     align-items: center;
     box-sizing: border-box;
     width: 100%;
-    max-width: min(100%, calc(100vw - 2em));
+    max-width: 75vw;
     min-height: 28px;
     margin: 0 auto;
     padding: 2px 5px;
