@@ -1,4 +1,4 @@
-import { BROWSER, SYNC_DEFAULT } from '../defaults.ts'
+import { BROWSER } from '../defaults.ts'
 import { minutator, suntime } from '../shared/time.ts'
 import { getReadableTextColor, hexToRGB, stringMaxSize } from '../shared/generic.ts'
 import { eventDebounce } from '../utils/debounce.ts'
@@ -42,26 +42,6 @@ export function tabTitle(val?: string, isEvent?: true): void {
 
     if (isEvent) {
         eventDebounce({ tabtitle: stringMaxSize(val, 80) })
-    }
-}
-
-export function pageControl(val: { width?: number; gap?: number }, isEvent?: true): void {
-    if (val.width) {
-        const property = `${val.width ?? SYNC_DEFAULT.pagewidth}px`
-        document.documentElement.style.setProperty('--page-width', property)
-
-        if (isEvent) {
-            eventDebounce({ pagewidth: val.width })
-        }
-    }
-
-    if (typeof val.gap === 'number') {
-        const property = `${val.gap ?? SYNC_DEFAULT.pagegap}em`
-        document.documentElement.style.setProperty('--page-gap', property)
-
-        if (isEvent) {
-            eventDebounce({ pagegap: val.gap })
-        }
     }
 }
 

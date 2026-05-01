@@ -101,12 +101,10 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
         analog: update.analog ?? data.clock.analog,
         seconds: update.seconds ?? data.clock.seconds,
         timezone: data.clock.timezone,
-        worldclocks: data.clock.worldclocks,
     }
 
     storage.sync.set({
         clock: data.clock,
-        worldclocks: data.worldclocks,
         analogstyle: analogstyle,
         dateformat: data.dateformat,
     })

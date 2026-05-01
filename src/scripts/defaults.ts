@@ -78,8 +78,6 @@ export const SYNC_DEFAULT: Sync = {
     dark: 'system',
     favicon: '',
     tabtitle: '',
-    pagegap: 0,
-    pagewidth: Number.MAX_SAFE_INTEGER,
     time: true,
     dateformat: 'auto',
     quicklinks: true,
@@ -122,7 +120,6 @@ export const SYNC_DEFAULT: Sync = {
         ampm: false,
         analog: false,
         seconds: false,
-        worldclocks: false,
         timezone: 'auto',
     },
     analogstyle: {
@@ -132,7 +129,6 @@ export const SYNC_DEFAULT: Sync = {
         border: '#ffff',
         background: '#fff2',
     },
-    worldclocks: [],
     font: {
         family: '',
         size: '14',
@@ -154,5 +150,4 @@ export const LOCAL_DEFAULT: Local = {
     backgroundCollections: {},
     backgroundCompressFiles: true,
     backgroundLastChange: '',
-    lastWeather: undefined,
 }

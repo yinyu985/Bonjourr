@@ -71,7 +71,7 @@ aside.change-theme {
  * of DOM elements to recalculate during the transition.
  */
 aside.change-theme .as_fonts,
-aside.change-theme #cssEditor,
+aside.change-theme #css-editor,
 aside.change-theme #time_options,
 aside.change-theme #settings-managment {
     display: none;

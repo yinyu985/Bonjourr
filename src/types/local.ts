@@ -1,4 +1,4 @@
-import type { Background, SimpleWeather } from './shared.ts'
+import type { Background } from './shared.ts'
 import type { Sync } from './sync.ts'
 
 export type BackgroundUrlState = 'NONE' | 'LOADING' | 'OK' | 'NOT_URL' | 'CANT_REACH' | 'NOT_MEDIA'
@@ -8,14 +8,12 @@ export interface Local {
     fonts?: FontListItem[]
     fontface?: string
     translations?: Translations
-    lastWeather?: LastWeather
     operaExplained?: true
 
     // Sync
     gistId?: string
     gistToken?: string
     distantUrl?: string
-    pastebinToken?: string
     syncType?: SyncType
 
     // Backgrounds
@@ -30,25 +28,6 @@ export interface Local {
 
     // Links
     [key: `x-icon-${string}`]: string
-}
-
-export interface LastWeather {
-    temp: number
-    forecasted_timestamp: number
-    forecasted_high: number
-    feels_like: number
-    sunrise: number
-    sunset: number
-    icon_id: string
-    description: string
-    timestamp: number
-    link: string
-    approximation?: {
-        ccode?: SimpleWeather['geo']['country']
-        city?: SimpleWeather['geo']['city']
-        lat: SimpleWeather['geo']['lat']
-        lon: SimpleWeather['geo']['lon']
-    }
 }
 
 export interface BackgroundUrl {

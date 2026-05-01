@@ -18,7 +18,6 @@ interface SupportersApi {
 interface SupportersUpdate {
     enabled?: boolean
     closed?: boolean
-    month?: true
     translate?: true
 }
 
@@ -58,11 +57,10 @@ export function supportersNotifications(init?: Sync, update?: SupportersUpdate):
 
 function canShowSupporters(sync?: Sync): boolean {
     const hasSupportersDisabled = !sync?.supporters || !sync.supporters.enabled
-    const canGetReviewPopup = sync?.review !== -1
     const closedMonth = sync?.supporters.closedMonth
     const currentMonth = new Date().getMonth() + 1
 
-    if (hasSupportersDisabled || canGetReviewPopup) {
+    if (hasSupportersDisabled) {
         return false
     } else {
         return currentMonth !== closedMonth

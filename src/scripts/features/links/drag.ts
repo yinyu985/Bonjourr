@@ -1,6 +1,6 @@
 import { getLiFromEvent, getTitleFromEvent } from './helpers.ts'
 import { FAVORITES_GROUP, initblocks, linksUpdate } from './index.ts'
-import { setGroupFocus, updateSelectedGroupPosition } from './groups.ts'
+import { isGroupFocus, setGroupFocus, updateSelectedGroupPosition } from './groups.ts'
 import { storage } from '../../storage.ts'
 
 type Coords = { x: number; y: number; w: number; h: number }
@@ -39,6 +39,7 @@ let isDragging = false
 let overFavorites = false
 let isFavoritesDrag = false
 let linkDropDirection: LinkDropDirection = 'vertical'
+let restoreGroupFocusOnEnd = false
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 const domlinkfavorites = document.getElementById('link-favorites') as HTMLDivElement
@@ -73,6 +74,7 @@ export function startDrag(event: PointerEvent): void {
     lastIndex = 0
     targetId = ''
     isDragging = true
+    restoreGroupFocusOnEnd = isMini && isGroupFocus()
     overFavorites = false
     crossGroupTarget = ''
     pendingGroupTarget = ''
@@ -112,6 +114,10 @@ export function startDrag(event: PointerEvent): void {
     if (!isMini && !isFavoritesDrag) {
         domlinkblocks.classList.add('favorites-drop-active')
         domlinkfavorites?.classList.add('drop-target')
+    }
+
+    if (restoreGroupFocusOnEnd) {
+        setGroupFocus(false)
     }
 
     requestAnimationFrame(() => {
@@ -544,6 +550,11 @@ function endDrag(event: Event): void {
             linksUpdate({ moveLinks: ids })
         }
 
+        if (type === 'mini' && restoreGroupFocusOnEnd) {
+            setGroupFocus(true)
+            updateSelectedGroupPosition()
+        }
+
         setTimeout(() => {
             const containers = document.querySelectorAll<HTMLElement>(
                 '#linkblocks .in-drag, #linkblocks .dragging, #linkblocks .dropping',
@@ -555,6 +566,7 @@ function endDrag(event: Event): void {
             }
             dragLayer?.remove()
             dragLayer = undefined
+            restoreGroupFocusOnEnd = false
         }, 1)
     }, updateDelay)
 }

@@ -4,8 +4,6 @@ export interface Sync {
     showall: boolean
     quicklinks: boolean
     time: boolean
-    pagegap: number
-    pagewidth: number
     linksrow: number
     linkiconradius: number
     linkstyle: 'inline' | 'text'
@@ -14,11 +12,9 @@ export interface Sync {
     linkbackgrounds: boolean
     linkgroups: LinkGroups
     textShadow: number
-    cssHeight?: number
     review: number
     announcements: 'major' | 'off'
     supporters: Supporters
-    reviewPopup?: number | string
     css: string
     lang: string
     favicon: string
@@ -29,7 +25,6 @@ export interface Sync {
     backgrounds: Backgrounds
     clock: Clock
     analogstyle?: AnalogStyle
-    worldclocks: WorldClock[]
     font: Font
     about: {
         browser: string
@@ -49,7 +44,6 @@ export interface LinkGroups {
 export interface Hide {
     clock?: boolean
     date?: boolean
-    settingsicon?: boolean
 }
 
 export interface Backgrounds {
@@ -102,7 +96,6 @@ export interface Clock {
     seconds: boolean
     timezone: string
     size: number
-    worldclocks: boolean
     face?: 'none' | 'number' | 'roman' | 'marks'
     style?: 'round' | 'square' | 'transparent'
 }
@@ -113,11 +106,6 @@ export interface AnalogStyle {
     shape: 'round' | 'square' | 'rectangle'
     face: 'none' | 'number' | 'roman' | 'marks' | 'swiss' | 'braun'
     hands: 'modern' | 'swiss' | 'classic' | 'braun' | 'apple'
-}
-
-export interface WorldClock {
-    region: string
-    timezone: string
 }
 
 export interface Font {

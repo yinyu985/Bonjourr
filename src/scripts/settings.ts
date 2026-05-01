@@ -1,4 +1,4 @@
-import { darkmode, favicon, pageControl, tabTitle } from './features/others.ts'
+import { darkmode, favicon, tabTitle } from './features/others.ts'
 import { initSupportersSettingsNotif, supportersNotifications } from './features/supporters.ts'
 import { customFont, fontIsAvailableInSubset, systemfont } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
@@ -181,8 +181,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_texture-size', data.backgrounds.texture.size ?? '220')
     setInput('i_texture-opacity', data.backgrounds.texture.opacity ?? '0.1')
     setInput('i_texture-color', data.backgrounds.texture.color ?? '#ffffff')
-    setInput('i_pagewidth', data.pagewidth || 1600)
-    setInput('i_pagegap', data.pagegap ?? 1)
     setInput('i_dateformat', data.dateformat || 'eu')
     setInput('i_clockface', data.analogstyle?.face || 'none')
     setInput('i_clockhands', data.analogstyle?.hands || 'none')
@@ -244,7 +242,7 @@ function initOptionsValues(data: Sync, local: Local): void {
 
     // Activate feature options
     paramId('time_options')?.classList.toggle('shown', data.time)
-    paramId('analog_options')?.classList.toggle('shown', data.clock.analog && data.showall)
+    paramId('analog_options')?.classList.toggle('shown', data.clock.analog)
     paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
     paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
     paramId('linkgroups_options')?.classList.toggle('shown', data.linkgroups?.on ?? false)
@@ -536,14 +534,6 @@ function initOptionsEvents(): void {
         customFont(undefined, { size: this.value })
     })
 
-    paramId('i_pagewidth').addEventListener('input', function (): void {
-        pageControl({ width: Number.parseInt(this.value) }, true)
-    })
-
-    paramId('i_pagegap').addEventListener('input', function (): void {
-        pageControl({ gap: Number.parseFloat(this.value) }, true)
-    })
-
     // Updates
 
     paramId('i_announce').addEventListener('change', function (this): void {
@@ -697,10 +687,8 @@ function initOptionsEvents(): void {
 
 function translatePlaceholders(): void {
     const cases = [
-        ['i_title', 'Name'],
         ['i_tabtitle', 'New tab'],
         ['css-editor-textarea', 'Type in your custom CSS'],
-        ['i_importtext', 'or paste as text'],
     ]
 
     for (const [id, text] of cases) {

@@ -13,7 +13,7 @@ import { displayInterface, onInterfaceDisplay } from './shared/display.ts'
 import { setTranslationCache, traduction } from './utils/translations.ts'
 import { operaExtensionExplainer } from './startup/opera.ts'
 import { setPotatoComputerMode } from './startup/potato.ts'
-import { suntime, userDate } from './shared/time.ts'
+import { userDate } from './shared/time.ts'
 import { onlineAndMobile } from './startup/online.ts'
 import { serviceWorker } from './startup/serviceworker.ts'
 import { tabsTracking } from './startup/tabstracking.ts'
@@ -68,7 +68,6 @@ async function startup(): Promise<void> {
     displayInterface(undefined, sync)
     traduction(null, sync.lang)
     userDate(sync.clock.timezone)
-    suntime(local.lastWeather?.sunrise, local.lastWeather?.sunset)
     customFont(sync.font)
     textShadow(sync.textShadow)
     favicon(sync.favicon)
@@ -114,7 +113,5 @@ function minimalHomepageSync(sync: Sync): Sync {
             ...sync.linkgroups,
             on: true,
         },
-        pagegap: 0,
-        pagewidth: Number.MAX_SAFE_INTEGER,
     }
 }

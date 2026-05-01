@@ -102,11 +102,6 @@
         display: none;
     }
 
-    #pagewidth,
-    #grid-layout-wrapper {
-        display: none;
-    }
-
     #settings-footer {
         width: 85%;
         padding-bottom: 13vh;

@@ -396,7 +396,7 @@ async function downloadImage(): Promise<void> {
     const domsave = document.querySelector<HTMLAnchorElement>('#download-background')
 
     if (!domsave) {
-        console.warn('?')
+        console.warn('Download link is missing')
         return
     }
 

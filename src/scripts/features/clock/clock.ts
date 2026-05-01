@@ -2,7 +2,7 @@ import { setUserDate, userDate } from '../../shared/time.ts'
 import { clockDate } from './date.ts'
 import { fixunits } from './helpers.ts'
 
-import type { Clock, WorldClock } from '../../../types/sync.ts'
+import type { Clock } from '../../../types/sync.ts'
 import type { DateFormat } from './date.ts'
 
 export interface ClockStartOptions {
@@ -24,7 +24,7 @@ export function startClock(options: ClockStartOptions): void {
         }
     })
 
-    const clocks: WorldClock[] = [{ region: '', timezone: 'auto' }]
+    const clocks = [{ region: '', timezone: 'auto' }]
 
     // <!> First timezone becomes global timezone
     // <!> for everything in Bonjourr !

@@ -73,10 +73,6 @@
     max-height: 280px;
 }
 
-#ampm_position.shown {
-    max-height: 60px;
-}
-
 /* Dropdowns: Quicklinks Options */
 
 #quicklinks_options.shown {

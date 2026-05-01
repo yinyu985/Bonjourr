@@ -76,10 +76,6 @@ export function hideArrayToObject(data: Import): Import {
         if (data.hide[0]?.[1]) {
             newhide.date = true
         }
-        if (data.hide[3]?.[0]) {
-            newhide.settingsicon = true
-        }
-
         data.hide = newhide
         data.time = !(data.hide.clock && data.hide.date)
     }
@@ -133,8 +129,10 @@ export function newFontSystem(data: Import): Import {
 }
 
 export function newReviewData(data: Import): Import {
-    if (data.reviewPopup) {
-        data.review = data.reviewPopup === 'removed' ? -1 : +data.reviewPopup
+    const reviewPopup = (data as { reviewPopup?: number | string }).reviewPopup
+
+    if (reviewPopup) {
+        data.review = reviewPopup === 'removed' ? -1 : +reviewPopup
     }
 
     return data
@@ -155,14 +153,6 @@ export function clockDateFormat(data: Import): Import {
     }
 
     return data
-}
-
-export function removeWorldClocksDuplicate(current: Sync, target: Import): Sync {
-    if (target.worldclocks && current.worldclocks) {
-        current.worldclocks = target.worldclocks
-    }
-
-    return current
 }
 
 export function manualTimezonesToIntl(data: Import): Import {
@@ -192,14 +182,6 @@ export function manualTimezonesToIntl(data: Import): Import {
     if (data.clock && oldTimezones.includes(data.clock.timezone)) {
         data.clock.timezone = timezoneMatches[data.clock.timezone]
     }
-
-    data.worldclocks?.forEach(({ timezone }, i) => {
-        const isOld = oldTimezones.includes(timezone)
-
-        if (data.worldclocks?.[i] && isOld) {
-            data.worldclocks[i].timezone = timezoneMatches[timezone]
-        }
-    })
 
     return data
 }
