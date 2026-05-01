@@ -1,10 +1,9 @@
-import type { BackgroundImage, BackgroundVideo, Frequency, Link, PomodoroMode } from './shared.ts'
+import type { BackgroundImage, BackgroundVideo, Frequency, Link } from './shared.ts'
 
 export interface Sync {
     showall: boolean
     quicklinks: boolean
     time: boolean
-    main: boolean
     pagegap: number
     pagewidth: number
     linksrow: number
@@ -24,16 +23,6 @@ export interface Sync {
     lang: string
     favicon: string
     tabtitle: string
-    greeting: string
-    greetingsize: string
-    greetingsmode?: 'auto' | 'custom'
-    greetingscustom: {
-        morning: string
-        afternoon: string
-        evening: string
-        night: string
-    }
-    notes?: Notes
     hide?: Hide
     dark: 'auto' | 'system' | 'enable' | 'disable'
     dateformat: 'auto' | 'eu' | 'us' | 'cn'
@@ -41,10 +30,6 @@ export interface Sync {
     clock: Clock
     analogstyle?: AnalogStyle
     worldclocks: WorldClock[]
-    weather: Weather
-    searchbar: Searchbar
-    quotes: Quotes
-    pomodoro: Pomodoro
     font: Font
     about: {
         browser: string
@@ -64,9 +49,6 @@ export interface LinkGroups {
 export interface Hide {
     clock?: boolean
     date?: boolean
-    greetings?: boolean
-    weatherdesc?: boolean
-    weathericon?: boolean
     settingsicon?: boolean
 }
 
@@ -138,18 +120,6 @@ export interface WorldClock {
     timezone: string
 }
 
-export interface Searchbar {
-    on: boolean
-    width?: number
-    newtab: boolean
-    engine: string
-    request: string
-    opacity?: number
-    suggestions: boolean
-    placeholder: string
-    background?: string
-}
-
 export interface Font {
     id?: string
     family: string
@@ -161,53 +131,7 @@ export interface Font {
     availWeights?: string[]
 }
 
-export interface Notes {
-    on: boolean
-    align: string
-    text?: string
-    width?: number
-    background?: string
-    opacity?: number
-}
-
-export interface Quotes {
-    on: boolean
-    author: boolean
-    last?: number
-    type: 'classic' | 'kaamelott' | 'inspirobot' | 'stoic' | 'hitokoto' | 'office' | 'user' | 'url'
-    frequency: Frequency
-    userlist?: string
-    url?: string
-}
-
 export interface Supporters {
     enabled: boolean
     closedMonth?: number
-}
-
-export interface Weather {
-    ccode?: string
-    city?: string
-    unit: 'metric' | 'imperial'
-    geolocation: 'precise' | 'approximate' | 'off'
-    forecast: 'auto' | 'always' | 'never'
-    temperature: 'actual' | 'feelslike' | 'both'
-    moreinfo: 'none' | 'msnw' | 'yhw' | 'windy' | 'accu' | 'custom'
-    provider?: string
-}
-
-export interface Pomodoro {
-    on: boolean
-    end: number
-    pause: number
-    mode?: PomodoroMode
-    timeFor: Record<PomodoroMode, number>
-    focus: boolean
-    sound: boolean
-    alarm: string
-    volume: number
-    history: {
-        endedAt: string
-        duration: number
-    }[]
 }

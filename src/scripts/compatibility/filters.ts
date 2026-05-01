@@ -1,6 +1,5 @@
 import { countryCodeToLanguageCode } from '../utils/translations.ts'
 import { SYNC_DEFAULT } from '../defaults.ts'
-import { oldJSONToCSV } from '../features/quotes.ts'
 import { randomString } from '../shared/generic.ts'
 import { bundleLinks } from '../utils/bundlelinks.ts'
 import { isElem, isNumber } from '../features/links/helpers.ts'
@@ -49,17 +48,6 @@ export function newLinkIcons(data: Import): Import {
     return data
 }
 
-export function addAlarmsToPomodoro(data: Import): Import {
-    if (!data.pomodoro) {
-        data.pomodoro = SYNC_DEFAULT.pomodoro
-    }
-
-    data.pomodoro.alarm = data.pomodoro.alarm ?? SYNC_DEFAULT.pomodoro.alarm
-    data.pomodoro.volume = data.pomodoro.volume ?? SYNC_DEFAULT.pomodoro.alarm
-
-    return data
-}
-
 export function fixNullBrightness(data: Import): Import {
     if (data.backgrounds?.bright === null) {
         data.backgrounds.bright = SYNC_DEFAULT.backgrounds.bright
@@ -88,36 +76,12 @@ export function hideArrayToObject(data: Import): Import {
         if (data.hide[0]?.[1]) {
             newhide.date = true
         }
-        if (data.hide[1]?.[0]) {
-            newhide.greetings = true
-        }
-        if (data.hide[1]?.[1]) {
-            newhide.weatherdesc = true
-        }
-        if (data.hide[1]?.[2]) {
-            newhide.weathericon = true
-        }
         if (data.hide[3]?.[0]) {
             newhide.settingsicon = true
         }
 
         data.hide = newhide
         data.time = !(data.hide.clock && data.hide.date)
-        data.main = !(data.hide.weatherdesc && data.hide.weathericon && data.hide.weathericon)
-    }
-
-    return data
-}
-
-export function booleanSearchbarToObject(data: Import): Import {
-    if (typeof data.searchbar === 'boolean') {
-        data.searchbar = {
-            ...SYNC_DEFAULT.searchbar,
-            on: data.searchbar as boolean,
-            newtab: data.searchbar_newtab as boolean,
-            engine: (data.searchbar_engine as string | undefined)?.replace('s_', '') || 'google',
-            suggestions: false,
-        }
     }
 
     return data
@@ -173,13 +137,6 @@ export function newReviewData(data: Import): Import {
         data.review = data.reviewPopup === 'removed' ? -1 : +data.reviewPopup
     }
 
-    return data
-}
-
-export function quotesJsonToCsv(data: Import): Import {
-    if (Array.isArray(data?.quotes?.userlist)) {
-        data.quotes.userlist = oldJSONToCSV(data.quotes.userlist)
-    }
     return data
 }
 
@@ -347,18 +304,6 @@ export function linksDataMigration(data: Import): Import {
                 data[link._id] = link
             }
         }
-    }
-
-    return data
-}
-
-export function improvedWeather(data: Import): Import {
-    if (data.weather && data.weather?.geolocation === undefined) {
-        //@ts-expect-error -> old types
-        const oldLocation = data.weather?.location ?? []
-
-        data.weather.geolocation = 'approximate'
-        data.weather.geolocation = oldLocation.length === 0 ? 'off' : 'precise'
     }
 
     return data

@@ -4,12 +4,10 @@ import { fixunits } from './helpers.ts'
 
 import type { Clock, WorldClock } from '../../../types/sync.ts'
 import type { DateFormat } from './date.ts'
-import type { Greetings } from './greetings.ts'
 
 export interface ClockStartOptions {
     clock: Clock
     dateformat: DateFormat
-    greetings: Greetings
 }
 
 let clockInterval: number

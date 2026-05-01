@@ -5,35 +5,8 @@ import type { Sync } from './sync.ts'
 export type Langs = keyof typeof langList
 export type Link = LinkFolder | LinkElem
 export type Background = BackgroundImage | BackgroundVideo
-export type QuoteUserInput = [string, string][]
-export type Widgets = 'time' | 'main' | 'quicklinks' | 'notes' | 'quotes' | 'searchbar' | 'pomodoro'
 export type Frequency = 'tabs' | 'hour' | 'day' | 'period' | 'pause'
 export type LinkIconType = 'auto' | 'library' | 'file' | 'url'
-export type PomodoroMode = 'pomodoro' | 'break' | 'longbreak'
-export type SearchEngines =
-    | 'default'
-    | 'google'
-    | 'ddg'
-    | 'startpage'
-    | 'qwant'
-    | 'yahoo'
-    | 'bing'
-    | 'brave'
-    | 'ecosia'
-    | 'lilo'
-    | 'baidu'
-    | 'custom'
-export type WeatherConditions =
-    | 'clearsky'
-    | 'fewclouds'
-    | 'brokenclouds'
-    | 'overcastclouds'
-    | 'sunnyrain'
-    | 'lightrain'
-    | 'rain'
-    | 'thunderstorm'
-    | 'snow'
-    | 'mist'
 
 export interface BackgroundImage {
     format: 'image'
@@ -95,11 +68,6 @@ export interface LinkFolder {
     folder: true
     order: number
     title: string
-}
-
-export interface Quote {
-    author: string
-    content: string
 }
 
 export interface SimpleWeather {

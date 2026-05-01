@@ -207,21 +207,3 @@ dialog#contextmenu #background-actions button:disabled {
         transform: rotate(360deg);
     }
 }
-
-#pomodoro-info {
-    display: none;
-    flex-direction: column;
-    opacity: 0.8;
-    font-style: italic;
-    font-size: 0.75em;
-    text-align: left;
-}
-
-#pomodoro-info > div {
-    padding: 1px 8px;
-}
-
-dialog#contextmenu #pomodoro-info hr,
-#pomodoro-info.on {
-    display: flex;
-}

@@ -102,18 +102,6 @@
         display: none;
     }
 
-    #i_city {
-        width: 100%;
-    }
-
-    #f_location {
-        width: 155px;
-    }
-
-    #location_options.shown {
-        max-height: 100px;
-    }
-
     #pagewidth,
     #grid-layout-wrapper {
         display: none;
@@ -160,40 +148,12 @@
         position: fixed;
     }
 
-    #sb-suggestions,
-    #searchbar {
-        font-size: 1.7em;
-        box-sizing: border-box;
-    }
-
-    #sb-buttons {
-        font-size: 1.6em;
-    }
-
-    #sb-buttons button {
-        padding: 0 1em;
-    }
-
-    /* #notes_container #pocket-editor {
-    	line-height: 1.7em;
-    } */
-
-    #notes_container #pocket-editor input[type='checkbox'] {
-        width: calc(var(--font-size) * 1.5);
-        height: calc(var(--font-size) * 1.5);
-    }
-
     #link-mini .link-title.add-group {
         visibility: visible;
         max-width: 3em;
         padding-right: 0.5em;
         padding-left: 0.5em;
         opacity: 1;
-    }
-
-    [data-pocket-editor] [data-todo] p {
-        display: flex;
-        align-items: center;
     }
 
     aside,

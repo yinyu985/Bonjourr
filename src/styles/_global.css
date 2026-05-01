@@ -1,6 +1,5 @@
 :root {
     --app-height: 100vh;
-    --notes-width: 50em;
     --page-width: none;
     --page-gap: 0;
     --links-width: auto;
@@ -15,16 +14,12 @@
     --average-color: black;
 
     --text-shadow-alpha: 0.2;
-    --notes-background-alpha: 0.1;
-    --searchbar-background-alpha: 0.1;
     --font-family: -apple-system, system-ui, Ubuntu, Roboto, 'Open Sans', 'Segoe UI', 'Helvetica Neue';
     --monospace-font-family: Consolas, Monaco, Ubuntu Mono, monospace;
     --font-weight-clock: 200;
     --font-weight: 400;
     --font-size: 1em;
-    --pomodoro-font-size: 14px;
     --clock-size: 6em;
-    --greeting-size: 3em;
     --supporters-notif-height: -171px;
     --supporters-notif-background: 'https://images.unsplash.com/photo-1457269449834-928af64c684d?q=80&w=1074&auto=format&fit=crop';
     --red: 230, 75, 67;
@@ -162,10 +157,8 @@ body.tabbing #bookmarks li:focus-visible,
 body.tabbing #link-title div:focus-visible,
 body.tabbing #linkblocks .link:has(a:focus-visible),
 body.tabbing #linkblocks .link-folder:focus-visible,
-body.tabbing #notes_toolbar:focus-visible,
 body.tabbing input:focus-visible + .slider,
-body.tabbing #focus-toggle:focus,
-body.tabbing .pomodoro_mode:focus {
+body.tabbing #focus-toggle:focus {
     outline-width: 2px;
     outline-color: var(--color-blue);
     outline-style: dashed;

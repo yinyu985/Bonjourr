@@ -68,21 +68,6 @@ const DEFAULT_LANG = (() => {
     return 'en'
 })()
 
-export const SEARCHBAR_ENGINES = [
-    'default',
-    'google',
-    'ddg',
-    'startpage',
-    'qwant',
-    'yahoo',
-    'bing',
-    'brave',
-    'ecosia',
-    'lilo',
-    'baidu',
-    'custom',
-] as const
-
 export const SYNC_DEFAULT: Sync = {
     about: {
         browser: PLATFORM,
@@ -93,13 +78,9 @@ export const SYNC_DEFAULT: Sync = {
     dark: 'system',
     favicon: '',
     tabtitle: '',
-    greeting: '',
-    greetingsize: '3',
-    greetingsmode: 'auto',
     pagegap: 0,
     pagewidth: Number.MAX_SAFE_INTEGER,
     time: true,
-    main: false,
     dateformat: 'auto',
     quicklinks: true,
     textShadow: 0.2,
@@ -152,59 +133,6 @@ export const SYNC_DEFAULT: Sync = {
         background: '#fff2',
     },
     worldclocks: [],
-    weather: {
-        city: undefined,
-        unit: 'metric',
-        provider: '',
-        moreinfo: 'none',
-        forecast: 'auto',
-        temperature: 'actual',
-        geolocation: 'approximate',
-    },
-    greetingscustom: {
-        morning: '',
-        afternoon: '',
-        evening: '',
-        night: '',
-    },
-    notes: {
-        on: false,
-        width: 40,
-        opacity: 0.1,
-        align: 'left',
-    },
-    searchbar: {
-        on: false,
-        opacity: 0.1,
-        newtab: false,
-        suggestions: true,
-        engine: 'default',
-        request: '',
-        placeholder: '',
-    },
-    quotes: {
-        on: false,
-        author: false,
-        type: DEFAULT_LANG === 'zh-CN' ? 'hitokoto' : 'classic',
-        frequency: 'day',
-        last: undefined,
-    },
-    pomodoro: {
-        on: false,
-        mode: 'pomodoro',
-        pause: 0,
-        end: 0,
-        timeFor: {
-            pomodoro: 1500,
-            break: 300,
-            longbreak: 1200,
-        },
-        focus: false,
-        sound: true,
-        volume: 0.7,
-        alarm: 'marimba',
-        history: [],
-    },
     font: {
         family: '',
         size: '14',
@@ -220,9 +148,7 @@ export const SYNC_DEFAULT: Sync = {
 export const LOCAL_DEFAULT: Local = {
     syncType: PLATFORM === 'online' ? 'off' : 'browser',
     gistToken: '',
-    userQuoteSelection: 0,
     translations: undefined,
-    quotesCache: [],
     backgroundUrls: {},
     backgroundFiles: {},
     backgroundCollections: {},

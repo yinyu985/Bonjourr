@@ -62,7 +62,7 @@ Bonjourr strictly follows Deno's built-in formatting and linting rules.
 ## 3. Project Structure
 
 - `/src/scripts/`: Main application logic.
-  - `features/`: Modular components (clock, weather, backgrounds, etc.).
+  - `features/`: Modular components (clock, backgrounds, links, fonts, etc.).
   - `shared/`: Utility functions used across features.
   - `utils/`: Low-level helpers (translations, permissions, etc.).
   - `services/`: Background services and storage management.
@@ -172,7 +172,7 @@ in a specific order.
 2. Interface styles (global layout, backgrounds, settings display)
 3. Settings menu styles (global settings, inputs, dropdowns)
 4. Components (reusable dialog boxes, forms)
-5. Features (time, searchbar, notes, links, etc.)
+5. Features (time, links, fonts, custom CSS, etc.)
 6. `_responsive.css` - Must be imported last (responsive breakpoints)
 
 ### File Structure Convention

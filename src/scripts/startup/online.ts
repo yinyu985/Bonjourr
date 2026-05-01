@@ -53,7 +53,7 @@ export function onlineAndMobile(): void {
         const local = await storage.local.get()
         const { backgroundLastChange } = local
 
-        if (!sync.clock || !sync.weather) {
+        if (!sync.clock) {
             return
         }
 

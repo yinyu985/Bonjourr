@@ -22,15 +22,16 @@ Deno.test({
 })
 
 Deno.test('Current version small import', () => {
-    const config = filterData('import', defaults, {
+    const imported = {
         time: false,
         main: true,
         lang: 'en',
-    })
+    } as Record<string, unknown>
+    const config = filterData('import', defaults, imported)
 
     assert(defaults.time !== config.time)
-    assert(defaults.main !== config.main)
     assert(defaults.lang === config.lang)
+    assert('main' in config === false)
 })
 
 Deno.test('1.10.0', async (t) => {
@@ -84,13 +85,17 @@ Deno.test('1.10.0', async (t) => {
         assert(old.background_blur === res.backgrounds.blur)
     })
 
-    await t.step('Searchbar', async (t) => {
-        await t.step('Engine', () => {
-            assert(old.searchbar_engine === res.searchbar.engine)
+    await t.step('Removed widgets', async (t) => {
+        await t.step('Searchbar removed', () => {
+            assert('searchbar' in res === false)
         })
 
-        await t.step('New tab', () => {
-            assert(old.searchbar_newtab === res.searchbar.newtab)
+        await t.step('Weather removed', () => {
+            assert('weather' in res === false)
+        })
+
+        await t.step('Greeting removed', () => {
+            assert('greeting' in res === false)
         })
     })
 
@@ -137,6 +142,14 @@ Deno.test('20.4.2', async (t) => {
             }
         })
     })
+
+    await t.step('Removed widgets', () => {
+        assert('main' in res === false)
+        assert('weather' in res === false)
+        assert('notes' in res === false)
+        assert('searchbar' in res === false)
+        assert('quotes' in res === false)
+    })
 })
 
 Deno.test('20.4.2-default', async (t) => {
@@ -146,5 +159,13 @@ Deno.test('20.4.2-default', async (t) => {
 
     await t.step('Keep default link groups', () => {
         assert(JSON.stringify(res.linkgroups.groups) === `["default"]`)
+    })
+
+    await t.step('Removed widgets', () => {
+        assert('main' in res === false)
+        assert('weather' in res === false)
+        assert('notes' in res === false)
+        assert('searchbar' in res === false)
+        assert('quotes' in res === false)
     })
 })

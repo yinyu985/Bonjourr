@@ -66,12 +66,22 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
     delete newcurrent.background_type
     delete newcurrent.move
     delete newcurrent.usdate
-    //@ts-ignore -> Property '...' does not exist on type '...'
-    delete newcurrent?.weather?.location
-    //@ts-ignore -> Property '...' does not exist on type '...'
-    delete newcurrent?.weather?.lastState
-    //@ts-ignore -> Property '...' does not exist on type '...'
-    delete newcurrent?.weather?.lastCall
+    const obsoleteKeys = [
+        'main',
+        'greeting',
+        'greetingsize',
+        'greetingsmode',
+        'greetingscustom',
+        'notes',
+        'weather',
+        'searchbar',
+        'quotes',
+        'pomodoro',
+    ]
+
+    for (const key of obsoleteKeys) {
+        delete (newcurrent as Record<string, unknown>)[key]
+    }
 
     return newcurrent
 }

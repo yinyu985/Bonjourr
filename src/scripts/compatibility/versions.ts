@@ -7,10 +7,6 @@ export function filterByVersion(data: Partial<Sync>, version: SemVer): Partial<S
 
     if (major < 22) {
         data = filter.newLinkIcons(data)
-
-        if (minor < 1) {
-            data = filter.addAlarmsToPomodoro(data)
-        }
     }
 
     if (major <= 21) {
@@ -34,15 +30,12 @@ export function filterByVersion(data: Partial<Sync>, version: SemVer): Partial<S
     if (major < 19) {
         data = filter.newFontSystem(data)
         data = filter.newReviewData(data)
-        data = filter.quotesJsonToCsv(data)
         data = filter.linksDataMigration(data)
     }
 
     if (major < 18) {
-        data = filter.booleanSearchbarToObject(data)
         data = filter.linkListToFlatObjects(data)
         data = filter.hideArrayToObject(data)
-        data = filter.improvedWeather(data)
         data = filter.clockDateFormat(data)
     }
 

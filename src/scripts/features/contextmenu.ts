@@ -12,10 +12,7 @@ import type { Backgrounds } from '../../types/sync.ts'
 interface EventLocation {
     widgets: {
         link: boolean
-        main: boolean
         time: boolean
-        quotes: boolean
-        pomodoro: boolean
     }
     interface: boolean
 }
@@ -26,21 +23,9 @@ interface Section {
 }
 
 const sectionMatching: Record<string, Section> = {
-    main: {
-        section: '#main',
-        scrollto: 'main_title',
-    },
     time: {
         section: '#time',
         scrollto: 'time_title',
-    },
-    quotes: {
-        section: '#quotes_container',
-        scrollto: 'quotes_title',
-    },
-    pomodoro: {
-        section: '#pomodoro_container',
-        scrollto: 'pomodoro_title',
     },
 }
 
@@ -61,10 +46,7 @@ export function openContextMenu(event: Event): void {
     eventLocation = {
         widgets: {
             link: !!target.closest('#linkblocks'),
-            main: !!target.closest(sectionMatching.main.section),
             time: !!target.closest(sectionMatching.time.section),
-            quotes: !!target.closest(sectionMatching.quotes.section),
-            pomodoro: !!target.closest(sectionMatching.pomodoro.section),
         },
         interface: target.matches('main#interface'),
     }
@@ -81,7 +63,7 @@ export function openContextMenu(event: Event): void {
     }
 
     // hides/resets content from previous context menu
-    for (const node of domdialog.querySelectorAll('label, button, hr, #background-actions, input, #pomodoro-info')) {
+    for (const node of domdialog.querySelectorAll('label, button, hr, #background-actions, input')) {
         node.classList.remove('on')
 
         if (node instanceof HTMLInputElement) {
@@ -103,10 +85,6 @@ export function openContextMenu(event: Event): void {
     if (eventLocation.widgets.link) {
         populateDialogWithEditLink(event, domdialog, target)
         return
-    }
-
-    if (eventLocation.widgets.pomodoro) {
-        showTheseElements('#pomodoro-info')
     }
 
     if (clickedOnWidgets) {
@@ -247,9 +225,7 @@ function showTheseElements(query: string): void {
 }
 
 function hasVisibleContent(): boolean {
-    const visible = domdialog.querySelectorAll<HTMLElement>(
-        'label.on, button.on, hr.on, #background-actions.on, #pomodoro-info.on',
-    )
+    const visible = domdialog.querySelectorAll<HTMLElement>('label.on, button.on, hr.on, #background-actions.on')
 
     return Array.from(visible).some((element) => element.getClientRects().length > 0)
 }

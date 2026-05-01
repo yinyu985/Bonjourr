@@ -1,31 +1,19 @@
 import { isDateFormat, isFace, isHands, isShape } from './helpers.ts'
 import { hexColorFromSplitRange } from '../../shared/dom.ts'
 import { displayInterface } from '../../shared/display.ts'
-import { displayGreetings } from './greetings.ts'
 import { eventDebounce } from '../../utils/debounce.ts'
-import { stringMaxSize } from '../../shared/generic.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
 import { getLang } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 import { startClock } from './clock.ts'
 
 import type { AnalogStyle, Sync } from '../../../types/sync.ts'
-import type { Greetings } from './greetings.ts'
 
 interface ClockUpdate {
     ampm?: boolean
     analog?: boolean
     seconds?: boolean
     dateformat?: string
-    greeting?: string
-    greetingsize?: string
-    greetingsmode?: string
-    greetingscustom?: {
-        morning?: string
-        afternoon?: string
-        evening?: string
-        night?: string
-    }
     shape?: string
     face?: string
     hands?: string
@@ -52,15 +40,9 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
 
     const clock = init?.clock ?? { ...SYNC_DEFAULT.clock }
     const dateformat = init?.dateformat || 'eu'
-    const greetings: Greetings = {
-        name: init?.greeting || '',
-        mode: init?.greetingsmode || 'auto',
-        custom: init?.greetingscustom,
-    }
 
     try {
-        startClock({ clock, greetings, dateformat })
-        greetingSize(init?.greetingsize)
+        startClock({ clock, dateformat })
         analogStyle(init?.analogstyle)
         clockSize(clock.size)
         displayInterface('clock')
@@ -83,50 +65,6 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
     if (isDateFormat(update.dateformat)) {
         data.dateformat = update.dateformat
         storage.sync.set({ dateformat: update.dateformat })
-    }
-
-    if (update.greeting !== undefined) {
-        data.greeting = stringMaxSize(update.greeting, 64)
-
-        displayGreetings({
-            mode: data.greetingsmode,
-            name: data.greeting,
-            custom: data.greetingscustom,
-        })
-
-        storage.sync.set({ greeting: data.greeting })
-    }
-
-    if (update.greetingsize !== undefined) {
-        greetingSize(update.greetingsize)
-        storage.sync.set({ greetingsize: update.greetingsize })
-    }
-
-    if (update.greetingsmode !== undefined) {
-        const domoptions = document.getElementById('greetingscustom_options')
-        const mode = update.greetingsmode as 'auto' | 'custom'
-
-        data.greetingsmode = mode
-        storage.sync.set({ greetingsmode: mode })
-
-        domoptions?.classList.toggle('shown', mode === 'custom')
-        displayGreetings({ mode, name: data.greeting, custom: data.greetingscustom })
-    }
-
-    if (update.greetingscustom !== undefined) {
-        const newCustoms = {
-            ...data.greetingscustom,
-            ...update.greetingscustom,
-        }
-
-        data.greetingscustom = newCustoms
-        storage.sync.set({ greetingscustom: newCustoms })
-
-        displayGreetings({
-            mode: data.greetingsmode,
-            name: data.greeting,
-            custom: newCustoms,
-        })
     }
 
     if (isHands(update.hands)) {
@@ -176,11 +114,6 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
     startClock({
         clock: data.clock,
         dateformat: data.dateformat,
-        greetings: {
-            name: data.greeting,
-            mode: data.greetingsmode,
-            custom: data.greetingscustom,
-        },
     })
 
     analogStyle(data.analogstyle)
@@ -235,8 +168,4 @@ function analogStyle(style: AnalogStyle = structuredClone(defaultAnalogStyle)): 
 
 function clockSize(size = 1): void {
     document.documentElement.style.setProperty('--clock-size', `${size.toString()}rem`)
-}
-
-function greetingSize(size = '3'): void {
-    document.documentElement.style.setProperty('--greeting-size', `${size}em`)
 }

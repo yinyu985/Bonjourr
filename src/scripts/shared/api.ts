@@ -15,14 +15,6 @@ export async function apiWebSocket(path: string): Promise<WebSocket | undefined>
     }
 }
 
-export async function weatherFetch(query: string): Promise<Response | undefined> {
-    try {
-        return await fetch(`https://weather.bonjourr.fr${query}`)
-    } catch (_error) {
-        // ...
-    }
-}
-
 export async function apiFetch(path: string): Promise<Response | undefined> {
     try {
         return await fetch(`https://services.bonjourr.fr${path}`)

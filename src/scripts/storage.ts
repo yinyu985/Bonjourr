@@ -455,8 +455,6 @@ export function isStorageDefault(data: Sync): boolean {
     const current = structuredClone(data)
     current.review = SYNC_DEFAULT.review
     current.showall = SYNC_DEFAULT.showall
-    current.weather.city = SYNC_DEFAULT.weather.city
-    current.quotes.last = SYNC_DEFAULT.quotes.last
 
     return deepEqual(current, SYNC_DEFAULT)
 }

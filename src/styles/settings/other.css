@@ -17,14 +17,6 @@
 
 /*  Links  */
 
-#i_city {
-    text-transform: capitalize;
-}
-
-#quotes_userlist .wrapper {
-    flex-wrap: wrap;
-}
-
 #i_customfont {
     text-transform: capitalize;
 }

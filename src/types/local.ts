@@ -1,4 +1,4 @@
-import type { Background, Quote, SimpleWeather } from './shared.ts'
+import type { Background, SimpleWeather } from './shared.ts'
 import type { Sync } from './sync.ts'
 
 export type BackgroundUrlState = 'NONE' | 'LOADING' | 'OK' | 'NOT_URL' | 'CANT_REACH' | 'NOT_MEDIA'
@@ -7,8 +7,6 @@ export type SyncType = 'browser' | 'gist' | 'url' | 'off'
 export interface Local {
     fonts?: FontListItem[]
     fontface?: string
-    userQuoteSelection: number
-    quotesCache: Quote[]
     translations?: Translations
     lastWeather?: LastWeather
     operaExplained?: true

@@ -89,12 +89,6 @@ async function startup(): Promise<void> {
 
     document.getElementById('time')?.classList.remove('hidden')
     document.getElementById('linkblocks')?.classList.remove('hidden')
-    document.getElementById('main')?.classList.add('hidden')
-    document.getElementById('notes_container')?.classList.add('hidden')
-    document.getElementById('sb_container')?.classList.add('hidden')
-    document.getElementById('pomodoro_container')?.classList.add('hidden')
-    document.getElementById('quotes_container')?.classList.add('hidden')
-
     onInterfaceDisplay(() => {
         document.body.classList.remove('init')
 
@@ -115,7 +109,6 @@ function minimalHomepageSync(sync: Sync): Sync {
     return {
         ...sync,
         time: true,
-        main: false,
         quicklinks: true,
         linkgroups: {
             ...sync.linkgroups,
@@ -123,28 +116,5 @@ function minimalHomepageSync(sync: Sync): Sync {
         },
         pagegap: 0,
         pagewidth: Number.MAX_SAFE_INTEGER,
-        hide: {
-            ...sync.hide,
-            greetings: true,
-            weatherdesc: true,
-            weathericon: true,
-        },
-        notes: {
-            ...(SYNC_DEFAULT.notes as NonNullable<Sync['notes']>),
-            ...sync.notes,
-            on: false,
-        },
-        searchbar: {
-            ...sync.searchbar,
-            on: false,
-        },
-        quotes: {
-            ...sync.quotes,
-            on: false,
-        },
-        pomodoro: {
-            ...sync.pomodoro,
-            on: false,
-        },
     }
 }

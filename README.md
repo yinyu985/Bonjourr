@@ -4,18 +4,14 @@
   </a>
 </h1>
 
-Bonjourr is a home page for your Internet browser inspired by the looks of iOS.<br>
-While it aims to look and feel minimal, it still brings you lots of options to customise it to your liking. Here's some features:
+This fork is a minimalist personal browser start page inspired by the looks of iOS.<br>
+It keeps the parts that matter for a clean daily homepage and removes the extra widgets from the upstream project. Current features:
 
 - 🍏 iOS design language
 - 🏞 Dynamic 4K backgrounds that change according to the mood of the day
 - ⚡️ Fast & lightweight!
-- 🔎 Search bar (compatible with all search engines)
 - 🕰 Analog clock with multiple clock faces
-- 🌤 Weather
 - 🔗 Quick Links
-- ⏱️ Pomodoro
-- 👋 Greets you by your name
 - 🌘 Dark mode
 - 🥖 Emoji as favicon
 - 🧑‍💻 Custom CSS styling
@@ -51,7 +47,6 @@ Here's a list of things you can do to help us out:
 - Create new [CSS snippets](https://bonjourr.fr/docs/styles) or [custom profiles](https://bonjourr.fr/docs/profiles)
 - [Translate](https://bonjourr.fr/docs/contribute/#translate) to a new language, or complete an existing one
 - Contribute to [our website](https://github.com/morceaudebois/bonjourr.fr)
-- Add new quotes (especially non english/french) to [the API](https://github.com/victrme/i18n-quotes)
 - Suggest new [Unsplash photos](https://bonjourr.fr/docs/overview/#backgrounds)
 
 <br>
@@ -84,7 +79,7 @@ If you feel like we've earned it and you want to support independant open source
 ## 🔧 Built with
 
 - No frameworks, plain Typescript & CSS
-- Only small dependencies, [more on npmgraph](https://npmgraph.js.org/?q=https://raw.githubusercontent.com/victrme/Bonjourr/master/package.json#color=outdated)
+- Deno for tasks, checks, and local development
 - Our tiny hands 🙌
 
 <br>
@@ -136,17 +131,11 @@ If you wish to self-host the APIs used by Bonjourr, you can do so by following t
 ### Run locally
 
 - Install Deno runtime: https://docs.deno.com/runtime/
-- Optionally add Deno extension for [VSCode](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) or [Zed](https://zed.dev/docs/languages/deno)
-- Or a Prettier extension for [VSCode](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 - Clone this repository
-- Install dependencies
-- Build Bonjourr
+- Run one of the development tasks below
 
 ```bash
 # In root directory
-deno install
-
-# These commands watch changes for each platforms
 deno task chrome
 deno task edge
 deno task firefox

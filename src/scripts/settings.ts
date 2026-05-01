@@ -8,15 +8,10 @@ import { interfacePopup } from './features/popup.ts'
 import { hideElements } from './features/hide.ts'
 import { linksImport } from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
-import { searchbar } from './features/searchbar.ts'
-import { weather } from './features/weather/index.ts'
-import { quotes } from './features/quotes.ts'
-import { notes } from './features/notes.ts'
 import { clock } from './features/clock/index.ts'
-import { pomodoro, setModeGlider } from './features/pomodoro.ts'
 import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
-import { colorInput, fadeOut, inputThrottle, turnRefreshButton, webkitRangeTrackColor } from './shared/dom.ts'
+import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
 import { initCustomSelects } from './shared/custom-select.ts'
 import { BROWSER, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
@@ -171,7 +166,6 @@ function settingsToggle(event?: CustomEvent): void {
 
 function initOptionsValues(data: Sync, local: Local): void {
     const domsettings = document.getElementById('settings') as HTMLElement
-    const userQuotes = data.quotes?.userlist?.[0] ? data.quotes?.userlist : undefined
 
     setInput('i_blur', data.backgrounds.blur ?? 15)
     setInput('i_bright', data.backgrounds.bright ?? 0.8)
@@ -190,49 +184,17 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_pagewidth', data.pagewidth || 1600)
     setInput('i_pagegap', data.pagegap ?? 1)
     setInput('i_dateformat', data.dateformat || 'eu')
-    setInput('i_greeting', data.greeting ?? '')
-    setInput('i_greetmorning', data.greetingscustom?.morning ?? '')
-    setInput('i_greetafternoon', data.greetingscustom?.afternoon ?? '')
-    setInput('i_greetevening', data.greetingscustom?.evening ?? '')
-    setInput('i_greetnight', data.greetingscustom?.night ?? '')
-    setInput('i_noteswidth', data.notes?.width || 50)
-    setInput('i_notes-opacity', opacityFromHex(data.notes?.background ?? '#fff2'))
-    setInput('i_notesalign', data.notes?.align || 'left')
-    setInput('i_sbengine', data.searchbar?.engine || 'google')
-    setInput('i_sbplaceholder', data.searchbar?.placeholder || '')
-    setInput('i_sb-opacity', opacityFromHex(data.searchbar?.background ?? '#fff2'))
-    setInput('i_sbwidth', data.searchbar?.width ?? 30)
-    setInput('i_sbrequest', data.searchbar?.request || '')
-    setInput('i_qtfreq', data.quotes?.frequency || 'day')
-    setInput('i_qttype', data.quotes?.type || 'classic')
-    setInput('i_qtlist', userQuotes ?? '')
-    setInput('i_qturl', data.quotes?.url ?? '')
     setInput('i_clockface', data.analogstyle?.face || 'none')
     setInput('i_clockhands', data.analogstyle?.hands || 'none')
     setInput('i_clockshape', data.analogstyle?.shape || 'round')
     setInput('i_analog-border-opacity', opacityFromHex(data.analogstyle?.border ?? '#ffff'))
     setInput('i_analog-background-opacity', opacityFromHex(data.analogstyle?.background ?? '#fff2'))
     setInput('i_clocksize', data.clock?.size ?? 1)
-    setInput('i_greetsize', data.greetingsize ?? 3)
-    setInput('i_greetmode', data.greetingsmode ?? 'auto')
-    setInput('i_geol', data.weather?.geolocation || 'approximate')
-    setInput('i_units', data.weather?.unit ?? 'metric')
-    setInput('i_forecast', data.weather?.forecast || 'auto')
-    setInput('i_temp', data.weather?.temperature || 'actual')
-    setInput('i_moreinfo', data.weather?.moreinfo || 'none')
-    setInput('i_provider', data.weather?.provider ?? '')
     setInput('i_weight', data.font?.weight || '300')
     setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
     setInput('i_announce', data.announcements ?? 'major')
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'browser'))
-    setInput('i_pmdr_volume', data.pomodoro?.volume ?? 0.7)
-    setInput('i_pmdr_alarms', data.pomodoro?.alarm ?? 'marimba')
-    setInput('i_pmdr_break', data.pomodoro?.timeFor.break / 60)
-    setInput('i_pmdr_break', data.pomodoro?.timeFor.break / 60)
-    setInput('i_pmdr_pomodoro', data.pomodoro?.timeFor.pomodoro / 60)
-    setInput('i_pmdr_longbreak', data.pomodoro?.timeFor.longbreak / 60)
 
-    setFormInput('i_city', local.lastWeather?.approximation?.city ?? 'Paris', data.weather.city)
     setFormInput('i_customfont', systemfont.placeholder, data.font?.family)
     setFormInput('i_gistsync', 'github_pat_XX000X00X', local?.gistToken)
     setFormInput('i_urlsync', 'https://pastebin.com/raw/y7XhhiDs', local?.distantUrl)
@@ -245,24 +207,12 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_time', data.time)
     setCheckbox('i_analog', data.clock?.analog ?? false)
     setCheckbox('i_seconds', data.clock?.seconds ?? false)
-    setCheckbox('i_main', data.main)
-    setCheckbox('i_greethide', !data.hide?.greetings)
-    setCheckbox('i_notes', data.notes?.on ?? false)
-    setCheckbox('i_sb', data.searchbar?.on ?? false)
-    setCheckbox('i_quotes', data.quotes?.on ?? false)
-    setCheckbox('i_pomodoro', data.pomodoro?.on ?? false)
-    setCheckbox('i_pmdr_sound', data.pomodoro?.sound ?? true)
     setCheckbox('i_ampm', data.clock?.ampm ?? false)
-    setCheckbox('i_sbsuggestions', data.searchbar?.suggestions ?? true)
-    setCheckbox('i_sbnewtab', data.searchbar?.newtab ?? false)
-    setCheckbox('i_qtauthor', data.quotes?.author ?? false)
     setCheckbox('i_supporters_notif', data.supporters?.enabled ?? true)
 
     colorInput('solid-background', data.backgrounds.color)
     colorInput('texture-color', data.backgrounds.texture.color ?? '#ffffff')
 
-    paramId('i_notes-shade')?.classList.toggle('on', (data.notes?.background ?? '#fff').includes('#000'))
-    paramId('i_sb-shade')?.classList.toggle('on', (data.searchbar?.background ?? '#fff').includes('#000'))
     paramId('i_analog-border-shade')?.classList.toggle('on', (data.analogstyle?.border ?? '#fff').includes('#000'))
     paramId('i_analog-background-shade')?.classList.toggle(
         'on',
@@ -295,27 +245,14 @@ function initOptionsValues(data: Sync, local: Local): void {
     // Activate feature options
     paramId('time_options')?.classList.toggle('shown', data.time)
     paramId('analog_options')?.classList.toggle('shown', data.clock.analog && data.showall)
-    paramId('greetings_options')?.classList.toggle('shown', !data.hide?.greetings)
-    paramId('greetingscustom_options')?.classList.toggle('shown', data.greetingsmode === 'custom')
     paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
-    paramId('main_options')?.classList.toggle('shown', data.main)
-    paramId('weather_provider')?.classList.toggle('shown', data.weather?.moreinfo === 'custom')
     paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
     paramId('linkgroups_options')?.classList.toggle('shown', data.linkgroups?.on ?? false)
-    paramId('pomodoro_options')?.classList.toggle('shown', data.pomodoro.on)
-    paramId('notes_options')?.classList.toggle('shown', data.notes?.on)
-    paramId('searchbar_options')?.classList.toggle('shown', data.searchbar?.on)
-    paramId('searchbar_request')?.classList.toggle('shown', data.searchbar?.engine === 'custom')
-    paramId('quotes_options')?.classList.toggle('shown', data.quotes?.on)
 
-    // Time & main hide elems
-    const disableWeather = data.hide?.weatherdesc && data.hide?.weathericon
-    const descOnly = data.hide?.weatherdesc
-    const iconOnly = data.hide?.weathericon
+    // Time hide elems
     const dateOnly = data.hide?.clock
     const clockOnly = data.hide?.date
     let hideTime = 'all'
-    let hideWeather = 'all'
 
     if (dateOnly) {
         hideTime = 'date'
@@ -323,21 +260,7 @@ function initOptionsValues(data: Sync, local: Local): void {
         hideTime = 'clock'
     }
 
-    if (disableWeather) {
-        hideWeather = 'disabled'
-    } else if (descOnly) {
-        hideWeather = 'desc'
-    } else if (iconOnly) {
-        hideWeather = 'icon'
-    }
-
     setInput('i_timehide', hideTime)
-    setInput('i_weatherhide', hideWeather)
-
-    // Quotes option display
-    paramId('quotes_options')?.classList.toggle('shown', data.quotes?.on)
-    paramId('quotes_userlist')?.classList.toggle('shown', data.quotes?.type === 'user')
-    paramId('quotes_url')?.classList.toggle('shown', data.quotes?.type === 'url')
 
     const settingsForms = document.querySelectorAll<HTMLFormElement>('#settings form')
 
@@ -594,243 +517,6 @@ function initOptionsEvents(): void {
         hideElements({ clock: this.value === 'clock', date: this.value === 'date' }, { isEvent: true })
     })
 
-    // Weather
-
-    onclickdown(paramId('i_main'), (_, target) => {
-        toggleWidget('main', target.checked)
-    })
-
-    paramId('i_geol').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { geol: this?.value })
-    })
-
-    paramId('i_city').addEventListener('input', function (this: HTMLInputElement, event: Event): void {
-        weather(undefined, { suggestions: event })
-    })
-
-    paramId('f_location').addEventListener('submit', function (this, event: SubmitEvent): void {
-        weather(undefined, { city: true })
-        event.preventDefault()
-    })
-
-    paramId('i_units').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { units: this.value })
-    })
-
-    paramId('i_forecast').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { forecast: this.value })
-    })
-
-    paramId('i_temp').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { temp: this.value })
-    })
-
-    paramId('i_moreinfo').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { moreinfo: this.value })
-    })
-
-    paramId('i_provider').addEventListener('change', function (this: HTMLInputElement): void {
-        weather(undefined, { provider: this.value })
-        this.blur()
-    })
-
-    paramId('i_weatherhide').addEventListener('change', function (this: HTMLInputElement): void {
-        const weatherdesc = this.value === 'disabled' || this.value === 'desc'
-        const weathericon = this.value === 'disabled' || this.value === 'icon'
-        hideElements({ weatherdesc, weathericon }, { isEvent: true })
-        weather(undefined, { unhide: true })
-    })
-
-    onclickdown(paramId('i_greethide'), (_, target) => {
-        document.getElementById('greetings_options')?.classList.toggle('shown', target.checked)
-        hideElements({ greetings: !target.checked }, { isEvent: true })
-    })
-
-    // Greetings
-
-    paramId('i_greeting').addEventListener('input', function (): void {
-        clock(undefined, { greeting: this.value })
-    })
-
-    paramId('i_greeting').addEventListener('change', () => {
-        paramId('i_greeting').blur()
-    })
-
-    paramId('i_greetsize').addEventListener('input', function (this: HTMLInputElement): void {
-        clock(undefined, { greetingsize: this.value })
-    })
-
-    paramId('i_greetmode').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { greetingsmode: this.value })
-    })
-
-    paramId(`i_greetmorning`).addEventListener('input', function (): void {
-        clock(undefined, { greetingscustom: { morning: this.value } })
-    })
-    paramId(`i_greetafternoon`).addEventListener('input', function (): void {
-        clock(undefined, { greetingscustom: { afternoon: this.value } })
-    })
-    paramId(`i_greetevening`).addEventListener('input', function (): void {
-        clock(undefined, { greetingscustom: { evening: this.value } })
-    })
-    paramId(`i_greetnight`).addEventListener('input', function (): void {
-        clock(undefined, { greetingscustom: { night: this.value } })
-    })
-
-    paramId(`i_greetmorning`).addEventListener('change', () => {
-        paramId(`i_greetmorning`).blur()
-    })
-    paramId(`i_greetafternoon`).addEventListener('change', () => {
-        paramId(`i_greetafternoon`).blur()
-    })
-    paramId(`i_greetevening`).addEventListener('change', () => {
-        paramId(`i_greetevening`).blur()
-    })
-    paramId(`i_greetnight`).addEventListener('change', () => {
-        paramId(`i_greetnight`).blur()
-    })
-
-    // Notes
-
-    onclickdown(paramId('i_notes'), (_, target) => {
-        toggleWidget('notes', target.checked)
-    })
-
-    paramId('i_notesalign').addEventListener('change', function (this: HTMLInputElement): void {
-        notes(undefined, { align: this.value })
-    })
-
-    paramId('i_noteswidth').addEventListener('input', function (this: HTMLInputElement): void {
-        notes(undefined, { width: this.value })
-    })
-
-    paramId('i_notes-opacity').addEventListener('input', function (this: HTMLInputElement): void {
-        notes(undefined, { background: true })
-    })
-
-    onclickdown(paramId('i_notes-shade'), () => {
-        notes(undefined, { background: true })
-    })
-
-    // Searchbar
-
-    onclickdown(paramId('i_sb'), (_, target) => {
-        toggleWidget('searchbar', target.checked)
-        getPermissions('search')
-    })
-
-    paramId('i_sbengine').addEventListener('change', function (this: HTMLInputElement): void {
-        searchbar(undefined, { engine: this.value })
-    })
-
-    paramId('i_sb-opacity').addEventListener('input', function (this: HTMLInputElement): void {
-        searchbar(undefined, { background: true })
-    })
-
-    paramId('i_sb-shade').addEventListener('click', () => {
-        searchbar(undefined, { background: true })
-    })
-
-    paramId('i_sbwidth').addEventListener('input', function (this: HTMLInputElement): void {
-        searchbar(undefined, { width: this.value })
-    })
-
-    paramId('f_sbrequest').addEventListener('submit', function (this, event: SubmitEvent): void {
-        searchbar(undefined, { request: true })
-        event.preventDefault()
-    })
-
-    onclickdown(paramId('i_sbnewtab'), (_, target) => {
-        searchbar(undefined, { newtab: target.checked })
-    })
-
-    onclickdown(paramId('i_sbsuggestions'), (_, target) => {
-        searchbar(undefined, { suggestions: target.checked })
-    })
-
-    paramId('i_sbplaceholder').addEventListener('keyup', function (): void {
-        searchbar(undefined, { placeholder: this.value })
-    })
-
-    paramId('i_sbplaceholder').addEventListener('change', () => {
-        paramId('i_sbplaceholder').blur()
-    })
-
-    // Quotes
-
-    onclickdown(paramId('i_quotes'), (_, target) => {
-        toggleWidget('quotes', target.checked)
-    })
-
-    paramId('i_qtfreq').addEventListener('change', function (): void {
-        quotes(undefined, { frequency: this.value })
-    })
-
-    paramId('i_qttype').addEventListener('change', function (): void {
-        quotes(undefined, { type: this.value })
-    })
-
-    onclickdown(paramId('i_qtrefresh'), (event, target) => {
-        inputThrottle(target)
-        turnRefreshButton(event, true)
-        quotes(undefined, { refresh: true })
-    })
-
-    onclickdown(paramId('i_qtauthor'), (_, target) => {
-        quotes(undefined, { author: target.checked })
-    })
-
-    paramId('i_qtlist').addEventListener('change', function (): void {
-        quotes(undefined, { userlist: this.value })
-    })
-
-    paramId('f_qturl').addEventListener('submit', function (this, event: SubmitEvent): void {
-        event.preventDefault()
-
-        quotes(undefined, { url: paramId('i_qturl').value })
-    })
-
-    // Pomodoro
-
-    onclickdown(paramId('i_pomodoro'), (_, target) => {
-        toggleWidget('pomodoro', target.checked)
-
-        const glider = document.querySelector('#pomodoro_container .glider') as HTMLDivElement
-        if (glider.style.width === '0px') {
-            setTimeout(() => {
-                setModeGlider()
-            }, 333)
-        }
-    })
-
-    onclickdown(paramId('i_pmdr_sound'), (_, target) => {
-        pomodoro(undefined, { sound: target.checked })
-    })
-
-    onclickdown(paramId('i_pmdr_listen'), () => {
-        pomodoro(undefined, { listen: true })
-    })
-
-    paramId('i_pmdr_alarms').addEventListener('change', function (): void {
-        pomodoro(undefined, { alarm: this.value })
-    })
-
-    paramId('i_pmdr_volume').addEventListener('input', function (): void {
-        pomodoro(undefined, { volume: Number(this.value) })
-    })
-
-    paramId('i_pmdr_pomodoro').addEventListener('input', function (): void {
-        pomodoro(undefined, { timeFor: { pomodoro: Number(this.value) } })
-    })
-
-    paramId('i_pmdr_break').addEventListener('input', function (): void {
-        pomodoro(undefined, { timeFor: { break: Number(this.value) } })
-    })
-
-    paramId('i_pmdr_longbreak').addEventListener('input', function (): void {
-        pomodoro(undefined, { timeFor: { longbreak: Number(this.value) } })
-    })
-
     // Custom fonts
 
     paramId('i_customfont').addEventListener('pointerenter', () => {
@@ -1012,17 +698,9 @@ function initOptionsEvents(): void {
 function translatePlaceholders(): void {
     const cases = [
         ['i_title', 'Name'],
-        ['i_greeting', 'Name'],
-        ['i_greetmorning', 'Hello, $name!'],
-        ['i_greetafternoon', 'Good afternoon'],
-        ['i_greetevening', 'Good evening'],
-        ['i_greetnight', 'Good night'],
         ['i_tabtitle', 'New tab'],
-        ['i_sbrequest', 'Search query: %s'],
-        ['i_sbplaceholder', 'Search'],
         ['css-editor-textarea', 'Type in your custom CSS'],
         ['i_importtext', 'or paste as text'],
-        ['i_qtlist', 'Author, Your quote.\nAuthor, Your second quote.'],
     ]
 
     for (const [id, text] of cases) {
@@ -1043,31 +721,20 @@ async function switchLangs(nextLang: Langs): Promise<void> {
     await toggleTraduction(nextLang)
 
     storage.sync.set({ lang: nextLang })
-    storage.local.remove('quotesCache')
 
     document.documentElement.setAttribute('lang', nextLang)
 
     const data = await storage.sync.get()
-    const local = await storage.local.get(['quotesCache', 'userQuoteSelection', 'lastWeather'])
-
-    if (local?.lastWeather) {
-        local.lastWeather.timestamp = 0
-        local.lastWeather.forecasted_timestamp = 0
-    }
 
     data.lang = nextLang
     clock(data)
     changeGroupTitle({ old: '', new: '' }, data)
-    weather({ sync: data, lastWeather: local.lastWeather })
-    quotes({ sync: data, local })
     tabTitle(data.tabtitle)
-    notes(data.notes)
     customFont(undefined, { lang: true })
     settingsFooter()
     translatePlaceholders()
     translateAriaLabels()
     supportersNotifications(undefined, { translate: true })
-    setModeGlider()
 }
 
 function showall(val: boolean, event: boolean): void {
@@ -1316,10 +983,6 @@ async function importSettings(imported: Partial<Sync>): Promise<void> {
             }
         }
 
-        if (imported?.searchbar?.on) {
-            getPermissions('search')
-        }
-
         data = filterData('import', data, imported)
 
         storage.sync.clear()
@@ -1409,54 +1072,6 @@ async function toggleSettingsChangesButtons(action: string): Promise<void> {
     if (action === 'blur') {
         paramId('settings-changes-options')?.classList.add('hidden')
         paramId('settings-files-options')?.classList.remove('hidden')
-    }
-}
-
-//	Helpers
-
-async function toggleWidget(
-    widget: 'main' | 'notes' | 'searchbar' | 'quotes' | 'pomodoro',
-    on: boolean,
-): Promise<void> {
-    const data = await storage.sync.get()
-
-    if (widget === 'main') {
-        data.main = on
-        document.getElementById('main')?.classList.toggle('hidden', !on)
-
-        const local = await storage.local.get('lastWeather')
-        weather({ sync: data, lastWeather: local.lastWeather })
-        storage.sync.set({ main: on })
-        return
-    }
-
-    if (widget === 'notes' && data.notes) {
-        data.notes = { ...data.notes, on }
-        notes(data.notes)
-        storage.sync.set({ notes: data.notes })
-        return
-    }
-
-    if (widget === 'searchbar') {
-        data.searchbar = { ...data.searchbar, on }
-        searchbar(data.searchbar)
-        storage.sync.set({ searchbar: data.searchbar })
-        return
-    }
-
-    if (widget === 'quotes') {
-        data.quotes = { ...data.quotes, on }
-
-        const local = await storage.local.get(['quotesCache', 'userQuoteSelection'])
-        quotes({ sync: data, local })
-        storage.sync.set({ quotes: data.quotes })
-        return
-    }
-
-    if (widget === 'pomodoro') {
-        data.pomodoro = { ...data.pomodoro, on }
-        pomodoro(data.pomodoro)
-        storage.sync.set({ pomodoro: data.pomodoro })
     }
 }
 

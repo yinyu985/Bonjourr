@@ -27,19 +27,6 @@ aside.hidden {
     display: none;
 }
 
-#main_title,
-#main_title + .param,
-#notes_title,
-#notes_title + .param,
-#searchbar_title,
-#searchbar_title + .param,
-#quotes_title,
-#quotes_title + .param,
-#pomodoro_title,
-#pomodoro_title + .param {
-    display: none;
-}
-
 aside.shown {
     -webkit-transform: translateX(-100%);
     transform: translateX(-100%);
@@ -86,11 +73,6 @@ aside.change-theme {
 aside.change-theme .as_fonts,
 aside.change-theme #cssEditor,
 aside.change-theme #time_options,
-aside.change-theme #main_options,
-aside.change-theme #notes_options,
-aside.change-theme #quotes_options,
-aside.change-theme #pomodoro_options,
-aside.change-theme #searchbar_options,
 aside.change-theme #settings-managment {
     display: none;
 }

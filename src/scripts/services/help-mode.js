@@ -173,11 +173,8 @@ function createHelpModeDisplay() {
     fetch('https://bonjourr.fr/').then((resp) => {
         setServerStatus('help-status-website', resp)
     })
-    fetch('https://weather.bonjourr.fr/').then((resp) => {
-        setServerStatus('help-status-weather', resp)
-    })
     fetch('https://services.bonjourr.fr').then((resp) => {
-        setServerStatus('help-status-services', resp)
+        setServerStatus('help-status-backgrounds', resp)
     })
 
     // LocalStorage
