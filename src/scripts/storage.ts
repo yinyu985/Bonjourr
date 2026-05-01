@@ -125,7 +125,8 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
 
     switch (storage.type.get()) {
         case 'webext-sync': {
-            chrome.storage.sync.set(keyval, fn)
+            await chrome.storage.sync.set(keyval)
+            fn()
             return
         }
 
@@ -136,7 +137,8 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
                 ...keyval,
             }
 
-            chrome.storage.local.set({ syncStorage: data }, fn)
+            await chrome.storage.local.set({ syncStorage: data })
+            fn()
             return
         }
 
@@ -163,7 +165,7 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
 async function syncRemove(key: string): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-sync': {
-            chrome.storage.sync.remove(key)
+            await chrome.storage.sync.remove(key)
             return
         }
 
@@ -173,7 +175,7 @@ async function syncRemove(key: string): Promise<void> {
             if (syncStorage) {
                 delete syncStorage[key]
                 await chrome.storage.local.remove('syncStorage')
-                chrome.storage.local.set({ syncStorage })
+                await chrome.storage.local.set({ syncStorage })
             }
 
             return
@@ -303,7 +305,7 @@ function localRemove(key: string): Promise<void> {
 async function localClear(): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-sync': {
-            chrome.storage.local.clear()
+            await chrome.storage.local.clear()
             return
         }
 
@@ -416,8 +418,8 @@ async function clearall(): Promise<void> {
             await chrome.storage.sync.clear()
             await chrome.storage.local.clear()
 
-            chrome.storage.sync.set(SYNC_DEFAULT)
-            chrome.storage.local.set(LOCAL_DEFAULT)
+            await chrome.storage.sync.set(SYNC_DEFAULT)
+            await chrome.storage.local.set(LOCAL_DEFAULT)
 
             return
         }
@@ -426,7 +428,7 @@ async function clearall(): Promise<void> {
             await chrome.storage.sync.clear()
             await chrome.storage.local.clear()
 
-            chrome.storage.local.set({
+            await chrome.storage.local.set({
                 ...LOCAL_DEFAULT,
                 syncStorage: SYNC_DEFAULT,
             })

@@ -12,7 +12,7 @@ import { clock } from './features/clock/index.ts'
 import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
-import { initCustomSelects } from './shared/custom-select.ts'
+import { initCustomSelects, refreshCustomSelects } from './shared/custom-select.ts'
 import { BROWSER, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
@@ -722,6 +722,7 @@ async function switchLangs(nextLang: Langs): Promise<void> {
     settingsFooter()
     translatePlaceholders()
     translateAriaLabels()
+    refreshCustomSelects(document.getElementById('settings') ?? document)
     supportersNotifications(undefined, { translate: true })
 }
 
@@ -973,8 +974,8 @@ async function importSettings(imported: Partial<Sync>): Promise<void> {
 
         data = filterData('import', data, imported)
 
-        storage.sync.clear()
-        storage.sync.set(data)
+        await storage.sync.clear()
+        await storage.sync.set(data)
         fadeOut()
     } catch (_) {
         // ...

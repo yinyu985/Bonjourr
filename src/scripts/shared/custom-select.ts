@@ -120,6 +120,25 @@ export function initCustomSelects(root: ParentNode = document): void {
     }
 }
 
+export function refreshCustomSelects(root: ParentNode = document): void {
+    const selects = root.querySelectorAll<HTMLSelectElement>('select[data-custom-select]')
+
+    for (const select of selects) {
+        const custom = select.nextElementSibling
+
+        if (!(custom instanceof HTMLElement) || !custom.classList.contains('custom-select')) {
+            continue
+        }
+
+        const button = custom.querySelector<HTMLButtonElement>('.custom-select-button')
+        const selected = select.selectedOptions[0] ?? select.options[0]
+
+        if (button) {
+            button.textContent = selected?.textContent ?? ''
+        }
+    }
+}
+
 function closeCustomSelects(): void {
     for (const select of document.querySelectorAll('.custom-select.open')) {
         select.classList.remove('open')
