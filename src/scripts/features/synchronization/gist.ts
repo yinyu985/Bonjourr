@@ -113,7 +113,7 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
 
     // Create
 
-    if (id === undefined) {
+    if (!id) {
         const resp = await fetch('https://api.github.com/gists', {
             body: JSON.stringify({ files, description, public: false }),
             headers: gistHeaders(token),

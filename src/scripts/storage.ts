@@ -223,7 +223,9 @@ function localSet(value: Record<string, unknown>): void {
 
         default: {
             for (const [key, val] of Object.entries(value)) {
-                if (typeof val === 'string') {
+                if (val === undefined) {
+                    localStorage.removeItem(key)
+                } else if (typeof val === 'string') {
                     localStorage.setItem(key, val)
                 } else {
                     localStorage.setItem(key, JSON.stringify(val))
@@ -268,6 +270,8 @@ async function localGet(keys?: string | string[]): Promise<Local> {
                     result[key] = item === 'true'
                 } else if (isNoom) {
                     result[key] = Number.parseFloat(item)
+                } else if (item === 'undefined') {
+                    localStorage.removeItem(key)
                 } else {
                     result[key] = item
                 }

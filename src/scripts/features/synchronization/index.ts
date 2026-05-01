@@ -208,8 +208,11 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
             const isValid = await isGistTokenValid(gistToken)
 
             if (isValid) {
-                bGistdown?.removeAttribute('disabled')
                 bGistup?.removeAttribute('disabled')
+
+                if (gistId) {
+                    bGistdown?.removeAttribute('disabled')
+                }
             }
 
             setGistStatus(gistToken, gistId)
