@@ -397,7 +397,6 @@ function createIcons(local: Local): void {
             // If image still isn't responding after 5s, gives up
             setTimeout(() => {
                 if (!newimg.complete && newimg.naturalWidth === 0) {
-                    console.error('Icon link took too long to load: ' + url)
                     img.src = 'https://services.bonjourr.fr/favicon/blob/error'
                 }
             }, 5000)

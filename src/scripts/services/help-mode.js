@@ -170,9 +170,6 @@ function createHelpModeDisplay() {
     }
 
     // Server statuses
-    fetch('https://bonjourr.fr/').then((resp) => {
-        setServerStatus('help-status-website', resp)
-    })
     fetch('https://services.bonjourr.fr').then((resp) => {
         setServerStatus('help-status-backgrounds', resp)
     })

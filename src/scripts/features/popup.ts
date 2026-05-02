@@ -13,21 +13,19 @@ type PopupUpdate = {
     announcements?: boolean
 }
 
-const ANNOUNCEMENT_URL = 'https://github.com/victrme/Bonjourr/releases'
+const ANNOUNCEMENT_URL = 'https://github.com/yinyu985/Bonjourr/releases'
 
 const ANNOUNCEMENT_TEXT =
     '<b>Bonjourr just got a major update! ✨</b> Discover the cleaner minimalist layout, improved links, refreshed design, and more.'
 
 const REVIEW_TEXT = 'Love using Bonjourr? Consider giving us a review or donating, that would help a lot! 😇'
 const REVIEW_URLS = {
-    chrome:
-        'https://chrome.google.com/webstore/detail/bonjourr-%C2%B7-minimalist-lig/dlnejlppicbjfcfcedcflplfjajinajd/reviews',
-    opera:
-        'https://chrome.google.com/webstore/detail/bonjourr-%C2%B7-minimalist-lig/dlnejlppicbjfcfcedcflplfjajinajd/reviews',
-    firefox: 'https://addons.mozilla.org/en-US/firefox/addon/bonjourr-startpage/',
-    safari: 'https://apps.apple.com/fr/app/bonjourr-startpage/id1615431236',
-    edge: 'https://microsoftedge.microsoft.com/addons/detail/bonjourr/dehmmlejmefjphdeoagelkpaoolicmid',
-    other: 'https://bonjourr.fr/help#%EF%B8%8F-reviews',
+    chrome: 'https://github.com/yinyu985/Bonjourr',
+    opera: 'https://github.com/yinyu985/Bonjourr',
+    firefox: 'https://github.com/yinyu985/Bonjourr',
+    safari: 'https://github.com/yinyu985/Bonjourr',
+    edge: 'https://github.com/yinyu985/Bonjourr',
+    other: 'https://github.com/yinyu985/Bonjourr',
 }
 
 export function interfacePopup(init?: PopupInit, event?: PopupUpdate): void {
@@ -91,7 +89,6 @@ function displayPopup(type: 'review' | 'announce', showIcon = false): void {
     if (type === 'review') {
         desc.textContent = tradThis(REVIEW_TEXT)
         buttons.appendChild(createPopupButton(REVIEW_URLS[BROWSER], tradThis('Review')))
-        buttons.appendChild(createPopupButton('https://ko-fi.com/bonjourr', tradThis('Donate')))
     }
 
     if (type === 'announce') {

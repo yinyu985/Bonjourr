@@ -738,13 +738,12 @@ function settingsFooter(): void {
     const one = document.querySelector<HTMLAnchorElement>('#signature-one')
     const two = document.querySelector<HTMLAnchorElement>('#signature-two')
     const version = document.getElementById('version')
-    const rand = Math.random() > 0.5
 
     if (one && two) {
-        one.href = rand ? 'https://victr.me/' : 'https://tahoe.be/'
-        two.href = rand ? 'https://tahoe.be/' : 'https://victr.me/'
-        one.textContent = rand ? 'Victor Azevedo' : 'Tahoe Beetschen'
-        two.textContent = rand ? 'Tahoe Beetschen' : 'Victor Azevedo'
+        one.href = 'https://github.com/yinyu985'
+        two.href = 'https://github.com/yinyu985/Bonjourr'
+        one.textContent = 'yinyu985'
+        two.textContent = 'Bonjourr (fork)'
     }
 
     if (version) {
@@ -1012,7 +1011,7 @@ export function updateSettingsJson(data?: Sync): void {
 
 function updateSettingsEvent(): void {
     // On settings changes, update export code
-    // beforeunload stuff because of this issue: https://github.com/victrme/Bonjourr/issues/194
+    // beforeunload stuff
     const storageUpdate = () => updateSettingsJson()
     const removeListener = () => chrome.storage.onChanged.removeListener(storageUpdate)
 

@@ -2,7 +2,6 @@ if (globalThis.chrome) {
     if (chrome.storage) {
         chrome.action.onClicked.addListener(createNewTab)
         chrome.runtime.onInstalled.addListener(handleInstalled)
-        chrome.runtime.setUninstallURL('https://bonjourr.fr/goodbye')
     }
 } else {
     self.addEventListener('activate', updateCache)

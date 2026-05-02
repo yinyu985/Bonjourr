@@ -1,0 +1,29 @@
+name: release
+on:
+    push:
+        tags:
+            - 'v*'
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: ./.github/actions/deno
+
+            - run: deno run build
+
+            - name: Package release artifacts
+              run: |
+                  cd release
+                  for dir in */; do
+                      platform="${dir%/}"
+                      zip -r "../bonjourr-${platform}.zip" "$platform"
+                  done
+                  cd ..
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: bonjourr-*.zip
+                  generate_release_notes: true

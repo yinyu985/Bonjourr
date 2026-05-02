@@ -4,7 +4,7 @@
     "short_name": "Bonjourr",
     "version": "22.1.0",
     "description": "__MSG_extensionDesc__",
-    "author": "Victor Azevedo and Tahoe Beetschen",
+    "author": "yinyu985 (forked from victrme/Bonjourr)",
     "default_locale": "en",
     "icons": {
         "128": "src/assets/favicons/favicon-128x128.png"
