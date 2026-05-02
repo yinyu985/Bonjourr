@@ -185,7 +185,7 @@ async function syncRemove(key: string): Promise<void> {
         case 'webext-sync': {
             try {
                 await chrome.storage.sync.remove(key)
-            } catch (_) {}
+            } catch (_) {/* ignore */}
             return
         }
 
@@ -198,7 +198,7 @@ async function syncRemove(key: string): Promise<void> {
                     await chrome.storage.local.remove('syncStorage')
                     await chrome.storage.local.set({ syncStorage })
                 }
-            } catch (_) {}
+            } catch (_) {/* ignore */}
             return
         }
 
@@ -328,7 +328,7 @@ function localRemove(key: string): Promise<void> {
 async function localClear(): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-sync': {
-            try { await chrome.storage.local.clear() } catch (_) {}
+            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
             return
         }
 
@@ -337,7 +337,7 @@ async function localClear(): Promise<void> {
                 const sync = (await chrome.storage.local.get('syncStorage')).syncStorage
                 await chrome.storage.local.clear()
                 await chrome.storage.local.set({ syncStorage: sync })
-            } catch (_) {}
+            } catch (_) {/* ignore */}
             return
         }
 
@@ -440,26 +440,26 @@ async function clearall(): Promise<void> {
 
     switch (storage.type.get()) {
         case 'webext-sync': {
-            try { await chrome.storage.sync.clear() } catch (_) {}
-            try { await chrome.storage.local.clear() } catch (_) {}
+            try { await chrome.storage.sync.clear() } catch (_) {/* ignore */}
+            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
             try { await chrome.storage.sync.set(SYNC_DEFAULT) } catch (_) {
                 // if sync quota still exceeded on default data, use local
-                try { await chrome.storage.local.set({ syncStorage: SYNC_DEFAULT }) } catch (_) {}
+                try { await chrome.storage.local.set({ syncStorage: SYNC_DEFAULT }) } catch (_) {/* ignore */}
                 storage.type.set('webext-local')
             }
-            try { await chrome.storage.local.set(LOCAL_DEFAULT) } catch (_) {}
+            try { await chrome.storage.local.set(LOCAL_DEFAULT) } catch (_) {/* ignore */}
             return
         }
 
         case 'webext-local': {
-            try { await chrome.storage.sync.clear() } catch (_) {}
-            try { await chrome.storage.local.clear() } catch (_) {}
+            try { await chrome.storage.sync.clear() } catch (_) {/* ignore */}
+            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
             try {
                 await chrome.storage.local.set({
                     ...LOCAL_DEFAULT,
                     syncStorage: SYNC_DEFAULT,
                 })
-            } catch (_) {}
+            } catch (_) {/* ignore */}
             return
         }
 
