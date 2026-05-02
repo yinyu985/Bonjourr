@@ -34,6 +34,7 @@ interface Storage {
     }
     type: {
         get: () => StorageType
+        set: (type: StorageType) => void
         change: (type: 'sync' | 'local', data: Sync) => void
         init: () => StorageType
     }
