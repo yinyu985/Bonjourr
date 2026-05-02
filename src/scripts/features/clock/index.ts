@@ -1,7 +1,7 @@
 import { isDateFormat, isFace, isHands, isShape } from './helpers.ts'
 import { hexColorFromSplitRange } from '../../shared/dom.ts'
 import { displayInterface } from '../../shared/display.ts'
-import { eventDebounce } from '../../utils/debounce.ts'
+import { debounce, eventDebounce } from '../../utils/debounce.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
 import { getLang } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
@@ -31,6 +31,32 @@ const defaultAnalogStyle: AnalogStyle = {
 }
 
 const sinogramRegex = /zh-CN|zh-HK|ja/
+let pendingClockSize = 1
+let clockSizeFrame = 0
+
+const saveClockSize = debounce(async (size: number) => {
+    const data = await storage.sync.get('clock')
+
+    storage.sync.set({
+        clock: {
+            ...data.clock,
+            size,
+        },
+    })
+}, 400)
+
+function scheduleClockSize(size: number): void {
+    pendingClockSize = size
+
+    if (clockSizeFrame) {
+        return
+    }
+
+    clockSizeFrame = requestAnimationFrame(() => {
+        clockSizeFrame = 0
+        clockSize(pendingClockSize)
+    })
+}
 
 export function clock(init?: Sync, event?: ClockUpdate): void {
     if (event) {
@@ -54,6 +80,12 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
 //	Update
 
 async function clockUpdate(update: ClockUpdate): Promise<void> {
+    if (update.size !== undefined && Object.keys(update).length === 1) {
+        scheduleClockSize(update.size)
+        saveClockSize(update.size)
+        return
+    }
+
     const data = await storage.sync.get()
     const analogstyle = data.analogstyle ?? structuredClone(defaultAnalogStyle)
 

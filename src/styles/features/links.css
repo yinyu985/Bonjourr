@@ -3,6 +3,53 @@
 #linkblocks {
     --in-out-bounce: cubic-bezier(0.68, -0.2, 0.265, 1.2);
     --active-group-x: 50%;
+    --glass-radius: 16px;
+    --glass-edge: rgba(255, 255, 255, 0.46);
+    --glass-edge-dim: rgba(255, 255, 255, 0.18);
+    --glass-surface:
+        radial-gradient(
+        ellipse 84% 76% at 50% 50%,
+        transparent 0%,
+        transparent 64%,
+        rgba(255, 255, 255, 0.028) 78%,
+        rgba(255, 255, 255, 0.16) 100%
+    ),
+        linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.038) 0%,
+        transparent 24%,
+        transparent 76%,
+        rgba(255, 255, 255, 0.052) 100%
+    );
+    --glass-caustic:
+        radial-gradient(
+        ellipse 118% 72% at 50% -18%,
+        rgba(255, 255, 255, 0.5) 0,
+        rgba(255, 255, 255, 0.18) 18%,
+        transparent 43%
+    ),
+        radial-gradient(
+        ellipse 110% 64% at 50% 118%,
+        rgba(255, 255, 255, 0.24) 0,
+        rgba(255, 255, 255, 0.08) 18%,
+        transparent 42%
+    ),
+        linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.24) 0%,
+        transparent 12%,
+        transparent 88%,
+        rgba(255, 255, 255, 0.2) 100%
+    );
+    --glass-rim:
+        inset 0 1px 1px rgba(255, 255, 255, 0.72),
+        inset 1px 0 1px rgba(255, 255, 255, 0.28),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.24),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 20px rgba(255, 255, 255, 0.06);
+    --glass-shadow: 0 18px 46px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1), var(--glass-rim);
+    --glass-backdrop: saturate(1.7) contrast(1.08) brightness(1.02) blur(12px);
+    --glass-backdrop-mini: saturate(1.65) contrast(1.07) brightness(1.02) blur(10px);
     position: fixed;
     right: max(16px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
@@ -103,10 +150,12 @@
     align-items: flex-start;
     width: max-content;
     padding: var(--folder-padding);
-    background-color: #fff2;
-    border: 1px solid #fff4;
-    backdrop-filter: blur(2em);
-    -webkit-backdrop-filter: blur(2em);
+    border-radius: var(--glass-radius);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
 }
 
 .link-group.in-folder {
@@ -116,6 +165,7 @@
 
 .link-list {
     position: relative;
+    isolation: isolate;
     display: inline-flex;
     visibility: visible;
     justify-content: center;
@@ -131,9 +181,14 @@
     max-width: var(--links-width);
     background-color: transparent;
     border: 1px solid transparent;
-    border-radius: var(--border-radius);
+    border-radius: var(--glass-radius);
     z-index: 2;
     transition: opacity 0.05s var(--out-cubic);
+}
+
+.link-list > * {
+    position: relative;
+    z-index: 1;
 }
 
 #linkblocks > .link-group:not(.pinned) .link-list {
@@ -142,15 +197,58 @@
     width: max-content;
     max-width: min(36rem, calc(100vw - 2em));
     max-height: calc(100dvh - 9rem);
-    padding: 16px;
+    margin: 0;
+    padding: 14px 16px;
     row-gap: calc(var(--row-gap) * 0.5);
     overflow: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    background-color: #fff2;
-    border-color: #fff4;
-    backdrop-filter: blur(2em);
-    -webkit-backdrop-filter: blur(2em);
+    background: transparent;
+    border: none;
+    border-radius: inherit;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Liquid glass lens: transparent middle with stronger refractive edges. */
+.link-group.in-folder .link-list::before,
+#linkblocks > .link-group:not(.pinned)::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: var(--glass-caustic);
+    opacity: 0.72;
+    mix-blend-mode: screen;
+}
+
+.link-group.in-folder .link-list::after,
+#linkblocks > .link-group:not(.pinned)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    border: 1px solid transparent;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.72),
+        rgba(255, 255, 255, 0.08) 28%,
+        rgba(255, 255, 255, 0.03) 68%,
+        rgba(255, 255, 255, 0.28)
+    ) border-box;
+    mask:
+        linear-gradient(#000 0 0) padding-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+        linear-gradient(#000 0 0) padding-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
 }
 
 #linkblocks > .link-group:not(.pinned) .link-list::-webkit-scrollbar {
@@ -208,20 +306,25 @@
 .link-title {
     display: none;
     max-width: 26ch;
-    padding: 2px 8px 2px;
+    padding: 3px 9px;
     overflow: hidden;
     white-space: nowrap;
     text-align: center;
     text-overflow: ellipsis;
-    opacity: 0.7;
+    opacity: 0.76;
     color: white;
     font-size: 1em;
     line-height: 1.25;
-    border-radius: 6px;
+    border-radius: calc(var(--glass-radius) - 7px);
     border: 1px solid transparent;
     background-color: transparent;
     cursor: pointer;
-    transition: transform 0.2s var(--in-out-bounce);
+    transition:
+        opacity 0.12s var(--out-cubic),
+        background-color 0.12s var(--out-cubic),
+        border-color 0.12s var(--out-cubic),
+        box-shadow 0.12s var(--out-cubic),
+        transform 0.2s var(--in-out-bounce);
 }
 
 .inline .link-title,
@@ -257,6 +360,24 @@
     transition: opacity 0.12s var(--out-cubic), transform 0.18s var(--out-cubic);
 }
 
+/* Glass container: clear center, refractive edges */
+#linkblocks > .link-group:not(.pinned) {
+    isolation: isolate;
+    border-radius: var(--glass-radius);
+    padding: 0;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+}
+
+/* Ensure popup tab title renders above decorative pseudo-elements */
+#linkblocks > .link-group:not(.pinned) > .link-title {
+    position: relative;
+    z-index: 1;
+}
+
 #linkblocks > .link-group.pinned {
     display: none;
 }
@@ -286,23 +407,33 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 .link-title.selected.selected-group {
     opacity: 1;
     outline: none;
-    background-color: #fff2;
+    background-color: rgba(255, 255, 255, 0.035);
+    border-color: var(--glass-edge-dim);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .link-group.pinned .link-title,
-.link-title.selected-group {
+.link-title.selected-group,
+.link-group.in-folder .link-title {
     opacity: 1;
     cursor: initial;
-    border-color: #fff1;
-    background-color: #fff2;
-    backdrop-filter: blur(2em);
-    -webkit-backdrop-filter: blur(2em);
+    border-color: var(--glass-edge-dim);
+    background:
+        radial-gradient(ellipse 86% 70% at 50% 50%, transparent 58%, rgba(255, 255, 255, 0.07) 100%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%, rgba(255, 255, 255, 0.03));
+    box-shadow:
+        0 5px 14px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.42),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
+    -webkit-backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
 }
 
 .link-title.drop-target {
     opacity: 1;
-    border-color: #fff6;
-    background-color: #fff3;
+    border-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 
 .link-group.in-folder .link-title {
@@ -404,7 +535,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 #linkblocks.select-all.inline .link.selected a,
 #linkblocks.select-all.text .link-folder.selected,
 #linkblocks.select-all.text .link.selected a {
-    border-radius: 6px;
+    border-radius: 4px;
     outline: 0.2em solid var(--color-blue);
     background-color: rgba(0, 114, 238, 0.1333333333);
 }
@@ -688,6 +819,12 @@ dialog a {
     overflow: visible;
 }
 
+.in-drag#link-mini > div {
+    flex-wrap: nowrap;
+    max-width: none;
+    overflow: visible;
+}
+
 #linkblocks > .in-drag.link-group .link-list {
     overflow: hidden;
 }
@@ -710,7 +847,7 @@ dialog a {
 
 .in-drag.link-group .link.on a,
 .in-drag.link-group .link-folder.on {
-    border-radius: 6px;
+    border-radius: 4px;
     outline: 1px solid #fff4;
     background-color: #fff2;
 }
@@ -749,6 +886,7 @@ dialog a {
 
 #link-mini > div {
     position: relative;
+    isolation: isolate;
     display: inline-flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -756,10 +894,57 @@ dialog a {
     column-gap: 5px;
     row-gap: 3px;
     max-width: min(100%, calc(100vw - 2em));
-    padding: 2px 40px 2px 5px;
+    padding: 5px 44px 5px 9px;
     overflow-x: auto;
     overflow-y: hidden;
     box-sizing: border-box;
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--glass-radius);
+    background: var(--glass-surface);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08), var(--glass-rim);
+    backdrop-filter: var(--glass-backdrop-mini);
+    -webkit-backdrop-filter: var(--glass-backdrop-mini);
+}
+
+#link-mini > div::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: var(--glass-caustic);
+    opacity: 0.66;
+    mix-blend-mode: screen;
+}
+
+#link-mini > div::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border: 1px solid transparent;
+    border-radius: inherit;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.64),
+        rgba(255, 255, 255, 0.05) 34%,
+        rgba(255, 255, 255, 0.2)
+    ) border-box;
+    mask:
+        linear-gradient(#000 0 0) padding-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+        linear-gradient(#000 0 0) padding-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+}
+
+#link-mini > div > * {
+    position: relative;
+    z-index: 1;
 }
 
 #link-mini .link-title {
@@ -810,14 +995,14 @@ dialog a {
     align-items: center;
     box-sizing: border-box;
     width: 100%;
-    max-width: 75vw;
+    max-width: 60vw;
     min-height: 28px;
     margin: 0 auto;
     padding: 2px 5px;
     column-gap: 12px;
     row-gap: 4px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 4px;
     pointer-events: auto;
 }
 
@@ -847,9 +1032,9 @@ dialog a {
     padding: 0 4px;
     white-space: pre;
     opacity: 0.8;
-    max-width: 16em;
+    max-width: 24em;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
 }
 
 #link-favorites .link:hover span {

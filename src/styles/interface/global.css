@@ -5,7 +5,7 @@
     gap: 0;
     max-width: none;
     min-height: 100dvh;
-    padding: 4em 1em 6em;
+    padding: 4rem 1rem 6rem;
     margin: 0 auto;
     box-sizing: border-box;
     will-change: transform;
@@ -42,5 +42,5 @@
 body.group-focus #time {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-3em);
+    transform: translateY(-3rem);
 }

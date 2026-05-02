@@ -8,10 +8,21 @@ type DropType = 'mini' | 'link' | 'group'
 type DropArea = 'left' | 'right' | 'center' | ''
 type Dropzones = Map<string, Coords>
 type LinkDropDirection = 'horizontal' | 'vertical'
+type DropzoneHit = { area: DropArea; id: string }
+type PendingDragAnchor = {
+    id: string
+    x: number
+    y: number
+    target: HTMLElement
+    type: 'mini' | 'link'
+}
 
 const GROUP_HOVER_DELAY = 300
 const MINI_HOVER_PADDING_Y = 0
 const FAVORITES_DROP_HEIGHT = 32
+const SLOT_CROSS_AXIS_PADDING = 24
+const SLOT_MAIN_AXIS_PADDING = 32
+const DROP_EDGE_RATIO = 0.3
 
 const blocks: Map<string, HTMLElement> = new Map()
 const originRects: Map<string, Coords> = new Map()
@@ -27,7 +38,6 @@ let crossGroupTarget = ''
 let pendingGroupTarget = ''
 let originalGroup = ''
 let ids: string[] = []
-let initids: string[] = []
 let coords: Coords[] = []
 let dragContainers: NodeListOf<HTMLElement>
 let dragChangeParentTimeout = 0
@@ -39,6 +49,8 @@ let isDragging = false
 let overFavorites = false
 let isFavoritesDrag = false
 let linkDropDirection: LinkDropDirection = 'vertical'
+let pendingDragAnchor: PendingDragAnchor | undefined
+let shouldPreventNextClick = false
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 const domlinkfavorites = document.getElementById('link-favorites') as HTMLDivElement
@@ -57,18 +69,29 @@ queueMicrotask(() => {
 
 export function startDrag(event: PointerEvent): void {
     const path = event.composedPath() as HTMLElement[]
-    const type = path.some((el) => el?.className?.includes('link-title')) ? 'mini' : 'link'
-    const isMini = type === 'mini'
+    const type = path.some((el) => el?.classList?.contains('link-title')) ? 'mini' : 'link'
+    const dragType = event.type === 'pointerdown' ? type : pendingDragAnchor?.type ?? type
+    const isMini = dragType === 'mini'
+    const tagName = isMini ? 'BUTTON' : 'LI'
+    const eventTarget = path.find((n) => {
+        if (n.tagName !== tagName) return false
+        return isMini ? n.classList.contains('link-title') : n.classList.contains('link')
+    })
+    const target = event.type === 'pointerdown' ? eventTarget : pendingDragAnchor?.target ?? eventTarget
+    const nextDraggedId = target ? findIdFromElement(target, isMini ? 'mini' : 'link') : ''
 
     if (event.button > 0) return
     if (event.type === 'pointerdown') {
-        beforeStartDrag(event, type)
+        beforeStartDrag(event, dragType)
+        return
+    }
+    if (!(target && nextDraggedId)) {
+        pendingDragAnchor = undefined
         return
     }
 
     ids = []
     coords = []
-    initids = []
     lastdropAreas = []
     lastIndex = 0
     targetId = ''
@@ -81,6 +104,7 @@ export function startDrag(event: PointerEvent): void {
     linkDropDirection = isFavoritesDrag ? 'horizontal' : 'vertical'
     blocks.clear()
     originRects.clear()
+    groups.clear()
     dropzones.group.clear()
     dropzones.link.clear()
     dropzones.mini.clear()
@@ -90,6 +114,10 @@ export function startDrag(event: PointerEvent): void {
     dragLayer.className = 'links-drag-layer'
     domlinkblocks.appendChild(dragLayer)
 
+    if (isMini) {
+        setGroupFocus(false)
+    }
+
     domlinkgroup = path.find((n) => n?.classList?.contains('link-group')) as HTMLDivElement
     domlinkgroups = document.querySelectorAll('#linkblocks .link-group')
     domlinklinks = document.querySelectorAll(isFavoritesDrag ? '#link-favorites li' : '#linkblocks .link-group li')
@@ -98,15 +126,18 @@ export function startDrag(event: PointerEvent): void {
     const selector = isFavoritesDrag ? '#link-favorites' : isMini ? '#link-mini' : '.link-group'
     dragContainers = document.querySelectorAll(selector)
 
-    const tagName = isMini ? 'BUTTON' : 'LI'
-    const target = path.find((n) => n.tagName === tagName)
     const pos = getPosFromEvent(event)
-    draggedId = findIdFromElement(target)
-    originalGroup = isFavoritesDrag ? FAVORITES_GROUP : findIdFromElement(isMini ? target : domlinkgroup)
+    draggedId = nextDraggedId
+    originalGroup = isFavoritesDrag
+        ? FAVORITES_GROUP
+        : isMini
+        ? findIdFromElement(target, 'mini')
+        : domlinkgroup?.dataset.group ?? ''
     targetGroup = originalGroup
 
-    collectDropzones()
+    collectDropzones(isMini)
     initContainerElements(isMini, tagName, pos)
+    if (isMini) placeMiniTabsInSingleRow()
     lastIndex = ids.indexOf(draggedId)
 
     if (!isMini && !isFavoritesDrag) {
@@ -125,24 +156,28 @@ export function startDrag(event: PointerEvent): void {
     })
 
     document.dispatchEvent(new Event('remove-select-all'))
+    preventNextClick()
     dragAnimationFrame = globalThis.requestAnimationFrame(deplaceDraggedElem)
+
+    document.documentElement.addEventListener('pointermove', moveDrag)
+    document.documentElement.addEventListener('pointerup', endDrag)
+    document.documentElement.addEventListener('pointercancel', endDrag)
+    document.documentElement.addEventListener('pointerleave', endDrag)
+    globalThis.addEventListener('pointerup', endDrag)
+    globalThis.addEventListener('pointercancel', endDrag)
+    globalThis.addEventListener('blur', endDrag)
 
     if (event.pointerType === 'touch') {
         document.documentElement.addEventListener('touchmove', moveDrag, { passive: false })
         document.documentElement.addEventListener('touchend', endDrag, { passive: false })
-    } else {
-        document.documentElement.addEventListener('pointermove', moveDrag)
-        document.documentElement.addEventListener('pointerup', endDrag)
-        document.documentElement.addEventListener('pointercancel', endDrag)
-        document.documentElement.addEventListener('pointerleave', endDrag)
-        globalThis.addEventListener('pointerup', endDrag)
-        globalThis.addEventListener('pointercancel', endDrag)
-        globalThis.addEventListener('blur', endDrag)
+        document.documentElement.addEventListener('touchcancel', endDrag, { passive: false })
     }
 }
 
-function collectDropzones(): void {
-    for (const el of [...domlinkgroups, ...domlinktitles, ...domlinklinks]) {
+function collectDropzones(isMini: boolean): void {
+    const elements = isMini ? [...domlinktitles] : [...domlinkgroups, ...domlinktitles, ...domlinklinks]
+
+    for (const el of elements) {
         const t = findTypeFromElement(el)
         const r = el.getBoundingClientRect()
         const id = findIdFromElement(el)
@@ -170,7 +205,6 @@ function initContainerElements(isMini: boolean, tagName: string, pos: { x: numbe
             const id = findIdFromElement(element, t)
             const c = dropzones[t].get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
             ids.push(id)
-            initids.push(id)
             coords.push({ ...c })
             const useDragLayer = isMini || id === draggedId
             const block = useDragLayer ? createDragClone(element, c) : element
@@ -187,10 +221,12 @@ function initContainerElements(isMini: boolean, tagName: string, pos: { x: numbe
                 deplaceElem(block, c.x, c.y)
             }
             if (id === draggedId) {
-                cox = pos.x - c.x
-                coy = pos.y - c.y
-                dx = c.x
-                dy = c.y
+                const anchor = pendingDragAnchor?.id === draggedId ? pendingDragAnchor : undefined
+
+                cox = anchor?.x ?? pos.x - c.x
+                coy = anchor?.y ?? pos.y - c.y
+                dx = pos.x - cox
+                dy = pos.y - coy
                 block.classList.add('on')
             }
         }
@@ -202,21 +238,36 @@ function initContainerElements(isMini: boolean, tagName: string, pos: { x: numbe
 
 function beforeStartDrag(event: PointerEvent, type: 'mini' | 'link'): void {
     const target = type === 'mini' ? getTitleFromEvent(event) : getLiFromEvent(event)
-    cox = event.offsetX
-    coy = event.offsetY
     if (!target) return
-    const el = target
-    el.addEventListener('pointermove', dz)
-    el.addEventListener('pointerup', dz)
+
+    const rect = target.getBoundingClientRect()
+    const pointerX = event.clientX
+    const pointerY = event.clientY
+
+    pendingDragAnchor = {
+        id: findIdFromElement(target, type),
+        x: Math.max(0, Math.min(pointerX - rect.left, rect.width)),
+        y: Math.max(0, Math.min(pointerY - rect.top, rect.height)),
+        target,
+        type,
+    }
+
+    document.documentElement.addEventListener('pointermove', dz)
+    document.documentElement.addEventListener('pointerup', dz)
+    document.documentElement.addEventListener('pointercancel', dz)
     function dz(ev: PointerEvent): void {
         const p = ev.pointerType === 'touch' ? 7 : 14
-        const ox = Math.abs(cox - ev.offsetX)
-        const oy = Math.abs(coy - ev.offsetY)
+        const ox = Math.abs(pointerX - ev.clientX)
+        const oy = Math.abs(pointerY - ev.clientY)
         if (ox > p / 2 || oy > p / 2) document.dispatchEvent(new Event('stop-select-all'))
         if (ox > p || oy > p) startDrag(ev)
-        if (ox > p || oy > p || ev.type.includes('pointerup') || ev.type.includes('touchend')) {
-            el.removeEventListener('pointermove', dz)
-            el.removeEventListener('pointerup', dz)
+        if (ox > p || oy > p || ev.type.includes('pointerup') || ev.type.includes('pointercancel')) {
+            if (ev.type.includes('pointerup') || ev.type.includes('pointercancel')) {
+                pendingDragAnchor = undefined
+            }
+            document.documentElement.removeEventListener('pointermove', dz)
+            document.documentElement.removeEventListener('pointerup', dz)
+            document.documentElement.removeEventListener('pointercancel', dz)
         }
     }
 }
@@ -238,6 +289,8 @@ function isOverFavoritesBar(x: number, y: number): boolean {
 }
 
 function moveDrag(event: TouchEvent | PointerEvent): void {
+    if (event.cancelable) event.preventDefault()
+
     const { x, y } = getPosFromEvent(event)
     dx = x - cox
     dy = y - coy
@@ -255,7 +308,6 @@ function moveDrag(event: TouchEvent | PointerEvent): void {
     const result = isDraggingOver({ x, y })
     const [curr, id, type] = result ?? ['', '']
     const last = lastdropAreas[lastdropAreas.length - 1]
-    const secondlast = lastdropAreas[lastdropAreas.length - 2]
     const isDraggingMiniTab = !draggedId.startsWith('links')
 
     if (type === 'mini' && !isDraggingMiniTab) {
@@ -279,26 +331,28 @@ function moveDrag(event: TouchEvent | PointerEvent): void {
     const isInCrossGroup = crossGroupTarget !== '' && crossGroupTarget !== originalGroup
 
     // Block reordering only when hovering over a different group's area (not after switch)
-    if ((curr === last && curr !== 'center') || (targetGroup !== originalGroup && !isInCrossGroup)) return
+    if (targetGroup !== originalGroup && !isInCrossGroup) return
 
     if (curr === '') {
         lastdropAreas.push('')
         cancelPendingGroupHover()
         targetId = ''
+        targetGroup = originalGroup
         markMiniTabDropTarget('')
         for (const b of blocks.values()) b.classList.remove('drop-target', 'drop-source')
         for (const b of groups.values()) b.classList.remove('drop-target', 'drop-source')
         return
     }
 
+    targetGroup = crossGroupTarget || originalGroup
+
     const staysInCenter = last === curr && curr === 'center'
     if (staysInCenter && type === 'mini') handleMiniTabHover(id)
     if (staysInCenter && type === 'link') {
-        const idAtCurrentArea = ids[initids.indexOf(id)]
-        if (idAtCurrentArea) applyDragChangeParent(idAtCurrentArea, type)
+        applyDragChangeParent(id, type)
     }
-    if ((type === 'link' || type === 'mini') && (curr === 'left' || curr === 'right') && curr !== secondlast) {
-        applyDragMoveBlocks(id)
+    if ((type === 'link' || type === 'mini') && (curr === 'left' || curr === 'right')) {
+        applyDragMoveBlocks(id, curr)
     }
     if (last !== curr) lastdropAreas.push(curr)
 }
@@ -390,7 +444,6 @@ function rebuildDragState(): void {
 
     // Reset position arrays
     ids = []
-    initids = []
     coords = []
     lastIndex = 0
     lastdropAreas = []
@@ -410,7 +463,6 @@ function rebuildDragState(): void {
         dropzones.link.set(id, { x: r.x, y: r.y, h: r.height, w: r.width })
         originRects.set(id, { x: r.x, y: r.y, h: r.height, w: r.width })
         ids.push(id)
-        initids.push(id)
         coords.push({ x: r.x, y: r.y, w: r.width, h: r.height })
     }
 
@@ -418,7 +470,6 @@ function rebuildDragState(): void {
     // Insert at the end by default — user can then drag to reposition
     if (!ids.includes(draggedId)) {
         ids.push(draggedId)
-        initids.push(draggedId)
         // Use a dummy coord (the dragged element follows the cursor anyway)
         const lastCoord = coords.length > 0 ? coords[coords.length - 1] : { x: 0, y: 0, w: 0, h: 0 }
         coords.push({ x: lastCoord.x, y: lastCoord.y + lastCoord.h, w: lastCoord.w, h: lastCoord.h })
@@ -433,20 +484,108 @@ function rebuildDragState(): void {
     }
 }
 
-function applyDragMoveBlocks(id: string): void {
-    const targetIndex = initids.indexOf(id)
+function applyDragMoveBlocks(id: string, area: DropArea): void {
     const currentIndex = ids.indexOf(draggedId)
+    const targetIndex = ids.indexOf(id)
 
-    if (targetIndex < 0 || currentIndex < 0 || currentIndex === targetIndex || lastIndex === targetIndex) return
+    if (targetIndex < 0 || currentIndex < 0) return
 
     cancelPendingGroupHover()
-    lastIndex = targetIndex
+
+    let nextIndex = area === 'right' ? targetIndex + 1 : targetIndex
+
+    if (currentIndex < nextIndex) {
+        nextIndex -= 1
+    }
+
+    nextIndex = Math.max(0, Math.min(nextIndex, ids.length - 1))
+
+    if (currentIndex === nextIndex || lastIndex === nextIndex) return
+
+    lastIndex = nextIndex
     ids.splice(currentIndex, 1)
-    ids.splice(targetIndex, 0, draggedId)
+    ids.splice(nextIndex, 0, draggedId)
+
+    if (!draggedId.startsWith('links')) {
+        coords = measureMiniTabCoords(ids) ?? coords
+    }
 
     for (let i = 0; i < ids.length; i++) {
         if (ids[i] !== draggedId) deplaceBlock(ids[i], coords[i])
     }
+}
+
+function measureMiniTabCoords(order: string[]): Coords[] | undefined {
+    const miniInner = document.querySelector<HTMLElement>('#link-mini > div')
+    const miniRect = miniInner?.getBoundingClientRect()
+    if (!(miniInner && miniRect)) return
+
+    const styles = getComputedStyle(miniInner)
+    const measure = document.createElement('div')
+    measure.style.position = 'fixed'
+    measure.style.left = `${miniRect.x}px`
+    measure.style.top = `${miniRect.y}px`
+    measure.style.width = `${miniRect.width}px`
+    measure.style.visibility = 'hidden'
+    measure.style.pointerEvents = 'none'
+    measure.style.zIndex = '-1'
+    measure.style.boxSizing = styles.boxSizing
+    measure.style.display = styles.display
+    measure.style.flexWrap = 'nowrap'
+    measure.style.justifyContent = styles.justifyContent
+    measure.style.alignItems = styles.alignItems
+    measure.style.columnGap = styles.columnGap
+    measure.style.rowGap = styles.rowGap
+    measure.style.padding = styles.padding
+    measure.style.overflow = 'visible'
+
+    const elements = new Map<string, HTMLElement>()
+    for (const id of order) {
+        const source = blocks.get(id)
+        const size = originRects.get(id)
+        if (!(source && size)) continue
+
+        const clone = source.cloneNode(true) as HTMLElement
+        clone.style.display = 'block'
+        clone.style.flex = '0 0 auto'
+        clone.style.width = `${Math.ceil(size.w)}px`
+        clone.style.height = `${Math.ceil(size.h)}px`
+        clone.style.margin = '0'
+        clone.style.transform = 'none'
+        measure.appendChild(clone)
+        elements.set(id, clone)
+    }
+
+    document.body.appendChild(measure)
+
+    const nextCoords = order.map((id) => {
+        const fallback = originRects.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+        const rect = elements.get(id)?.getBoundingClientRect()
+        return rect ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height } : fallback
+    })
+
+    measure.remove()
+    return nextCoords
+}
+
+function placeMiniTabsInSingleRow(): void {
+    coords = measureMiniTabCoords(ids) ?? coords
+    for (let i = 0; i < ids.length; i++) {
+        if (ids[i] !== draggedId) deplaceBlock(ids[i], coords[i])
+    }
+}
+
+function preventNextClick(): void {
+    if (shouldPreventNextClick) return
+    shouldPreventNextClick = true
+    document.addEventListener('click', stopNextClick, true)
+}
+
+function stopNextClick(event: MouseEvent): void {
+    shouldPreventNextClick = false
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    document.removeEventListener('click', stopNextClick, true)
 }
 
 function applyDragChangeParent(id: string, type: DropType): void {
@@ -480,17 +619,19 @@ function endDrag(event: Event): void {
     document.documentElement.removeEventListener('pointerleave', endDrag)
     document.documentElement.removeEventListener('touchmove', moveDrag)
     document.documentElement.removeEventListener('touchend', endDrag)
+    document.documentElement.removeEventListener('touchcancel', endDrag)
     globalThis.removeEventListener('pointerup', endDrag)
     globalThis.removeEventListener('pointercancel', endDrag)
     globalThis.removeEventListener('blur', endDrag)
     cancelPendingGroupHover()
     markMiniTabDropTarget('')
+    pendingDragAnchor = undefined
 
     const path = event.composedPath() as Element[]
     const type = findTypeFromElement(blocks.get(draggedId))
     const group = domlinkgroup?.dataset.group ?? ''
     const newIndex = ids.indexOf(draggedId)
-    const coord = coords[newIndex]
+    const coord = coords[newIndex] ?? originRects.get(draggedId) ?? { x: dx, y: dy, w: 0, h: 0 }
 
     const isDroppable = !!document.querySelector('.drop-source')
     const outOfFolder = !path[0]?.classList.contains('link-list') && domlinkgroup?.classList.contains('in-folder')
@@ -591,39 +732,116 @@ function deplaceDraggedElem(): void {
 }
 
 function isDraggingOver({ x, y }: { x: number; y: number }): [DropArea, string, DropType] | undefined {
-    const findArea = (zones: Dropzones, dir: 'horizontal' | 'vertical' | 'center', paddingY = 0) => {
-        for (const [id, z] of zones) {
-            if (!(x >= z.x && x <= z.x + z.w && y >= z.y - paddingY && y <= z.y + z.h + paddingY)) continue
-            let area: DropArea = ''
-            if (dir === 'center') area = 'center'
-            if (dir === 'horizontal') {
-                area = x < z.x + z.w * 0.2 ? 'left' : x > z.x + z.w * 0.8 ? 'right' : 'center'
-            }
-            if (dir === 'vertical') {
-                area = y < z.y + z.h * 0.2 ? 'left' : y > z.y + z.h * 0.8 ? 'right' : 'center'
-            }
-            return { area, id }
-        }
-    }
     const miniPaddingY = draggedId.startsWith('links') && !isFavoritesDrag ? MINI_HOVER_PADDING_Y : 0
-    const la = findArea(dropzones.link, linkDropDirection)
+    const la = findDropzoneArea(dropzones.link, linkDropDirection, x, y)
 
-    if (isFavoritesDrag && la) return [la.area, la.id, 'link']
+    if (isFavoritesDrag) {
+        const slot = findCurrentSlotArea(linkDropDirection, x, y)
+        const hit = la ?? slot
 
-    const ma = findArea(dropzones.mini, 'horizontal', miniPaddingY)
+        if (hit) return [hit.area, hit.id, 'link']
+    }
+
+    const ma = findDropzoneArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
     if (ma && draggedId.startsWith('links')) return [ma.area, ma.id, 'mini']
     if (la) return [la.area, la.id, 'link']
     if (ma) return [ma.area, ma.id, 'mini']
-    const ga = findArea(dropzones.group, 'center')
+
+    const slot = findCurrentSlotArea(!draggedId.startsWith('links') ? 'horizontal' : linkDropDirection, x, y)
+    if (slot) return [slot.area, slot.id, !draggedId.startsWith('links') ? 'mini' : 'link']
+
+    const miniSlot = draggedId.startsWith('links')
+        ? findDropzoneSlotArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
+        : undefined
+    if (miniSlot) return [miniSlot.area, miniSlot.id, 'mini']
+
+    const ga = findDropzoneArea(dropzones.group, 'center', x, y)
     if (ga) return [ga.area, ga.id, 'group']
 }
 
+function findDropzoneArea(
+    zones: Dropzones,
+    dir: 'horizontal' | 'vertical' | 'center',
+    x: number,
+    y: number,
+    paddingY = 0,
+): DropzoneHit | undefined {
+    for (const [id, z] of zones) {
+        if (!(x >= z.x && x <= z.x + z.w && y >= z.y - paddingY && y <= z.y + z.h + paddingY)) continue
+        let area: DropArea = ''
+        if (dir === 'center') area = 'center'
+        if (dir === 'horizontal') {
+            area = x < z.x + z.w * DROP_EDGE_RATIO ? 'left' : x > z.x + z.w * (1 - DROP_EDGE_RATIO) ? 'right' : 'center'
+        }
+        if (dir === 'vertical') {
+            area = y < z.y + z.h * DROP_EDGE_RATIO ? 'left' : y > z.y + z.h * (1 - DROP_EDGE_RATIO) ? 'right' : 'center'
+        }
+        return { area, id }
+    }
+}
+
+function findCurrentSlotArea(dir: LinkDropDirection, x: number, y: number): DropzoneHit | undefined {
+    const zones = new Map<string, Coords>()
+
+    for (let i = 0; i < ids.length; i++) {
+        const coord = coords[i] ?? originRects.get(ids[i])
+
+        if (coord) zones.set(ids[i], coord)
+    }
+
+    return findDropzoneSlotArea(zones, dir, x, y)
+}
+
+function findDropzoneSlotArea(
+    zones: Dropzones,
+    dir: LinkDropDirection,
+    x: number,
+    y: number,
+    paddingY = 0,
+): DropzoneHit | undefined {
+    const entries = [...zones]
+        .filter(([, z]) => z.w > 0 && z.h > 0)
+        .map(([id, z]) => ({ id, z }))
+
+    if (entries.length === 0) return
+
+    const minX = Math.min(...entries.map(({ z }) => z.x))
+    const maxX = Math.max(...entries.map(({ z }) => z.x + z.w))
+    const minY = Math.min(...entries.map(({ z }) => z.y))
+    const maxY = Math.max(...entries.map(({ z }) => z.y + z.h))
+    const inHorizontalBounds = x >= minX - SLOT_MAIN_AXIS_PADDING && x <= maxX + SLOT_MAIN_AXIS_PADDING &&
+        y >= minY - SLOT_CROSS_AXIS_PADDING - paddingY && y <= maxY + SLOT_CROSS_AXIS_PADDING + paddingY
+    const inVerticalBounds = x >= minX - SLOT_CROSS_AXIS_PADDING && x <= maxX + SLOT_CROSS_AXIS_PADDING &&
+        y >= minY - SLOT_MAIN_AXIS_PADDING - paddingY && y <= maxY + SLOT_MAIN_AXIS_PADDING + paddingY
+
+    if ((dir === 'horizontal' && !inHorizontalBounds) || (dir === 'vertical' && !inVerticalBounds)) return
+
+    let nearest = entries[0]
+    let nearestDistance = Number.POSITIVE_INFINITY
+
+    for (const entry of entries) {
+        const center = dir === 'horizontal' ? entry.z.x + entry.z.w / 2 : entry.z.y + entry.z.h / 2
+        const distance = Math.abs((dir === 'horizontal' ? x : y) - center)
+
+        if (distance < nearestDistance) {
+            nearest = entry
+            nearestDistance = distance
+        }
+    }
+
+    const center = dir === 'horizontal' ? nearest.z.x + nearest.z.w / 2 : nearest.z.y + nearest.z.h / 2
+    const area = (dir === 'horizontal' ? x : y) < center ? 'left' : 'right'
+
+    return { area, id: nearest.id }
+}
+
 function getPosFromEvent(event: TouchEvent | PointerEvent): { x: number; y: number } {
-    if (event.type === 'touchmove') {
+    if (event.type === 'touchmove' || event.type === 'touchend' || event.type === 'touchcancel') {
         const t = (event as TouchEvent).touches[0]
+        if (!t) return { x: dx + cox, y: dy + coy }
         return { x: t.clientX, y: t.clientY }
     }
-    if (event.type === 'pointermove') return { x: (event as PointerEvent).x, y: (event as PointerEvent).y }
+    if (event.type.startsWith('pointer')) return { x: (event as PointerEvent).x, y: (event as PointerEvent).y }
     return { x: 0, y: 0 }
 }
 
