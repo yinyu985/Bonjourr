@@ -7,7 +7,7 @@ import {
     toggleGroups,
     updateSelectedGroupPosition,
 } from './groups.ts'
-import { initBookmarkSync, syncBookmarks } from './bookmarks.ts'
+import { initBookmarkSync } from './bookmarks.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { storeIconFile } from './fileicons.ts'
 import { folderClick } from './folders.ts'
@@ -118,9 +118,26 @@ export const FAVORITES_GROUP = '__favorites'
 let initIconList: [HTMLImageElement, string][] = []
 let selectallTimer = 0
 
+// Intercept clicks on data: URLs — Chrome blocks all navigation to data: URLs,
+// so we convert to a blob URL first and open that in a new tab.
+domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
+    const anchor = (event.target as HTMLElement).closest('a')
+    if (anchor && anchor.href.startsWith('data:')) {
+        event.preventDefault()
+        try {
+            const response = await fetch(anchor.href)
+            const blob = await response.blob()
+            const blobUrl = URL.createObjectURL(blob)
+            globalThis.open(blobUrl, '_blank')
+        } catch {
+            globalThis.open(anchor.href, '_blank')
+        }
+    }
+})
+
 export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise<void> {
     if (event) {
-        linksUpdate(event)
+        await linksUpdate(event)
         return
     }
 
@@ -196,10 +213,6 @@ export function initblocks(sync: Sync, local?: Local): true {
             throw new Error('Template not found')
         }
 
-        if (group.synced) {
-            group.links = syncBookmarks(group.title)
-        }
-
         for (const link of group.links) {
             let li = group.lis.find((li) => li.id === link._id)
 
@@ -216,11 +229,11 @@ export function initblocks(sync: Sync, local?: Local): true {
             fragment.appendChild(li)
 
             li.addEventListener('keyup', openContextMenu)
+            li.addEventListener('pointerdown', startDrag)
 
             if (!group.synced) {
                 li.addEventListener('click', selectAll)
                 li.addEventListener('pointerdown', selectAll)
-                li.addEventListener('pointerdown', startDrag)
             }
         }
 
@@ -291,10 +304,10 @@ function initFavorites(sync: Sync): void {
 
         li.id = link._id
         li.classList.add('link-favorite')
-        anchor.href = stringMaxSize(link.url, 512)
+        anchor.href = link.url
         span.textContent = createTitle(link)
 
-        if (sync.linknewtab) {
+        if (sync.linknewtab || anchor.href.startsWith('data:')) {
             anchor.target = '_blank'
         }
 
@@ -349,12 +362,12 @@ function createElem(link: LinkElem, openInNewtab: boolean, _style: Sync['linksty
     }
 
     li.id = link._id
-    anchor.href = stringMaxSize(link.url, 512)
+    anchor.href = link.url
     span.textContent = createTitle(link)
 
     initIconList.push([img, getIconFromLinkElem(link)])
 
-    if (openInNewtab) {
+    if (openInNewtab || link.url.startsWith('data:')) {
         anchor.target = '_blank'
     }
 
@@ -534,7 +547,7 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
         return
     }
 
-    storage.sync.set(data)
+    await storage.sync.set(data)
 }
 
 function linkSubmission(args: SubmitLink | SubmitFolder, data: Sync): Sync {
@@ -685,7 +698,7 @@ function updateLink({ id, title, icon, url, file }: UpdateLink, data: Sync): Syn
         }
 
         if (titledom && urldom && url !== undefined) {
-            link.url = stringMaxSize(url, 512)
+            link.url = url
             urldom.href = link.url
             titledom.textContent = createTitle(link)
         }
@@ -791,7 +804,6 @@ function moveLinks(ids: string[], data: Sync): Sync {
 }
 
 function moveFavorites(ids: string[], data: Sync): Sync {
-    // Check if this is a reorder (all ids already in favorites) or adding new links
     const existingFavorites = getLinksInGroup(data, FAVORITES_GROUP)
     const existingIds = new Set(existingFavorites.map((l) => l._id))
     const isReorder = ids.every((id) => existingIds.has(id))
@@ -799,6 +811,16 @@ function moveFavorites(ids: string[], data: Sync): Sync {
     for (const id of ids) {
         const link = data[id] as Link
         if (!isElem(link)) continue
+
+        const oldParent = link.parent as string
+        if (data.linkgroups.synced.includes(oldParent)) {
+            const hidden = data.linkgroups.hidden[oldParent] ?? []
+            if (!hidden.includes(link.url)) {
+                hidden.push(link.url)
+            }
+            data.linkgroups.hidden[oldParent] = hidden
+        }
+
         link.parent = FAVORITES_GROUP
     }
 
@@ -824,20 +846,27 @@ function moveFavorites(ids: string[], data: Sync): Sync {
 }
 
 function moveToGroup({ ids, target, source }: MoveToGroup, data: Sync): Sync {
-    // Get existing links in the target group, sorted by order
     const targetLinks = getLinksInGroup(data, target)
-
-    // Parse insertion position from source (used by cross-group drag)
     const insertAt = source !== undefined ? Number.parseInt(source) : -1
 
     for (const id of ids) {
-        ;(data[id] as Link).parent = target
+        const link = data[id] as Link
+
+        const oldParent = link.parent as string
+        if (data.linkgroups.synced.includes(oldParent) && isElem(link)) {
+            const hidden = data.linkgroups.hidden[oldParent] ?? []
+            if (!hidden.includes(link.url)) {
+                hidden.push(link.url)
+            }
+            data.linkgroups.hidden[oldParent] = hidden
+        }
+
+        link.parent = target
 
         if (insertAt >= 0 && insertAt < targetLinks.length) {
-            // Insert at specific position: use the order of the link at that position minus 0.5
-            ;(data[id] as Link).order = targetLinks[insertAt].order - 0.5
+            link.order = targetLinks[insertAt].order - 0.5
         } else {
-            ;(data[id] as Link).order = Date.now()
+            link.order = Date.now()
         }
     }
 
@@ -879,7 +908,7 @@ function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
     const anchors = document.querySelectorAll<HTMLAnchorElement>('.link a')
 
     for (const anchor of anchors) {
-        if (newtab) {
+        if (newtab || anchor.href.startsWith('data:')) {
             anchor.setAttribute('target', '_blank')
         } else {
             anchor.removeAttribute('target')
@@ -939,19 +968,18 @@ function setRows(row: string): void {
 
 export function validateLink(title: string, url: string, parent?: string): LinkElem {
     const startsWithEither = (strs: string[]) => strs.some((str) => url.startsWith(str))
-    const sanitizedUrl = stringMaxSize(url, 512)
 
     const isConfig = startsWithEither(['about:', 'chrome://', 'edge://'])
-    const noProtocol = !startsWithEither(['https://', 'http://'])
+    const hasOwnProtocol = startsWithEither(['https://', 'http://', 'data:', 'ftp:'])
     const isLocalhost = url.startsWith('localhost') || url.startsWith('127.0.0.1')
-    const prefix = isConfig ? '#' : isLocalhost ? 'http://' : noProtocol ? 'https://' : ''
+    const prefix = isConfig ? '#' : isLocalhost ? 'http://' : !hasOwnProtocol ? 'https://' : ''
 
     return {
         _id: `links${randomString(6)}`,
         parent,
         order: Date.now(), // big number
         title: stringMaxSize(title, 64),
-        url: prefix + sanitizedUrl,
+        url: prefix + url,
     }
 }
 
@@ -990,8 +1018,11 @@ function correctLinksOrder(data: Sync): Sync {
 function getIconFromLinkElem(link: LinkElem): string {
     if (!link.icon?.value) {
         try {
-            const { origin, pathname } = new URL(link.url)
-            return getDefaultIcon(origin + pathname)
+            const url = new URL(link.url)
+            if (url.protocol === 'data:') {
+                return link._id // no favicon to fetch for data URLs
+            }
+            return getDefaultIcon(url.origin + url.pathname)
         } catch (_) {
             return getDefaultIcon(link.url)
         }

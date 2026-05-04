@@ -129,7 +129,6 @@ export interface UnsplashImage {
 declare global {
     var pageReady: boolean
     var startupBookmarks: browser.bookmarks.BookmarkTreeNode[] | undefined
-    var startupTopsites: browser.topSites.MostVisitedURL[] | undefined
     var startupStorage: {
         sync?: Sync
         local?: Local

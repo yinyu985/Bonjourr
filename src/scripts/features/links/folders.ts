@@ -50,7 +50,7 @@ export async function folderClick(event: MouseEvent | KeyboardEvent): Promise<vo
     }
 }
 
-function openFolder(data: Sync, li: HTMLLIElement): void {
+export function openFolder(data: Sync, li: HTMLLIElement): void {
     if (!li.parentNode) {
         return
     }

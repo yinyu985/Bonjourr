@@ -81,8 +81,13 @@
     "our documentation": "our documentation",
     "Select group": "Select group",
     "Sync with browser": "Sync with browser",
+    "Bookmarks bar": "Bookmarks bar",
     "Most visited": "Most visited",
     "Import selection": "Import selection",
+    "Select all": "Select all",
+    "Sync all": "Sync all",
+    "Import your browser bookmarks into Bonjourr as link groups.": "Import your browser bookmarks into Bonjourr as link groups.",
+    "Syncing imports bookmarks from your browser automatically. Changes in Bonjourr will not sync back to browser bookmarks.": "Syncing imports bookmarks from your browser automatically. Changes in Bonjourr will not sync back to browser bookmarks.",
     "(synced)": "(synced)",
 
     "This January, Bonjourr is brought to you by our lovely supporters.": "This January, Bonjourr is brought to you by our lovely supporters.",

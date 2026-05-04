@@ -202,6 +202,7 @@ export function validateLinkGroups(current: Import): Import {
             groups: [...oldlinktabs.titles],
             synced: [],
             pinned: [],
+            hidden: {},
         }
 
         for (const link of links) {
@@ -215,6 +216,10 @@ export function validateLinkGroups(current: Import): Import {
 
     if (!current.linkgroups) {
         current.linkgroups = SYNC_DEFAULT.linkgroups
+    }
+
+    if (!current.linkgroups.hidden) {
+        current.linkgroups.hidden = {}
     }
 
     const { groups, pinned, synced, selected } = current.linkgroups

@@ -39,6 +39,7 @@ export interface LinkGroups {
     groups: string[]
     pinned: string[]
     synced: string[]
+    hidden: Record<string, string[]>
 }
 
 export interface Hide {

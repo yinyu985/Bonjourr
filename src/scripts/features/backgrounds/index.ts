@@ -117,6 +117,9 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     const data = await storage.sync.get('backgrounds')
     const local = await storage.local.get()
 
+    data.backgrounds.queries ??= {}
+    local.backgroundCollections ??= {}
+
     if (update.blurenter) {
         blurResolutionControl(data, local)
         return
@@ -463,7 +466,7 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
     }
 }
 
-async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<string, Background[]>> {
+async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<string, Background[]> | null> {
     switch (backgrounds.type) {
         case 'files':
         case 'urls':
@@ -474,8 +477,14 @@ async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<str
         default:
     }
 
-    const collectionName = backgrounds[backgrounds.type]
+    const defaultCollection = backgrounds.type === 'images' ? 'bonjourr-images-daylight' : 'bonjourr-videos-daylight'
+    const collectionName = backgrounds[backgrounds.type] || defaultCollection
     const [provider, type, category] = collectionName.split('-')
+
+    if (!provider || !type || !category) {
+        console.warn(`[Backgrounds] Invalid collection name: "${collectionName}"`)
+        return null
+    }
 
     const base = 'https://services.bonjourr.fr/backgrounds'
     const path = `/${provider}/${type}/${category}`
@@ -493,11 +502,25 @@ async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<str
     }
 
     const screen = `?h=${height}&w=${width}`
-    const query = backgrounds.queries[collectionName] ?? ''
+    const query = backgrounds.queries?.[collectionName] ?? ''
     const search = query ? `&query=${query}` : ''
 
     const url = base + path + screen + search
     const resp = await fetch(url)
+
+    if (!resp.ok) {
+        console.warn(`[Backgrounds] Cannot fetch collection (${resp.status}): ${url}`)
+        return null
+    }
+
+    const contentType = resp.headers.get('content-type') ?? ''
+
+    if (!contentType.includes('application/json')) {
+        const body = await resp.text()
+        console.warn(`[Backgrounds] Unexpected response type: ${contentType || 'unknown'} (${body.slice(0, 120)})`)
+        return null
+    }
+
     const json = await resp.json()
 
     const areImages = type === 'images' && Object.keys(json)?.every((key) => key.includes('images'))
@@ -532,7 +555,8 @@ function findCollectionName(backgrounds: Backgrounds, local: Local): string {
         return getCollectionNameFromMedia(pausedVideo, local)
     }
 
-    const collectionName = backgrounds[type]
+    const defaultCollection = type === 'images' ? 'bonjourr-images-daylight' : 'bonjourr-videos-daylight'
+    const collectionName = backgrounds[type] || defaultCollection
     const isDaylight = collectionName.includes('daylight')
 
     if (isDaylight) {
@@ -545,10 +569,11 @@ function findCollectionName(backgrounds: Backgrounds, local: Local): string {
 
 function getCollectionNameFromMedia(media: Background, local: Local): string {
     const collMap = new Map()
+    const collections = local.backgroundCollections ?? {}
 
     // Flatten collections to a "url => coll" map
 
-    for (const [coll, medias] of Object.entries(local.backgroundCollections)) {
+    for (const [coll, medias] of Object.entries(collections)) {
         for (const media of medias) {
             collMap.set(media.urls.full, coll)
         }
@@ -571,7 +596,7 @@ function getCollection(backgrounds: Backgrounds, local: Local): CollectionGetRet
     // Check collection storage
 
     const collectionName = findCollectionName(backgrounds, local)
-    const collection = local.backgroundCollections[collectionName] ?? []
+    const collection = local.backgroundCollections?.[collectionName] ?? []
 
     // Check collection format
 
@@ -604,6 +629,8 @@ function setCollection(backgrounds: Backgrounds, local: Local): CollectionSetRet
     }
 
     function fromApi(json: Record<string, Background[]>): Local {
+        local.backgroundCollections ??= {}
+
         for (const [key, list] of Object.entries(json)) {
             local.backgroundCollections[key] = list
         }
@@ -613,6 +640,7 @@ function setCollection(backgrounds: Backgrounds, local: Local): CollectionSetRet
 
     function fromList(list: Background[]): Local {
         const collectionName = findCollectionName(backgrounds, local)
+        local.backgroundCollections ??= {}
         local.backgroundCollections[collectionName] = list
 
         return local
@@ -897,8 +925,8 @@ function handleProviderOptions(backgrounds: Backgrounds): void {
     if (optionsExist) {
         domusercolloption.classList.toggle('shown', hasCollections)
         domusersearchoption.classList.toggle('shown', hasSearch)
-        domusercoll.value = backgrounds.queries[collectionName] ?? ''
-        domusersearch.value = backgrounds.queries[collectionName] ?? ''
+        domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
+        domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
     }
 }
 

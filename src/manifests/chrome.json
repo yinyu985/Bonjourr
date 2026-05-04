@@ -20,11 +20,14 @@
         "service_worker": "src/scripts/service-worker.js"
     },
     "permissions": [
-        "storage"
+        "storage",
+        "unlimitedStorage"
     ],
     "optional_permissions": [
         "bookmarks",
-        "topSites",
         "search"
+    ],
+    "host_permissions": [
+        "https://*/*"
     ]
 }

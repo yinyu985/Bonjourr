@@ -1,6 +1,7 @@
 import { getLiFromEvent, getTitleFromEvent } from './helpers.ts'
 import { FAVORITES_GROUP, initblocks, linksUpdate } from './index.ts'
 import { setGroupFocus, updateSelectedGroupPosition } from './groups.ts'
+import { openFolder } from './folders.ts'
 import { storage } from '../../storage.ts'
 
 type Coords = { x: number; y: number; w: number; h: number }
@@ -671,6 +672,13 @@ function endDrag(event: Event): void {
             linksUpdate({ moveFavorites: [draggedId] })
         } else if (toFolder) {
             linksUpdate({ moveToFolder: { source: draggedId, target: targetId } })
+            // Auto-open the folder after dropping a link into it
+            setTimeout(() => {
+                const folderLi = document.getElementById(targetId) as HTMLLIElement
+                if (folderLi) {
+                    storage.sync.get().then((data) => openFolder(data, folderLi))
+                }
+            }, 300)
         } else if (isCrossGroup) {
             // Move to the new group at the position the user chose
             const position = ids.indexOf(draggedId)

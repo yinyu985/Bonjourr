@@ -5,7 +5,7 @@ import { parse } from './utils/parse.ts'
 import type { Local } from '../types/local.ts'
 import type { Sync } from '../types/sync.ts'
 
-type StorageType = 'localstorage' | 'webext-sync' | 'webext-local'
+type StorageType = 'localstorage' | 'webext-local'
 
 interface AllStorage {
     sync?: Sync
@@ -63,7 +63,7 @@ export const storage: Storage = {
 //	Storage type
 
 function storageTypeFn(): StorageTypeReturn {
-    let type: StorageType = 'webext-sync'
+    let type: StorageType = 'webext-local'
 
     function get(): StorageType {
         return type
@@ -75,30 +75,11 @@ function storageTypeFn(): StorageTypeReturn {
             return 'localstorage'
         }
 
-        if ((globalThis.startupStorage as AllStorage)?.local?.syncStorage) {
-            type = 'webext-local'
-            return 'webext-local'
-        }
-
         return type
     }
 
-    function change(type: 'sync' | 'local', data: Sync): void {
-        if (globalThis.chrome?.storage === undefined) {
-            return
-        }
-
-        if (type === 'local') {
-            chrome.storage.local.set({ syncStorage: data }).catch(() => {
-                // fallback already failed silently
-            })
-        }
-
-        if (type === 'sync') {
-            chrome.storage.local.remove('syncStorage').then(() => {
-                chrome.storage.sync.set(data).catch(() => {})
-            }).catch(() => {})
-        }
+    function change(_type: 'sync' | 'local', _data: Sync): void {
+        // no longer needed, always uses local storage
     }
 
     function set(newType: StorageType): void {
@@ -110,13 +91,8 @@ function storageTypeFn(): StorageTypeReturn {
 
 //	Synced data
 
-async function syncGet(key?: string | string[]): Promise<Sync> {
+async function syncGet(_key?: string | string[]): Promise<Sync> {
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            const data = await chrome.storage.sync.get(key ?? null)
-            return verifyDataAsSync(data)
-        }
-
         case 'webext-local': {
             const { syncStorage } = await chrome.storage.local.get() as Local
             return verifyDataAsSync(syncStorage)
@@ -132,19 +108,6 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
     // console.log('sync set', JSON.stringify(keyval))
 
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            try {
-                await chrome.storage.sync.set(keyval)
-                fn()
-            } catch (err) {
-                console.warn('Sync storage quota exceeded, falling back to local storage', err)
-                storage.type.change('local', { ...(await syncGet()), ...keyval } as Sync)
-                storage.type.set('webext-local')
-                fn()
-            }
-            return
-        }
-
         case 'webext-local': {
             try {
                 const local = await chrome.storage.local.get('syncStorage') as Local
@@ -154,7 +117,7 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
                 }
                 await chrome.storage.local.set({ syncStorage: data })
             } catch (err) {
-                console.warn('Local storage quota exceeded', err)
+                console.warn('Local storage write failed', err)
             }
             fn()
             return
@@ -182,13 +145,6 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
 
 async function syncRemove(key: string): Promise<void> {
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            try {
-                await chrome.storage.sync.remove(key)
-            } catch (_) {/* ignore */}
-            return
-        }
-
         case 'webext-local': {
             try {
                 const { syncStorage } = await chrome.storage.local.get('syncStorage') as Local
@@ -198,7 +154,7 @@ async function syncRemove(key: string): Promise<void> {
                     await chrome.storage.local.remove('syncStorage')
                     await chrome.storage.local.set({ syncStorage })
                 }
-            } catch (_) {/* ignore */}
+            } catch (_) { /* ignore */ }
             return
         }
 
@@ -213,11 +169,6 @@ async function syncRemove(key: string): Promise<void> {
 
 async function syncClear(): Promise<void> {
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            await chrome.storage.sync.clear()
-            return
-        }
-
         case 'webext-local': {
             await chrome.storage.local.remove('syncStorage')
             return
@@ -238,7 +189,6 @@ function localSet(value: Record<string, unknown>): void {
     // console.log('local set', JSON.stringify(value))
 
     switch (storage.type.get()) {
-        case 'webext-sync':
         case 'webext-local': {
             chrome.storage.local.set(value).catch((err) => {
                 console.warn('Local storage write failed', err)
@@ -263,7 +213,6 @@ function localSet(value: Record<string, unknown>): void {
 
 async function localGet(keys?: string | string[]): Promise<Local> {
     switch (storage.type.get()) {
-        case 'webext-sync':
         case 'webext-local': {
             const data = await chrome.storage.local.get(keys) as unknown as Local
             return data
@@ -309,7 +258,6 @@ async function localGet(keys?: string | string[]): Promise<Local> {
 
 function localRemove(key: string): Promise<void> {
     switch (storage.type.get()) {
-        case 'webext-sync':
         case 'webext-local': {
             return chrome.storage.local.remove(key).catch(() => {})
         }
@@ -327,17 +275,12 @@ function localRemove(key: string): Promise<void> {
 
 async function localClear(): Promise<void> {
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
-            return
-        }
-
         case 'webext-local': {
             try {
                 const sync = (await chrome.storage.local.get('syncStorage')).syncStorage
                 await chrome.storage.local.clear()
                 await chrome.storage.local.set({ syncStorage: sync })
-            } catch (_) {/* ignore */}
+            } catch (_) { /* ignore */ }
             return
         }
 
@@ -361,13 +304,9 @@ async function init(): Promise<AllStorage> {
         globalThis.pageReady = true
 
         await new Promise((resolve) => {
-            document.addEventListener('webextstorage', (event: CustomEventInit) => {
-                if (event.detail === 'sync') {
-                    store.sync = globalThis.startupStorage.sync
-                }
-                if (event.detail === 'local') {
-                    store.local = globalThis.startupStorage.local
-                }
+            document.addEventListener('webextstorage', () => {
+                store.local = globalThis.startupStorage.local
+                store.sync = globalThis.startupStorage.sync
                 if (webextStoreReady()) {
                     resolve(true)
                 }
@@ -379,14 +318,9 @@ async function init(): Promise<AllStorage> {
 
     switch (type) {
         case 'webext-local': {
-            store.sync = (globalThis.startupStorage as AllStorage).local?.syncStorage
-            store.local = globalThis.startupStorage.local
-            break
-        }
-
-        case 'webext-sync': {
-            store.sync = (globalThis.startupStorage as AllStorage).sync
-            store.local = (globalThis.startupStorage as AllStorage).local
+            const localData = store.local ?? (globalThis.startupStorage as AllStorage)?.local ?? {} as Local
+            store.sync = (localData as Local).syncStorage
+            store.local = localData as Local
             break
         }
 
@@ -414,7 +348,7 @@ async function init(): Promise<AllStorage> {
     /** This waits for chrome.storage to be stored in a global variable,
 		that is created in file `webext-storage.js` */
     function webextStoreReady(): boolean {
-        return !!store.sync && !!store.local
+        return !!store.local
     }
 }
 
@@ -437,29 +371,22 @@ async function clearall(): Promise<void> {
 
     //@ts-expect-error: Type 'undefined' is not assignable to type ...
     globalThis.startupStorage = undefined
+    globalThis.startupBookmarks = undefined
 
     switch (storage.type.get()) {
-        case 'webext-sync': {
-            try { await chrome.storage.sync.clear() } catch (_) {/* ignore */}
-            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
-            try { await chrome.storage.sync.set(SYNC_DEFAULT) } catch (_) {
-                // if sync quota still exceeded on default data, use local
-                try { await chrome.storage.local.set({ syncStorage: SYNC_DEFAULT }) } catch (_) {/* ignore */}
-                storage.type.set('webext-local')
-            }
-            try { await chrome.storage.local.set(LOCAL_DEFAULT) } catch (_) {/* ignore */}
-            return
-        }
-
         case 'webext-local': {
-            try { await chrome.storage.sync.clear() } catch (_) {/* ignore */}
-            try { await chrome.storage.local.clear() } catch (_) {/* ignore */}
+            try {
+                await chrome.storage.sync.clear()
+            } catch (_) { /* ignore */ }
+            try {
+                await chrome.storage.local.clear()
+            } catch (_) { /* ignore */ }
             try {
                 await chrome.storage.local.set({
                     ...LOCAL_DEFAULT,
                     syncStorage: SYNC_DEFAULT,
                 })
-            } catch (_) {/* ignore */}
+            } catch (_) { /* ignore */ }
             return
         }
 

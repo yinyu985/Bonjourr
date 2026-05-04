@@ -36,6 +36,15 @@ export function initGroups(data: Sync, init?: true): void {
 
     // navigating through groups with scroll wheel
     document.querySelector('#link-mini')?.addEventListener('wheel', (event) => {
+        // Only switch groups when hovering over group buttons, not when scrolling inside a group list
+        const target = event.target as HTMLElement
+        const isOverGroupList = target.closest('.link-list') !== null
+        const isOverLink = target.closest('.link') !== null
+
+        if (isOverGroupList || isOverLink) {
+            return // Let the scroll event propagate normally for inner content scrolling
+        }
+
         changeGroup(event)
         event.preventDefault()
     }, { passive: false })
@@ -197,7 +206,7 @@ export function addGroup(groups: { title: string; sync?: boolean }[], data: Sync
         const isAlreadyUsed = data.linkgroups.groups.includes(title)
 
         if (isReserved || isAlreadyUsed) {
-            return data
+            continue
         }
 
         for (const link of getLinksInGroup(data, '+')) {
@@ -212,6 +221,20 @@ export function addGroup(groups: { title: string; sync?: boolean }[], data: Sync
 
         if (sync) {
             data.linkgroups.synced.push(title)
+        }
+    }
+
+    // Remove empty "default" group when other groups exist with actual links
+    const defaultHasLinks = getLinksInGroup(data, 'default').length > 0
+    const hasOtherGroups = data.linkgroups.groups.some((g) => g !== 'default')
+
+    if (!defaultHasLinks && hasOtherGroups) {
+        data.linkgroups.groups = data.linkgroups.groups.filter((g) => g !== 'default')
+        data.linkgroups.pinned = data.linkgroups.pinned.filter((g) => g !== 'default')
+        data.linkgroups.synced = data.linkgroups.synced.filter((g) => g !== 'default')
+
+        if (data.linkgroups.selected === 'default') {
+            data.linkgroups.selected = data.linkgroups.groups[0]
         }
     }
 
@@ -238,6 +261,7 @@ export function deleteGroup(group: string, data: Sync): Sync {
     data.linkgroups.pinned = pinned.filter((p) => p !== group)
     data.linkgroups.synced = synced.filter((g) => g !== group)
     data.linkgroups.groups = groups.filter((g) => g !== group)
+    delete data.linkgroups.hidden[group]
 
     if (groups.length === 2) {
         data.linkgroups.pinned = []

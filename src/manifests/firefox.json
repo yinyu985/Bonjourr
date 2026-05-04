@@ -32,7 +32,6 @@
     ],
     "optional_permissions": [
         "bookmarks",
-        "topSites",
         "search"
     ],
     "browser_specific_settings": {

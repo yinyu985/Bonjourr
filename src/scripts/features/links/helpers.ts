@@ -44,17 +44,19 @@ export function createTitle(link: Link): string {
         return stringMaxSize(link.title ?? '', 64)
     }
 
+    // For inline/text styles with empty title, show hostname as display fallback
+    // without mutating the stored title (so empty titles are preserved)
     try {
         if (isElem(link)) {
-            link.title = new URL(link.url)?.hostname.replace('www.', '')
+            return new URL(link.url)?.hostname.replace('www.', '')
         } else {
-            link.title = tradThis('folder')
+            return tradThis('folder')
         }
     } catch (_) {
         //
     }
 
-    return link.title
+    return ''
 }
 
 // Get Links

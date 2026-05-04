@@ -304,7 +304,7 @@ function initOptionsValues(data: Sync, local: Local): void {
 
 function initOptionsEvents(): void {
     onclickdown(paramId('b_accept-permissions'), async () => {
-        await getPermissions('topSites', 'bookmarks')
+        await getPermissions('bookmarks')
 
         const sync = await storage.sync.get()
         const local = await storage.local.get()
@@ -365,7 +365,7 @@ function initOptionsEvents(): void {
     })
 
     onclickdown(paramId('b_importbookmarks'), async () => {
-        await getPermissions('topSites', 'bookmarks')
+        await getPermissions('bookmarks')
         linksImport()
     })
 
