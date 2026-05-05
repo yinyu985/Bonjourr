@@ -7,6 +7,7 @@ import { customFont } from './features/fonts.ts'
 import { quickLinks } from './features/links/index.ts'
 import { customCss } from './features/css.ts'
 import { clock } from './features/clock/index.ts'
+import { notes } from './features/notes.ts'
 import './features/contextmenu.ts'
 
 import { displayInterface, onInterfaceDisplay } from './shared/display.ts'
@@ -77,6 +78,7 @@ async function startup(): Promise<void> {
     customCss(sync.css)
     backgroundsInit(sync, local, true)
     quickLinks({ sync, local })
+    notes(sync)
     synchronization(local)
     settingsInit(sync, local)
     operaExtensionExplainer(local.operaExplained)

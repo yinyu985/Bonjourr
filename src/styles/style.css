@@ -8,6 +8,7 @@
 @import './interface/global.css';
 @import './interface/background.css';
 @import './interface/showsettings.css';
+@import './interface/shownotes.css';
 @import './interface/credits.css';
 @import './interface/error.css';
 @import './interface/opera.css';
@@ -43,6 +44,7 @@
 @import './features/bookmarks';
 @import './features/csseditor';
 @import './features/supporters';
+@import './features/notes';
 
 /* <!> Responsive must be imported last */
 @import './_responsive';

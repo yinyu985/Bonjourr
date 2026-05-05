@@ -26,6 +26,7 @@ export interface Sync {
     clock: Clock
     analogstyle?: AnalogStyle
     font: Font
+    notes?: Notes
     about: {
         browser: string
         version: string
@@ -123,4 +124,16 @@ export interface Font {
 export interface Supporters {
     enabled: boolean
     closedMonth?: number
+}
+
+export interface Notes {
+    active: string
+    records: NoteRecord[]
+}
+
+export interface NoteRecord {
+    id: string
+    title: string
+    content: string
+    updatedAt: number
 }

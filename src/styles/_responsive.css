@@ -9,7 +9,17 @@
         user-select: none;
     }
 
+    #show-notes {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
     #show-settings:active {
+        filter: brightness(0.5);
+    }
+
+    #show-notes:active {
         filter: brightness(0.5);
     }
 }
@@ -54,8 +64,19 @@
         border-radius: 10px;
     }
 
+    #show-notes button {
+        height: 40px;
+        width: 40px;
+        border-radius: 10px;
+    }
+
     #show-settings img {
         width: 24px;
+    }
+
+    #show-notes svg {
+        width: 24px;
+        height: 24px;
     }
 
     aside {

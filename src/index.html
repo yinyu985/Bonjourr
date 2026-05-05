@@ -407,6 +407,18 @@
             <div id="credit"></div>
         </div>
 
+        <div id="show-notes">
+            <button aria-label="Toggle notes panel" title="Toggle notes panel">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 3.5h11l3 3v14H5z"></path>
+                    <path d="M16 3.5V7h3"></path>
+                    <path d="M8 10.5h8"></path>
+                    <path d="M8 14h8"></path>
+                    <path d="M8 17.5h6"></path>
+                </svg>
+            </button>
+        </div>
+
         <div id="show-settings">
             <button aria-label="Toggle settings menu" title="Toggle settings menu">
                 <img
@@ -420,6 +432,33 @@
         <aside id="settings" class="init hidden" style="display: none">
             <!-- settings -->
         </aside>
+
+        <section id="notes-panel" class="hidden" aria-label="Notes">
+            <div id="notes-window">
+                <header>
+                    <h2>Notes</h2>
+                    <button id="notes-close" title="Close notes" aria-label="Close notes">✕</button>
+                </header>
+
+                <div id="notes-layout">
+                    <aside id="notes-list">
+                        <div id="notes-list-header">
+                            <span id="notes-list-title">All notes</span>
+                            <span id="notes-count">0</span>
+                        </div>
+                        <ul id="notes-items"></ul>
+                        <button id="notes-new" title="Create note" aria-label="Create note">+ New note</button>
+                    </aside>
+
+                    <section id="notes-editor">
+                        <div id="notes-editor-header">
+                            <input id="notes-title" type="text" maxlength="120" placeholder="Untitled note" />
+                        </div>
+                        <textarea id="notes-content" placeholder="Write your note..."></textarea>
+                    </section>
+                </div>
+            </div>
+        </section>
 
         <div id="templates">
             <template id="bookmarks-dialog-template">

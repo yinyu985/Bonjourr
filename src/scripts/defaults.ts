@@ -141,6 +141,10 @@ export const SYNC_DEFAULT: Sync = {
     supporters: {
         enabled: false,
     },
+    notes: {
+        active: '',
+        records: [],
+    },
 }
 
 export const LOCAL_DEFAULT: Local = {

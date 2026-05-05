@@ -1,0 +1,415 @@
+/* ===== Notes Overlay ===== */
+
+#notes-panel {
+	position: fixed;
+	inset: 0;
+	z-index: 20;
+	display: grid;
+	place-items: center;
+	padding: 32px;
+	background: rgba(0, 0, 0, 0.82);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+}
+
+#notes-panel.hidden {
+	display: none;
+}
+
+/* ===== Notes Window — Glass Panel ===== */
+
+#notes-window {
+	--glass-radius: 8px;
+	--glass-edge: rgba(255, 255, 255, 0.46);
+	--glass-edge-dim: rgba(255, 255, 255, 0.18);
+	--glass-surface:
+		radial-gradient(
+			ellipse 84% 76% at 50% 50%,
+			transparent 0%,
+			transparent 64%,
+			rgba(255, 255, 255, 0.028) 78%,
+			rgba(255, 255, 255, 0.16) 100%
+		),
+		linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.038) 0%,
+			transparent 24%,
+			transparent 76%,
+			rgba(255, 255, 255, 0.052) 100%
+		);
+	--glass-caustic:
+		radial-gradient(
+			ellipse 118% 72% at 50% -18%,
+			rgba(255, 255, 255, 0.5) 0,
+			rgba(255, 255, 255, 0.18) 18%,
+			transparent 43%
+		),
+		radial-gradient(
+			ellipse 110% 64% at 50% 118%,
+			rgba(255, 255, 255, 0.24) 0,
+			rgba(255, 255, 255, 0.08) 18%,
+			transparent 42%
+		),
+		linear-gradient(
+			90deg,
+			rgba(255, 255, 255, 0.24) 0%,
+			transparent 12%,
+			transparent 88%,
+			rgba(255, 255, 255, 0.2) 100%
+		);
+	--glass-rim:
+		inset 0 1px 1px rgba(255, 255, 255, 0.72),
+		inset 1px 0 1px rgba(255, 255, 255, 0.28),
+		inset 0 -1px 1px rgba(255, 255, 255, 0.24),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+		inset 0 0 20px rgba(255, 255, 255, 0.06);
+	--glass-shadow: 0 18px 46px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1), var(--glass-rim);
+	--glass-backdrop: saturate(1.7) contrast(1.08) brightness(1.02) blur(12px);
+	--glass-backdrop-mini: saturate(1.65) contrast(1.07) brightness(1.02) blur(10px);
+
+	position: relative;
+	width: min(78vw, 1240px);
+	height: min(68vh, 780px);
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	background: var(--glass-surface);
+	border: 1px solid var(--glass-edge);
+	border-radius: var(--glass-radius);
+	box-shadow: var(--glass-shadow);
+	backdrop-filter: var(--glass-backdrop);
+	-webkit-backdrop-filter: var(--glass-backdrop);
+	color: var(--color-text);
+	overflow: hidden;
+	isolation: isolate;
+}
+
+/* Caustic light refraction on glass edges */
+#notes-window::before {
+	content: '';
+	position: absolute;
+	inset: 1px;
+	z-index: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	background: var(--glass-caustic);
+	opacity: 0.72;
+	mix-blend-mode: screen;
+}
+
+/* Gradient border: brighter top and bottom edges */
+#notes-window::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	border: 1px solid transparent;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.72),
+		rgba(255, 255, 255, 0.08) 28%,
+		rgba(255, 255, 255, 0.03) 68%,
+		rgba(255, 255, 255, 0.28)
+	) border-box;
+	mask:
+		linear-gradient(#000 0 0) padding-box,
+		linear-gradient(#000 0 0);
+	mask-composite: exclude;
+	-webkit-mask:
+		linear-gradient(#000 0 0) padding-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+}
+
+/* Content must render above decorative pseudo-elements */
+#notes-window > header,
+#notes-layout {
+	position: relative;
+	z-index: 1;
+}
+
+/* ===== Header ===== */
+
+#notes-window > header {
+	display: grid;
+	place-items: center;
+	height: 48px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--glass-edge-dim);
+}
+
+#notes-panel h2 {
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: center;
+}
+
+#notes-close {
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	width: 28px;
+	height: 28px;
+	transform: translateY(-50%);
+	border-radius: calc(var(--glass-radius) - 2px);
+	background: transparent;
+	border: 1px solid transparent;
+	color: var(--color-text);
+	font-size: 16px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+#notes-close:hover {
+	background: rgba(255, 255, 255, 0.06);
+	border-color: var(--glass-edge-dim);
+}
+
+/* ===== Layout: Sidebar + Editor ===== */
+
+#notes-layout {
+	min-height: 0;
+	display: grid;
+	grid-template-columns: clamp(200px, 24%, 280px) minmax(0, 1fr);
+}
+
+/* ===== Sidebar ===== */
+
+#notes-list {
+	min-height: 0;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	gap: 6px;
+	padding: 8px;
+	border-right: 1px solid var(--glass-edge-dim);
+	background: rgba(255, 255, 255, 0.02);
+}
+
+#notes-list-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 30px;
+	padding: 0 8px;
+	color: var(--color-light-text);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+#notes-count {
+	min-width: 18px;
+	text-align: center;
+	border-radius: calc(var(--glass-radius) - 2px);
+	padding: 0 5px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--glass-edge-dim);
+}
+
+/* New note button */
+#notes-new {
+	width: 100%;
+	height: 36px;
+	border-radius: calc(var(--glass-radius) - 2px);
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--glass-edge-dim);
+	color: var(--color-text);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+#notes-new:hover {
+	background: rgba(255, 255, 255, 0.12);
+	border-color: var(--glass-edge);
+}
+
+/* ===== Notes Items List ===== */
+
+#notes-items {
+	margin: 0;
+	padding: 0;
+	overflow: auto;
+	min-height: 0;
+	scrollbar-width: none;
+}
+
+#notes-items::-webkit-scrollbar {
+	display: none;
+}
+
+#notes-items li {
+	margin-bottom: 4px;
+}
+
+/* Note item row */
+.notes-item-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 6px;
+	min-height: 36px;
+	padding: 6px 8px;
+	border: 1px solid transparent;
+	border-radius: calc(var(--glass-radius) - 2px);
+	background: transparent;
+	cursor: pointer;
+	transition:
+		background 0.12s var(--out-cubic),
+		border-color 0.12s var(--out-cubic);
+}
+
+.notes-item-row:hover,
+.notes-item-row:focus-within {
+	background: rgba(255, 255, 255, 0.07);
+	border-color: rgba(255, 255, 255, 0.08);
+}
+
+.notes-item-row:has(.notes-item-title.active) {
+	background: rgba(255, 255, 255, 0.09);
+	border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Note title in sidebar */
+.notes-item-title {
+	width: 100%;
+	text-align: left;
+	height: auto;
+	padding: 0;
+	background: transparent;
+	border: none;
+	color: var(--color-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.notes-item-title.active {
+	color: white;
+}
+
+/* Hover action icons */
+.notes-item-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+}
+
+.notes-item-row:hover .notes-item-actions,
+.notes-item-row:focus-within .notes-item-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.notes-item-rename,
+.notes-item-delete {
+	width: 24px;
+	height: 24px;
+	border-radius: calc(var(--glass-radius) - 3px);
+	background: transparent;
+	border: none;
+	color: var(--color-light-text);
+	cursor: pointer;
+}
+
+.notes-item-rename svg,
+.notes-item-delete svg {
+	width: 13px;
+	height: 13px;
+	fill: currentColor;
+}
+
+.notes-item-rename:hover {
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--color-text);
+}
+
+.notes-item-delete:hover {
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--color-red);
+}
+
+/* ===== Editor Area ===== */
+
+#notes-editor {
+	min-height: 0;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	gap: 8px;
+	padding: 10px;
+	background: rgba(255, 255, 255, 0.015);
+}
+
+#notes-editor-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+#notes-title {
+	width: 100%;
+	min-width: 0;
+	height: 38px;
+	padding: 0 12px;
+	border: 1px solid var(--glass-edge-dim);
+	border-radius: calc(var(--glass-radius) - 2px);
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--color-text);
+	font-size: 16px;
+	font-weight: 600;
+}
+
+#notes-title:focus {
+	border-color: var(--glass-edge);
+	background: rgba(255, 255, 255, 0.1);
+	outline: none;
+}
+
+#notes-content {
+	width: 100%;
+	height: 100%;
+	resize: none;
+	line-height: 1.6;
+	font-size: 14px;
+	padding: 12px;
+	border: 1px solid var(--glass-edge-dim);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--color-text);
+	border-radius: calc(var(--glass-radius) - 2px);
+}
+
+#notes-content:focus {
+	border-color: var(--glass-edge);
+	background: rgba(255, 255, 255, 0.08);
+	outline: none;
+}
+
+/* ===== Mobile Responsive ===== */
+
+@media screen and (max-width: 800px) {
+	#notes-panel {
+		padding: 16px;
+	}
+
+	#notes-window {
+		width: min(94vw, 94vw);
+		height: min(82vh, 82vh);
+	}
+
+	#notes-layout {
+		grid-template-columns: 1fr;
+		grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
+	}
+
+	#notes-list {
+		border-right: 0;
+		border-bottom: 1px solid var(--glass-edge-dim);
+	}
+}

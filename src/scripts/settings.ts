@@ -38,10 +38,12 @@ let settingsInitLocal: Local
 
 export function settingsInit(sync: Sync, local: Local): void {
     const showsettings = document.getElementById('show-settings')
+    const shownotes = document.getElementById('show-notes')
 
     settingsInitSync = sync
     settingsInitLocal = local
     showsettings?.classList.add('he_hidden')
+    shownotes?.classList.add('he_hidden')
 
     document.addEventListener('updateSettingsBeforeInit', (e) => {
         settingsInitSync = (e as CustomEvent).detail

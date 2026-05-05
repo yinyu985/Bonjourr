@@ -70,7 +70,6 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
         'greetingsize',
         'greetingsmode',
         'greetingscustom',
-        'notes',
         'weather',
         'searchbar',
         'quotes',
@@ -79,6 +78,13 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
 
     for (const key of obsoleteKeys) {
         delete (newcurrent as Record<string, unknown>)[key]
+    }
+
+    if (!newcurrent.notes || !Array.isArray(newcurrent.notes.records)) {
+        newcurrent.notes = {
+            active: '',
+            records: [],
+        }
     }
 
     return newcurrent

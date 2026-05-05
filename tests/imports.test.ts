@@ -151,9 +151,12 @@ Deno.test('20.4.2', async (t) => {
     await t.step('Removed widgets', () => {
         assert('main' in res === false)
         assert('weather' in res === false)
-        assert('notes' in res === false)
         assert('searchbar' in res === false)
         assert('quotes' in res === false)
+    })
+
+    await t.step('Notes kept', () => {
+        assert('notes' in res)
     })
 })
 
@@ -169,8 +172,11 @@ Deno.test('20.4.2-default', async (t) => {
     await t.step('Removed widgets', () => {
         assert('main' in res === false)
         assert('weather' in res === false)
-        assert('notes' in res === false)
         assert('searchbar' in res === false)
         assert('quotes' in res === false)
+    })
+
+    await t.step('Notes kept', () => {
+        assert('notes' in res)
     })
 })

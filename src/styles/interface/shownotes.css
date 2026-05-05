@@ -1,0 +1,61 @@
+#show-notes {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    padding-left: 14px;
+    padding-bottom: 14px;
+    z-index: 1;
+    transition: opacity 0.1s var(--out-cubic);
+}
+
+#show-notes button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    width: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: #fff;
+    cursor: pointer;
+    appearance: none;
+}
+
+#show-notes svg {
+    width: 28px;
+    height: 28px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s var(--out-cubic), opacity 0.2s var(--out-cubic);
+}
+
+#show-notes.he_hidden {
+    display: flex;
+    opacity: 0;
+}
+
+#show-notes.he_hidden.shown {
+    opacity: 0.5;
+}
+
+#show-notes.he_hidden:hover {
+    opacity: 1;
+}
+
+#show-notes:hover svg {
+    transform: translateY(-2px);
+}
+
+#show-notes.shown {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#show-notes.shown svg {
+    transform: scale(0.9);
+}

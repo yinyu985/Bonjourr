@@ -298,15 +298,15 @@ async function localClear(): Promise<void> {
 //	Init data
 
 async function init(): Promise<AllStorage> {
-    const store: AllStorage = globalThis.startupStorage ?? {}
+    const store = globalThis.startupStorage as AllStorage ?? {}
 
     if (PLATFORM !== 'online' && !webextStoreReady()) {
         globalThis.pageReady = true
 
         await new Promise((resolve) => {
             document.addEventListener('webextstorage', () => {
-                store.local = globalThis.startupStorage.local
-                store.sync = globalThis.startupStorage.sync
+                store.local = globalThis.startupStorage.local as Local
+                store.sync = globalThis.startupStorage.sync as Sync
                 if (webextStoreReady()) {
                     resolve(true)
                 }

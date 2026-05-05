@@ -30,6 +30,9 @@ function keyboardUserActions(event: KeyboardEvent): void {
         else if (open.settings && keyup) {
             document.dispatchEvent(new CustomEvent('toggle-settings'))
         } //
+        else if (open.notes && keyup) {
+            document.dispatchEvent(new CustomEvent('toggle-notes', { detail: { open: false } }))
+        } //
         else if (open.selectall) {
             document.dispatchEvent(new Event('remove-select-all'))
         } //
@@ -83,6 +86,7 @@ function clickUserActions(event: MouseEvent): void {
         contextmenu: pathIds.includes('contextmenu'),
         settings: path.some((el) => el.id === 'settings'),
         showsettings: path.some((el) => el.id === 'show-settings'),
+        notes: path.some((el) => el.id === 'notes-panel'),
         interactable: path.some((el) =>
             el instanceof HTMLElement && (
                 el.matches(
@@ -127,6 +131,9 @@ function clickUserActions(event: MouseEvent): void {
     if (open.settings && !on.interactable) {
         document.dispatchEvent(new CustomEvent('toggle-settings'))
     } //
+    else if (open.notes && !on.notes && !on.interactable) {
+        document.dispatchEvent(new CustomEvent('toggle-notes', { detail: { open: false } }))
+    } //
     else if (open.selectall && !on.link) {
         document.dispatchEvent(new Event('remove-select-all'))
     } //
@@ -149,6 +156,7 @@ function isOpen(): {
     groupfocus: boolean
     selectall: boolean | undefined
     contextmenu: boolean | undefined
+    notes: boolean
 } {
     return {
         settings: !!document.getElementById('settings')?.classList.contains('shown'),
@@ -156,6 +164,7 @@ function isOpen(): {
         groupfocus: document.body.classList.contains('group-focus'),
         selectall: document.getElementById('linkblocks')?.classList.contains('select-all'),
         contextmenu: document.querySelector<HTMLDialogElement>('#contextmenu')?.open,
+        notes: !!document.getElementById('notes-panel')?.classList.contains('shown'),
     }
 }
 
