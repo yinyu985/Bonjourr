@@ -138,9 +138,6 @@ export const SYNC_DEFAULT: Sync = {
         weight: '400',
         id: 'noto-sans-sc',
     },
-    supporters: {
-        enabled: false,
-    },
     notes: {
         active: '',
         records: [],

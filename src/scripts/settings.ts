@@ -1,5 +1,4 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
-import { initSupportersSettingsNotif, supportersNotifications } from './features/supporters.ts'
 import { customFont, fontIsAvailableInSubset, systemfont } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
 import { changeGroupTitle, initGroups } from './features/links/groups.ts'
@@ -112,7 +111,6 @@ function settingsInitEvent(event: Event): void {
     traduction(settings, sync.lang)
     translatePlaceholders()
     initBackgroundOptions(sync, local)
-    initSupportersSettingsNotif(sync)
     initOptionsValues(sync, local)
     if (settings) {
         initCustomSelects(settings)
@@ -208,8 +206,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setCheckbox('i_analog', data.clock?.analog ?? false)
     setCheckbox('i_seconds', data.clock?.seconds ?? false)
     setCheckbox('i_ampm', data.clock?.ampm ?? false)
-    setCheckbox('i_supporters_notif', data.supporters?.enabled ?? true)
-
     colorInput('solid-background', data.backgrounds.color)
     colorInput('texture-color', data.backgrounds.texture.color ?? '#ffffff')
 
@@ -290,8 +286,6 @@ function initOptionsValues(data: Sync, local: Local): void {
             browserSyncOption.textContent = tradThis('Automatic')
         }
     }
-
-    // supportersNotifications(data?.supporters);
 
     // required for the range input's track color separation to work in webkit browsers
     // yes, it blows.
@@ -542,10 +536,6 @@ function initOptionsEvents(): void {
         interfacePopup(undefined, { announcements: this.checked })
     })
 
-    onclickdown(paramId('i_supporters_notif'), (_, target) => {
-        supportersNotifications(undefined, { enabled: target.checked })
-    })
-
     // Sync
 
     paramId('i_synctype').addEventListener('change', function (this): void {
@@ -725,7 +715,6 @@ async function switchLangs(nextLang: Langs): Promise<void> {
     translatePlaceholders()
     translateAriaLabels()
     refreshCustomSelects(document.getElementById('settings') ?? document)
-    supportersNotifications(undefined, { translate: true })
 }
 
 function showall(val: boolean, event: boolean): void {
@@ -875,12 +864,14 @@ function drawerDragEvents(): void {
 
 //	Settings management
 
-function copySettings(): void {
+async function copySettings(): Promise<void> {
     const copybtn = document.querySelector('#b_settings-copy span')
-    const pre = document.getElementById('settings-data')
 
     try {
-        navigator.clipboard.writeText(pre?.textContent ?? '{}')
+        const data = await storage.sync.get()
+        const json = stringify(data)
+
+        navigator.clipboard.writeText(json)
 
         if (copybtn) {
             copybtn.textContent = tradThis('Copied!')
@@ -1001,12 +992,12 @@ export function updateSettingsJson(data?: Sync): void {
     }
 
     function updateTextArea(data: Sync): void {
-        const pre = document.getElementById('settings-data')
+        const pre = document.getElementById('settings-data') as HTMLTextAreaElement | null
 
         if (pre && data.about) {
             const orderedJson = stringify(data)
             data.about.browser = PLATFORM
-            pre.textContent = orderedJson
+            pre.value = orderedJson
         }
     }
 }

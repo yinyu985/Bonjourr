@@ -768,6 +768,10 @@ dialog a {
 .links-drag-layer .link-title {
     display: initial;
     border-color: #fff2;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
 }
 
 .links-drag-layer .link a,

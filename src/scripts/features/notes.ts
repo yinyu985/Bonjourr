@@ -1,5 +1,6 @@
-import { eventDebounce } from '../utils/debounce.ts'
 import { tradThis } from '../utils/translations.ts'
+import { debounce } from '../utils/debounce.ts'
+import { storage } from '../storage.ts'
 
 import type { Sync } from '../../types/sync.ts'
 
@@ -24,6 +25,13 @@ function bindEvents(): void {
     openButton?.addEventListener('click', () => toggleNotes())
     closeButton?.addEventListener('click', () => toggleNotes(false))
     newButton?.addEventListener('click', createNote)
+
+    // Close notes panel when clicking outside the window
+    document.getElementById('notes-panel')?.addEventListener('click', (event) => {
+        if (event.target === document.getElementById('notes-panel')) {
+            toggleNotes(false)
+        }
+    })
     titleInput?.addEventListener('input', () => {
         updateActiveNote({ title: titleInput.value.trimStart() || tradThis('Untitled note') })
     })
@@ -80,40 +88,11 @@ function createNote(): void {
     titleInput?.select()
 }
 
-function renameNote(noteId: string): void {
-    const note = noteState.records.find((record) => record.id === noteId)
-
-    if (!note) {
-        return
-    }
-
-    const nextTitle = prompt(tradThis('Rename note'), note.title)?.trim()
-
-    if (!nextTitle) {
-        return
-    }
-
-    noteState.records = noteState.records.map((record) => {
-        if (record.id !== noteId) {
-            return record
-        }
-
-        return {
-            ...record,
-            title: nextTitle,
-            updatedAt: Date.now(),
-        }
-    })
-
-    persist()
-    renderNotes(false)
-}
-
 function deleteNote(noteId: string): void {
     noteState.records = noteState.records.filter((note) => note.id !== noteId)
     noteState.active = noteState.records[0]?.id ?? ''
 
-    persist()
+    storage.sync.set({ notes: noteState })
     renderNotes()
 }
 
@@ -163,7 +142,6 @@ function renderNotes(syncEditor = true): void {
             const row = document.createElement('div')
             const titleButton = document.createElement('button')
             const actionWrap = document.createElement('div')
-            const renameButton = document.createElement('button')
             const deleteButton = document.createElement('button')
 
             row.className = 'notes-item-row'
@@ -194,17 +172,6 @@ function renderNotes(syncEditor = true): void {
                 renderNotes()
             })
 
-            renameButton.type = 'button'
-            renameButton.className = 'notes-item-rename'
-            renameButton.title = tradThis('Rename note')
-            renameButton.setAttribute('aria-label', tradThis('Rename note'))
-            renameButton.innerHTML =
-                '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V20h3.5L19 8.5 15.5 5 4 16.5zm17.7-10.3a1 1 0 0 0 0-1.4l-2.5-2.5a1 1 0 0 0-1.4 0l-1.9 1.9 3.5 3.5 2.3-2.3z"/></svg>'
-            renameButton.addEventListener('click', (event) => {
-                event.stopPropagation()
-                renameNote(note.id)
-            })
-
             deleteButton.type = 'button'
             deleteButton.className = 'notes-item-delete'
             deleteButton.title = tradThis('Delete note')
@@ -216,7 +183,6 @@ function renderNotes(syncEditor = true): void {
                 deleteNote(note.id)
             })
 
-            actionWrap.appendChild(renameButton)
             actionWrap.appendChild(deleteButton)
             row.appendChild(titleButton)
             row.appendChild(actionWrap)
@@ -231,8 +197,16 @@ function renderNotes(syncEditor = true): void {
     }
 }
 
+let pendingPersist: Promise<void> = Promise.resolve()
+
+const debouncedPersist = debounce(() => {
+    pendingPersist = pendingPersist.then(async () => {
+        await storage.sync.set({ notes: noteState })
+    })
+}, 300)
+
 function persist(): void {
-    eventDebounce({ notes: noteState })
+    debouncedPersist()
 }
 
 function sanitizeNotes(notes: unknown): NotesState {

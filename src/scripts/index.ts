@@ -1,5 +1,4 @@
 import { darkmode, favicon, tabTitle, textShadow } from './features/others.ts'
-import { supportersNotifications } from './features/supporters.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { backgroundsInit } from './features/backgrounds/index.ts'
 import { interfacePopup } from './features/popup.ts'
@@ -93,7 +92,6 @@ async function startup(): Promise<void> {
     onInterfaceDisplay(() => {
         document.body.classList.remove('init')
 
-        supportersNotifications(sync)
         setPotatoComputerMode()
         userActions()
 

@@ -44,6 +44,8 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
             return
         }
 
+        local.backgroundFiles ??= {}
+
         // 1. Add empty thumbnails
 
         for (const file of filelist) {
@@ -832,6 +834,8 @@ async function sanitizeMetadatas(local: Local): Promise<Local> {
     const newMetadataList: Record<string, BackgroundFile> = {}
     const cache = await getCache('local-files')
     const cacheKeys = await cache.keys()
+
+    local.backgroundFiles ??= {}
 
     for (const request of cacheKeys) {
         try {

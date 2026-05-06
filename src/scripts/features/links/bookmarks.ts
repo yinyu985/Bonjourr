@@ -45,7 +45,20 @@ export async function linksImport(): Promise<void> {
     await createBookmarksDialog()
 }
 
-export async function initBookmarkSync(data: Sync): Promise<void> {
+/**
+ * Loads the browser bookmark tree, then mirrors any synced state into `data`.
+ * Returns the (possibly mutated) `data` so callers can keep their in-memory
+ * reference consistent with what was just persisted to storage.
+ *
+ * Safety guarantees:
+ * - If the bookmark tree cannot be loaded, the caller's data is left untouched.
+ * - If a synced group's source folder is missing, that group's local links are
+ *   kept as-is. We never clear local data on a transient read failure.
+ * - __favorites is never treated as a generic synced group. It is implicitly
+ *   mirrored from the toolbar's direct links and reset whenever the toolbar
+ *   has none, but it is not user-tracked in linkgroups.synced.
+ */
+export async function initBookmarkSync(data: Sync): Promise<Sync> {
     let treenode = await getBookmarkTree()
 
     if (!treenode) {
@@ -59,94 +72,159 @@ export async function initBookmarkSync(data: Sync): Promise<void> {
 
     if (!treenode) {
         browserBookmarkFolders = []
-        return
+        return data
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
 
-    // If there are synced groups, update their data from browser bookmarks
+    // Self-heal: __favorites must never live in linkgroups.synced.
+    const filteredSynced = data.linkgroups.synced.filter((group) => group !== FAVORITES_GROUP)
+    let mutated = filteredSynced.length !== data.linkgroups.synced.length
+    data.linkgroups.synced = filteredSynced
+
+    // 1. Mirror named synced groups (real folders the user opted to sync).
     if (data.linkgroups.synced.length > 0) {
-        const updated = applySyncedGroups(data)
-        await storage.sync.set(updated)
+        mutated = applySyncedGroups(data) || mutated
+    }
+
+    // 2. Always mirror toolbar direct links into the implicit __favorites bucket.
+    //    The favorites bar is a derived view of the toolbar, not a user group.
+    mutated = applyFavoritesFromToolbar(data) || mutated
+
+    if (mutated) {
+        await storage.sync.set(data)
     }
 
     addBookmarkListeners()
-}
-
-// For synced groups: replace their links entirely with current browser bookmarks
-// Matching by URL to reuse existing _id where possible
-function applySyncedGroups(data: Sync): Sync {
-    for (const group of data.linkgroups.synced) {
-        const folder = browserBookmarkFolders.find((f) => f.title === group)
-        const hiddenUrls = data.linkgroups.hidden[group] ?? []
-
-        // Build a map of existing links in this group by URL BEFORE removing them
-        const existingByUrl = new Map<string, LinkElem>()
-        for (const val of Object.values(data)) {
-            if (isLink(val) && isElem(val as Link) && (val as LinkElem).parent === group) {
-                existingByUrl.set((val as LinkElem).url, val as LinkElem)
-            }
-        }
-
-        // Remove all old links from this synced group (they're stale)
-        for (const [key, val] of Object.entries(data)) {
-            if (isLink(val) && (val as Link).parent === group) {
-                delete data[key]
-            }
-        }
-
-        if (!folder) {
-            continue
-        }
-
-        // Add fresh browser bookmarks, reusing existing _id where URL matches
-        // Skip bookmarks whose URLs have been moved out (hidden)
-        for (let i = 0; i < folder.bookmarks.length; i++) {
-            const bookmark = folder.bookmarks[i]
-
-            if (hiddenUrls.includes(bookmark.url)) {
-                continue
-            }
-
-            const existing = existingByUrl.get(bookmark.url)
-
-            if (existing) {
-                existing.title = bookmark.title
-                existing.order = i
-                data[existing._id] = existing
-            } else {
-                const link = validateLink(bookmark.title, bookmark.url, group)
-                link.order = i
-                data[link._id] = link
-            }
-        }
-    }
 
     return data
 }
 
-export function syncBookmarks(group: string, data?: Sync): Link[] {
-    const folder = browserBookmarkFolders.find((folder) => folder.title === group)
-    const syncedLinks: Link[] = []
+/**
+ * Mirror each synced group's links from the current browser bookmark tree.
+ * Returns true when `data` was mutated.
+ *
+ * A missing source folder is treated as a no-op for that group, never as
+ * "clear it". This avoids data loss when the bookmark tree is briefly
+ * unavailable or the user has temporarily renamed/moved the source folder.
+ */
+function applySyncedGroups(data: Sync): boolean {
+    let mutated = false
 
-    if (folder) {
-        for (const bookmark of folder.bookmarks) {
-            const link = validateLink(bookmark.title, bookmark.url, group)
+    for (const group of data.linkgroups.synced) {
+        if (group === FAVORITES_GROUP) {
+            // Defensive: __favorites is handled by applyFavoritesFromToolbar.
+            continue
+        }
 
-            if (data) {
-                for (const val of Object.values(data)) {
-                    if (isLink(val) && isElem(val) && val.url === bookmark.url && val.parent === group) {
-                        link._id = val._id
-                        break
-                    }
-                }
-            }
+        const folder = browserBookmarkFolders.find((f) => f.title === group)
 
-            syncedLinks.push(link)
+        if (!folder) {
+            // Source folder is currently unavailable — keep local links intact.
+            continue
+        }
+
+        if (mirrorFolderIntoGroup(data, group, folder.bookmarks)) {
+            mutated = true
         }
     }
 
-    return syncedLinks
+    return mutated
+}
+
+/**
+ * Strictly mirror the toolbar's direct links into the implicit __favorites
+ * group. Always runs (independent of linkgroups.synced) so the favorites bar
+ * is a 1:1 view of the toolbar at all times: add a toolbar link → it appears,
+ * remove it → it disappears.
+ *
+ * Pre-requisite: addToolbarDirectLinksToFavorites always registers a
+ * FAVORITES_GROUP bucket (possibly empty) when the bookmark tree was loaded.
+ * If the bucket is missing it means we never managed to read the tree, so we
+ * skip — never silently drop local data on a transient API failure.
+ *
+ * Deletions are scoped to entries whose parent is FAVORITES_GROUP, so this
+ * cannot affect any other group.
+ */
+function applyFavoritesFromToolbar(data: Sync): boolean {
+    const folder = browserBookmarkFolders.find((f) => f.title === FAVORITES_GROUP)
+
+    if (!folder) {
+        return false
+    }
+
+    return mirrorFolderIntoGroup(data, FAVORITES_GROUP, folder.bookmarks)
+}
+
+/**
+ * Replace the contents of `group` in `data` with `bookmarks`, preserving
+ * existing _id when a URL already exists locally. Returns true when something
+ * actually changed.
+ *
+ * URLs listed in `linkgroups.hidden[group]` are skipped: the user explicitly
+ * moved them out of this synced group and we must not re-add them.
+ */
+function mirrorFolderIntoGroup(
+    data: Sync,
+    group: string,
+    bookmarks: BookmarksFolderItem[],
+): boolean {
+    const hiddenUrls = data.linkgroups.hidden[group] ?? []
+    let mutated = false
+
+    // Snapshot existing links in this group, indexed by URL, before mutation.
+    const existingByUrl = new Map<string, LinkElem>()
+    const existingKeys: string[] = []
+
+    for (const [key, val] of Object.entries(data)) {
+        if (isLink(val) && isElem(val) && val.parent === group) {
+            existingByUrl.set(val.url, val)
+            existingKeys.push(key)
+        }
+    }
+
+    const incomingUrls = new Set(
+        bookmarks.filter((b) => !hiddenUrls.includes(b.url)).map((b) => b.url),
+    )
+
+    // Remove links that are no longer in the source folder.
+    for (const key of existingKeys) {
+        const link = data[key] as LinkElem
+        if (!incomingUrls.has(link.url)) {
+            delete data[key]
+            mutated = true
+        }
+    }
+
+    // Add or update links from the source folder, in source order.
+    for (let i = 0; i < bookmarks.length; i++) {
+        const bookmark = bookmarks[i]
+
+        if (hiddenUrls.includes(bookmark.url)) {
+            continue
+        }
+
+        const existing = existingByUrl.get(bookmark.url)
+
+        if (existing) {
+            const titleChanged = existing.title !== bookmark.title
+            const orderChanged = existing.order !== i
+
+            if (titleChanged || orderChanged) {
+                existing.title = bookmark.title
+                existing.order = i
+                data[existing._id] = existing
+                mutated = true
+            }
+        } else {
+            const link = validateLink(bookmark.title, bookmark.url, group)
+            link.order = i
+            data[link._id] = link
+            mutated = true
+        }
+    }
+
+    return mutated
 }
 
 // Auto-sync: listen for Chrome bookmark changes and re-sync synced groups
@@ -169,23 +247,31 @@ function addBookmarkListeners(): void {
 
 async function refreshSyncedGroups(): Promise<void> {
     const data = await storage.sync.get()
+    const treenode = await getBookmarkTree()
 
-    if (data.linkgroups.synced.length === 0) {
+    if (!treenode) {
+        // Cannot read the tree right now; do not touch local data.
         return
     }
 
-    const treenode = await getBookmarkTree()
+    browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
 
-    if (treenode) {
-        browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
+    let mutated = false
+
+    if (data.linkgroups.synced.length > 0) {
+        mutated = applySyncedGroups(data) || mutated
     }
 
-    // Update storage data for synced groups (removes deleted bookmarks, adds new ones)
-    const updated = applySyncedGroups(data)
-    await storage.sync.set(updated)
+    // The favorites bar always tracks the toolbar, even with no named synced groups.
+    mutated = applyFavoritesFromToolbar(data) || mutated
 
+    if (!mutated) {
+        return
+    }
+
+    await storage.sync.set(data)
     const local = await storage.local.get()
-    initblocks(updated, local)
+    initblocks(data, local)
 }
 
 // Bookmarks Dialog
@@ -251,7 +337,10 @@ async function importSelectedBookmarks(): Promise<void> {
     const selectedFolders = bookmarksdom.querySelectorAll<HTMLDivElement>('.bookmarks-folder.selected')
     const syncedFolders = bookmarksdom.querySelectorAll<HTMLDivElement>('.bookmarks-folder.synced')
     const folderIds = [...selectedFolders].map((el) => el.dataset.title ?? '')
-    const syncedIds = [...syncedFolders].map((el) => el.dataset.title ?? '')
+    // __favorites is implicit; it must never be tracked as a synced group.
+    const syncedIds = [...syncedFolders]
+        .map((el) => el.dataset.title ?? '')
+        .filter((id) => id !== FAVORITES_GROUP)
 
     const links: { title: string; url: string; group?: string }[] = []
     const groups: { title: string; sync: boolean }[] = []
@@ -268,8 +357,11 @@ async function importSelectedBookmarks(): Promise<void> {
     for (const folder of folders) {
         const isFolderSelected = folderIds.includes(folder.title)
         const isFolderSynced = syncedIds.includes(folder.title)
+        // Toolbar direct links (__favorites) never become a user group; they're
+        // mirrored into the favorites bar instead.
+        const isFavoritesBucket = folder.title === FAVORITES_GROUP
 
-        if (isFolderSelected && folder.title !== FAVORITES_GROUP) {
+        if (isFolderSelected && !isFavoritesBucket) {
             groups.push({
                 title: folder.title,
                 sync: isFolderSynced,
@@ -277,14 +369,17 @@ async function importSelectedBookmarks(): Promise<void> {
         }
 
         for (const bookmark of folder.bookmarks) {
-            if (isFolderSelected && !existingUrls.has(bookmark.url)) {
-                existingUrls.add(bookmark.url)
-                links.push({
-                    title: bookmark.title,
-                    url: bookmark.url,
-                    group: folder.title,
-                })
+            if (!isFolderSelected || existingUrls.has(bookmark.url)) {
+                continue
             }
+
+            existingUrls.add(bookmark.url)
+            links.push({
+                title: bookmark.title,
+                url: bookmark.url,
+                // Imported toolbar direct links go straight to the favorites bar.
+                group: isFavoritesBucket ? FAVORITES_GROUP : folder.title,
+            })
         }
     }
 
@@ -306,7 +401,12 @@ async function importSelectedBookmarks(): Promise<void> {
     const selectedSet = new Set(folderIds)
     const syncedSet = new Set(syncedIds)
 
-    newData.linkgroups.synced = newData.linkgroups.synced.filter((group) => selectedSet.has(group) === false)
+    // Drop synced flags for groups we're re-importing, then re-add the ones
+    // the user explicitly opted to sync. __favorites is intentionally excluded
+    // (filtered out of syncedIds above).
+    newData.linkgroups.synced = newData.linkgroups.synced.filter((group) =>
+        selectedSet.has(group) === false && group !== FAVORITES_GROUP
+    )
 
     for (const group of syncedSet) {
         if (newData.linkgroups.synced.includes(group) === false) {
@@ -316,9 +416,11 @@ async function importSelectedBookmarks(): Promise<void> {
 
     await storage.sync.set(newData)
 
-    if (syncedIds.length > 0) {
-        await initBookmarkSync(newData)
-    }
+    // Mirror once more so newly synced groups (and the favorites bar) are
+    // up-to-date before we hand control back to the rendered UI.
+    const refreshed = await initBookmarkSync(newData)
+    const local = await storage.local.get()
+    initblocks(refreshed, local)
 
     bookmarksdom?.classList.remove('shown')
     bookmarksdom?.close()
@@ -416,23 +518,24 @@ function toggleFolderSync(folder: HTMLElement): void {
 
 // webext stuff
 
+/**
+ * Always prefer the live bookmark tree from the API. The cached
+ * `startupBookmarks` is only used as a synchronous fallback when the API call
+ * itself fails or is unavailable, never as the primary source. This avoids
+ * the "first call wins, subsequent calls get nothing" race that used to leave
+ * the favorites bar empty on refresh.
+ */
 async function getBookmarkTree(): Promise<Treenode[] | undefined> {
-    let treenode = globalThis.startupBookmarks
-
-    // Clear startup cache after first use so subsequent calls always get fresh data
-    if (treenode) {
-        globalThis.startupBookmarks = undefined
+    try {
+        const live = await EXTENSION?.bookmarks?.getTree()
+        if (live) {
+            return live as Treenode[]
+        }
+    } catch (_error) {
+        // fall through to startup cache
     }
 
-    if (!treenode) {
-        treenode = await EXTENSION?.bookmarks?.getTree() as browser.bookmarks.BookmarkTreeNode[]
-    }
-
-    if (!treenode) {
-        return
-    }
-
-    return treenode
+    return globalThis.startupBookmarks
 }
 
 function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
@@ -469,14 +572,9 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
 
     function addToolbarDirectLinksToFavorites(root: Treenode): void {
         const toolbar = root.children?.[0]
-
-        if (!toolbar?.children) {
-            return
-        }
-
         const directBookmarks: BookmarksFolderItem[] = []
 
-        for (const child of toolbar.children) {
+        for (const child of toolbar?.children ?? []) {
             const mapped = mapBookmark(child)
 
             if (mapped) {
@@ -484,16 +582,15 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
             }
         }
 
-        const unique = uniqueBookmarks(directBookmarks)
-
-        if (unique.length === 0) {
-            return
-        }
-
+        // Always register the favorites bucket, even when empty. The favorites
+        // bar is a strict mirror of the toolbar's direct links: when the user
+        // removes the last toolbar link, the bar must clear too. Returning
+        // early here used to leave stale local data untouched and broke that
+        // contract.
         folders[FAVORITES_GROUP] = {
             title: FAVORITES_GROUP,
             displayTitle: tradThis('Bookmarks bar'),
-            bookmarks: unique,
+            bookmarks: uniqueBookmarks(directBookmarks),
         }
     }
 

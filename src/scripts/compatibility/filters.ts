@@ -56,16 +56,6 @@ export function fixNullBrightness(data: Import): Import {
     return data
 }
 
-export function addSupporters(data: Import): Import {
-    if (data.supporters === undefined) {
-        data.supporters = {
-            enabled: true,
-        }
-    }
-
-    return data
-}
-
 export function hideArrayToObject(data: Import): Import {
     const newhide: Sync['hide'] = {}
 

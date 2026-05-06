@@ -14,7 +14,6 @@ export interface Sync {
     textShadow: number
     review: number
     announcements: 'major' | 'off'
-    supporters: Supporters
     css: string
     lang: string
     favicon: string
@@ -119,11 +118,6 @@ export interface Font {
     system?: boolean
     url?: string
     availWeights?: string[]
-}
-
-export interface Supporters {
-    enabled: boolean
-    closedMonth?: number
 }
 
 export interface Notes {

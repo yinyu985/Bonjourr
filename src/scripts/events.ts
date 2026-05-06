@@ -43,11 +43,7 @@ function keyboardUserActions(event: KeyboardEvent): void {
             setGroupFocus(false)
         } //
         else if (keyup) {
-            // condition to avoid conflicts with esc key on supporters modal
-            // likely to be improved
-            if (document.documentElement.dataset.supportersModal === undefined) {
-                document.dispatchEvent(new CustomEvent('toggle-settings'))
-            }
+            document.dispatchEvent(new CustomEvent('toggle-settings'))
         }
 
         return

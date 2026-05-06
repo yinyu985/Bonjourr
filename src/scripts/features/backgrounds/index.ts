@@ -119,6 +119,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     data.backgrounds.queries ??= {}
     local.backgroundCollections ??= {}
+    local.backgroundFiles ??= {}
 
     if (update.blurenter) {
         blurResolutionControl(data, local)
@@ -411,7 +412,7 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
             applyBackground(backgrounds.pausedImage)
             return
         }
-        if (backgrounds.pausedVideo && backgrounds.videos === 'videos') {
+        if (backgrounds.pausedVideo && backgrounds.type === 'videos') {
             applyBackground(backgrounds.pausedVideo)
             return
         }

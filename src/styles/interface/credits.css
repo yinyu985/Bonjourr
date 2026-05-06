@@ -5,19 +5,9 @@
     transition: opacity 0.1s;
 }
 
+/* Hide Unsplash photo author credits */
 #credit-container {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    opacity: 0;
-    padding-left: 28px;
-    padding-bottom: 28px;
-    max-width: 50%;
-    display: flex;
-    align-items: center;
-    pointer-events: none;
-    font-family: var(--font-family);
-    font-weight: var(--font-weight);
+    display: none !important;
 }
 
 #credit-container.shown {

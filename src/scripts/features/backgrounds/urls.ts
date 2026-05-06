@@ -19,7 +19,7 @@ let globalUrlValue = ''
 let backgroundUrlsEditor: PrismEditor
 
 export function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): void {
-    const urls = lastUsedValidUrls(local.backgroundUrls)
+    const urls = lastUsedValidUrls(local.backgroundUrls ?? {})
 
     if (urls.length === 0) {
         removeBackgrounds()
@@ -87,7 +87,7 @@ function urlAsBackgroundMedia(url: string, metadata: BackgroundUrl): Background 
 }
 
 export function getUrlsAsCollection(local: Local): [string[], BackgroundImage[]] {
-    const entries = Object.entries(local.backgroundUrls)
+    const entries = Object.entries(local.backgroundUrls ?? {})
     const working = entries.filter((entry) => entry[1].state === 'OK')
     const sorted = working.toSorted((a, b) => new Date(a[1].lastUsed).getTime() - new Date(b[1].lastUsed).getTime())
     const urls = sorted.map(([key]) => key)
@@ -139,7 +139,7 @@ export async function initUrlsEditor(backgrounds: Backgrounds, local: Local): Pr
         return tabCommand?.(e, selection, value)
     }
 
-    for (const [url, { state }] of Object.entries(local.backgroundUrls)) {
+    for (const [url, { state }] of Object.entries(local.backgroundUrls ?? {})) {
         highlightUrlsEditorLine(url, state)
     }
 }

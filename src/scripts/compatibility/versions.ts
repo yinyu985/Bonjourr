@@ -23,7 +23,6 @@ export function filterByVersion(data: Partial<Sync>, version: SemVer): Partial<S
     if (major < 20) {
         data = filter.analogClockOptions(data)
         data = filter.validateLinkGroups(data)
-        data = filter.addSupporters(data)
         data = filter.toIsoLanguageCode(data)
     }
 

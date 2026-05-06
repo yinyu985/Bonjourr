@@ -96,6 +96,7 @@ type LinksUpdate = {
     refreshIcons?: string[]
     groupTitle?: { old: string; new: string }
     styles?: { style?: string; titles?: boolean; backgrounds?: boolean }
+    unsyncGroup?: string
 }
 
 type LinkGroups = {
@@ -145,7 +146,8 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
         return
     }
 
-    const { sync, local } = init
+    const { local } = init
+    let { sync } = init
 
     // set class before appendBlock, cannot be moved
     domlinkblocks.classList.add(sync.linkstyle ?? 'inline')
@@ -153,9 +155,11 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
     domlinkblocks.classList.toggle('backgrounds', sync.linkbackgrounds)
     domlinkblocks.classList.toggle('hidden', !sync.quicklinks)
 
-    if (sync.linkgroups.synced.length > 0) {
-        await initBookmarkSync(sync)
-    }
+    // Always run bookmark sync when the bookmarks API is available so the
+    // favorites bar stays in sync with the toolbar, even when the user has no
+    // named synced groups. initBookmarkSync is a no-op when the API is missing
+    // and returns the up-to-date data so we render with the freshest state.
+    sync = await initBookmarkSync(sync)
 
     initGroups(sync, !!init)
     initRows(sync.linksrow, sync.linkstyle)
@@ -522,6 +526,9 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
     }
     if (update.deleteGroup !== undefined) {
         data = deleteGroup(update.deleteGroup, data)
+    }
+    if (update.unsyncGroup !== undefined) {
+        data = unsyncGroup(update.unsyncGroup, data)
     }
     if (update.groups !== undefined) {
         data = toggleGroups(update.groups, data)
@@ -900,6 +907,42 @@ function refreshIcons(ids: string[], data: Sync): Sync {
     }
 
     initblocks(data)
+
+    return data
+}
+
+/**
+ * Detach a group from `linkgroups.synced` while keeping its current links as a
+ * local snapshot. After this, the user can freely rename, reorder, edit, or
+ * delete those links — they are no longer mirrored from a browser bookmark
+ * folder. Re-enabling sync requires going through the bookmark import dialog.
+ *
+ * The implicit __favorites group is intentionally not unsync-able from here:
+ * its lifecycle is owned by `applyFavoritesFromToolbar` and it never lives in
+ * `linkgroups.synced`.
+ */
+function unsyncGroup(group: string, data: Sync): Sync {
+    if (group === FAVORITES_GROUP) {
+        return data
+    }
+
+    const before = data.linkgroups.synced
+    const after = before.filter((g) => g !== group)
+
+    if (after.length === before.length) {
+        return data
+    }
+
+    data.linkgroups.synced = after
+
+    // Drop the .synced visual marker from the rendered group so the next
+    // initblocks pass treats it as a normal editable group. initblocks reads
+    // group.synced from data.linkgroups.synced and re-applies the class, so
+    // this is just a cosmetic head-start before the re-render.
+    const groupDiv = document.querySelector<HTMLDivElement>(
+        `.link-group[data-group="${group}"]`,
+    )
+    groupDiv?.classList.remove('synced')
 
     return data
 }

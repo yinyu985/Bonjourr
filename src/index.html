@@ -164,7 +164,7 @@
                     </svg>
                     <span class="trn">Apply changes</span>
                 </button>
-                <button type="submit" class="trn" id="edit-synced">Synced links cannot be modified</button>
+                <button type="submit" class="trn" id="edit-unsync">Stop syncing this group</button>
             </form>
 
             <div id="background-actions">
@@ -447,7 +447,7 @@
                             <span id="notes-count">0</span>
                         </div>
                         <ul id="notes-items"></ul>
-                        <button id="notes-new" title="Create note" aria-label="Create note">+ New note</button>
+                        <button id="notes-new" title="Create note" aria-label="Create note">+</button>
                     </aside>
 
                     <section id="notes-editor">
@@ -537,42 +537,6 @@
                         <p id="popup_desc"></p>
                     </div>
                     <div id="popup_buttons"></div>
-                </div>
-            </template>
-
-            <template id="supporters-modal-template">
-                <div id="supporters-modal-container">
-                    <canvas id="glitter"></canvas>
-                    <dialog id="supporters-modal">
-                        <button id="supporters-modal-close" tabindex="0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-                        <main>
-                            <header>
-                                <h2>✨ <span></span> ✨</h2>
-                                <p></p>
-                            </header>
-
-                            <section>
-                                <div id="supporters-monthly">
-                                    <h3></h3>
-                                    <ul></ul>
-                                </div>
-
-                                <div id="supporters-once">
-                                    <h3></h3>
-                                    <ul></ul>
-                                </div>
-                            </section>
-                        </main>
-
-                        <footer>
-                            <p></p>
-                        </footer>
-                    </dialog>
                 </div>
             </template>
 

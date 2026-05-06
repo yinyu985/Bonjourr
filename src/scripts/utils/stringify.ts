@@ -43,6 +43,12 @@ function flattenKeys(obj: object): string[] {
 
         if (isObject(value)) {
             result.push(...flattenKeys(value))
+        } else if (Array.isArray(value)) {
+            for (const item of value) {
+                if (isObject(item)) {
+                    result.push(...flattenKeys(item))
+                }
+            }
         }
     }
 
