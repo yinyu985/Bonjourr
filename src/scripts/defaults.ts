@@ -1,4 +1,6 @@
 import { langList } from './langs.ts'
+import { CURRENT_VERSION } from './version.ts'
+export { CURRENT_VERSION }
 
 import type { Navigator } from '../types/shared.ts'
 import type { Local } from '../types/local.ts'
@@ -7,8 +9,6 @@ import type { Sync } from '../types/sync.ts'
 const navigator = globalThis.navigator as Navigator
 const iosUA = 'iPad Simulator|iPhone Simulator|iPod Simulator|iPad|iPhone|iPod'.split('|')
 const mobileUA = 'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini'.split('|')
-
-export const CURRENT_VERSION = '22.1.0'
 
 export const API_DOMAIN = 'https://services.bonjourr.fr'
 

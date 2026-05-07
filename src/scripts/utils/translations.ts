@@ -37,7 +37,7 @@ export function traduction(scope: Element | null, lang = 'en'): void {
         let text: string
 
         for (const tag of tags) {
-            text = tag.textContent?.trim() ?? ''
+            text = (tag.textContent ?? '').replace(/\s+/g, ' ').trim()
             tag.textContent = (trns[text] as string) ?? text
         }
     }
@@ -72,7 +72,7 @@ export async function toggleTraduction(lang: string): Promise<void> {
     }
 
     for (const tag of tags) {
-        text = tag.textContent ?? ''
+        text = (tag.textContent ?? '').replace(/\s+/g, ' ').trim()
         tag.textContent = toggleDict[text] ?? text
     }
 

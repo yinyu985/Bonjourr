@@ -153,8 +153,14 @@ function settingsToggle(event?: CustomEvent): void {
     // prevents closing if a scrollTo has been requested
     if (!isClosed && scrollTo) return
 
+    // Move focus out before hiding to avoid "aria-hidden on focused element" warning
+    if (!isClosed && domsettings?.contains(document.activeElement)) {
+        ;(document.activeElement as HTMLElement)?.blur()
+    }
+
     domsettings?.classList.toggle('shown', isClosed)
     domsettings?.setAttribute('aria-hidden', String(!isClosed))
+    domsettings?.toggleAttribute('inert', !isClosed)
     domedit?.classList.toggle('pushed', isClosed)
     dominterface?.classList.toggle('pushed', isClosed)
     domshowsettings?.classList.toggle('shown', isClosed)

@@ -10,4 +10,4 @@ runs:
               path: |
                   ~/.deno
                   ~/.cache/deno
-              key: ${{ runner.os }}-deno-${{ hashFiles('**/deps.ts') }}
+              key: ${{ runner.os }}-deno-${{ hashFiles('deno.json', 'deno.lock') }}

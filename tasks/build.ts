@@ -2,7 +2,7 @@ import { ensureDirSync, existsSync } from '@std/fs'
 import { buildSync } from 'esbuild'
 import { httpServer } from './serve.ts'
 import { langList } from '../src/scripts/langs.ts'
-import { CURRENT_VERSION } from '../src/scripts/defaults.ts'
+import { CURRENT_VERSION } from '../src/scripts/version.ts'
 
 type Platform = 'chrome' | 'firefox' | 'safari' | 'edge' | 'online'
 type Env = 'dev' | 'prod' | 'test'
@@ -114,15 +114,22 @@ function html(platform: Platform): void {
     const settingsdata = Deno.readTextFileSync('src/settings.html')
     const helpModeData = Deno.readTextFileSync('src/help-mode.html')
 
-    const favicon = '<link rel="icon" href="src/assets/favicons/favicon.ico" type="image/x-icon" id="favicon" />'
+    const faviconOnline = [
+        '<link rel="icon" href="src/assets/favicons/favicon.svg" type="image/svg+xml" id="favicon" />',
+        '<link rel="alternate icon" href="src/assets/favicons/favicon-32x32.png" type="image/png" sizes="32x32" />',
+        '<link rel="alternate icon" href="src/assets/favicons/favicon.ico" type="image/x-icon" />',
+    ].join('\n        ')
+    const faviconExtension = '<link rel="icon" id="favicon" />'
     const icon = '<link rel="apple-touch-icon" href="src/assets/favicons/apple-touch-icon.png" />'
     const manifest = '<link rel="manifest" href="manifest.webmanifest">'
     const storage = '<script src="src/scripts/webext-storage.js"></script>'
 
     let html = indexdata
 
-    if (platform !== 'edge') {
-        html = html.replace('<!-- default icon -->', favicon)
+    if (platform === 'online') {
+        html = html.replace('<!-- default icon -->', faviconOnline)
+    } else if (platform !== 'edge') {
+        html = html.replace('<!-- default icon -->', faviconExtension)
     }
     if (platform === 'online') {
         html = html.replace('<!-- icon -->', icon)
@@ -231,6 +238,18 @@ function assets(platform: Platform): void {
 
     // All other assets
 
+    Deno.copyFileSync(
+        `${source}/favicons/favicon-16x16.png`,
+        `${target}/favicons/favicon-16x16.png`,
+    )
+    Deno.copyFileSync(
+        `${source}/favicons/favicon-32x32.png`,
+        `${target}/favicons/favicon-32x32.png`,
+    )
+    Deno.copyFileSync(
+        `${source}/favicons/favicon-48x48.png`,
+        `${target}/favicons/favicon-48x48.png`,
+    )
     Deno.copyFileSync(
         `${source}/favicons/favicon-128x128.png`,
         `${target}/favicons/favicon-128x128.png`,

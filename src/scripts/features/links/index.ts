@@ -281,7 +281,7 @@ export function initblocks(sync: Sync, local?: Local): true {
     return true
 }
 
-function initFavorites(sync: Sync): void {
+export function initFavorites(sync: Sync): void {
     const container = document.getElementById('link-favorites')
 
     if (!container) {

@@ -1,6 +1,6 @@
 import { getLinksInGroup } from './helpers.ts'
 import { openContextMenu } from '../contextmenu.ts'
-import { initblocks } from './index.ts'
+import { initblocks, initFavorites } from './index.ts'
 
 import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
@@ -17,6 +17,19 @@ export function isGroupFocus(): boolean {
 
 export function setGroupFocus(focused: boolean): void {
     document.body.classList.toggle('group-focus', focused)
+
+    // Re-render favorites when entering group-focus to ensure they are visible
+    // even if the initial render missed them due to timing issues.
+    if (focused) {
+        const container = document.getElementById('link-favorites')
+        const hasRendered = container && container.children.length > 0
+
+        if (!hasRendered) {
+            storage.sync.get().then((data) => {
+                initFavorites(data)
+            })
+        }
+    }
 }
 
 export function initGroups(data: Sync, init?: true): void {

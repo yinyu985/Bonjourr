@@ -661,6 +661,7 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
         mediaWrapper?.childNodes.forEach((node) => node.remove())
         document.documentElement.style.setProperty('--solid-background', media)
         settingsBackgroundColor(media)
+        localStorage.removeItem('backgroundCache')
         return
     }
 
@@ -706,7 +707,7 @@ function createImageItem(src: string, media: BackgroundImage, callback?: () => v
     const div = document.createElement('div')
     const img = new Image()
 
-    img.addEventListener('load', () => {
+    const onImageReady = () => {
         const isSmall = img.width <= 256 && img.height <= 256
         const isPng = !!media.mimetype?.includes('png')
 
@@ -714,13 +715,22 @@ function createImageItem(src: string, media: BackgroundImage, callback?: () => v
         backgroundsWrapper?.classList.remove('hidden')
         applyThemeColor(media, img)
         updateCredits(media)
+        localStorage.setItem('backgroundCache', src)
 
         if (callback) {
             callback()
         }
-    })
+    }
 
+    img.addEventListener('load', onImageReady)
     img.src = src
+
+    // If image is already cached, show it immediately without waiting for async load event
+    if (img.complete && img.naturalWidth > 0) {
+        img.removeEventListener('load', onImageReady)
+        onImageReady()
+    }
+
     img.remove()
 
     div.classList.add('background-image')
@@ -753,6 +763,7 @@ function createVideoItem(src: string, media: BackgroundVideo, duration: number):
     }
 
     backgroundsWrapper?.classList.remove('hidden')
+    localStorage.removeItem('backgroundCache')
 
     return container
 }
@@ -802,6 +813,7 @@ export function removeBackgrounds(): void {
     const mediaWrapper = document.getElementById('background-media') as HTMLDivElement
     setTimeout(() => document.querySelector('#background-media div')?.classList.add('hiding'))
     setTimeout(() => mediaWrapper.firstChild?.remove(), 2000)
+    localStorage.removeItem('backgroundCache')
 }
 
 function applyFilters({ blur, bright, fadein }: Partial<Backgrounds>): void {

@@ -7,6 +7,9 @@
     "author": "yinyu985 (forked from victrme/Bonjourr)",
     "default_locale": "en",
     "icons": {
+        "16": "src/assets/favicons/favicon-16x16.png",
+        "32": "src/assets/favicons/favicon-32x32.png",
+        "48": "src/assets/favicons/favicon-48x48.png",
         "128": "src/assets/favicons/favicon-128x128.png"
     },
     "chrome_settings_overrides": {
@@ -17,6 +20,9 @@
     },
     "action": {
         "default_icon": {
+            "16": "src/assets/favicons/favicon-16x16.png",
+            "32": "src/assets/favicons/favicon-32x32.png",
+            "48": "src/assets/favicons/favicon-48x48.png",
             "128": "src/assets/favicons/favicon-128x128.png"
         },
         "default_title": "__MSG_extensionName__"

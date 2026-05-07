@@ -23,7 +23,22 @@ import { storage } from './storage.ts'
 
 import { BROWSER, CURRENT_VERSION, LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT, SYSTEM_OS } from './defaults.ts'
 
-import type { Sync } from '../types/sync.ts'
+import type { Sync } from '../types/sync.ts' // Restore cached background immediately to avoid black flash on new tab
+;(function restoreBackgroundCache(): void {
+    const src = localStorage.getItem('backgroundCache')
+    if (src) {
+        const wrapper = document.getElementById('background-wrapper')
+        const media = document.getElementById('background-media')
+        if (wrapper && media) {
+            const div = document.createElement('div')
+            div.className = 'background-image'
+            div.style.backgroundImage = `url(${src})`
+            media.appendChild(div)
+            wrapper.style.opacity = '1'
+            wrapper.classList.remove('hidden')
+        }
+    }
+})()
 
 try {
     startup()
