@@ -429,11 +429,18 @@
             </button>
         </div>
 
-        <aside id="settings" class="init hidden" style="display: none">
+        <aside
+            id="settings"
+            class="init hidden"
+            style="display: none"
+            role="complementary"
+            aria-label="Settings"
+            aria-hidden="true"
+        >
             <!-- settings -->
         </aside>
 
-        <section id="notes-panel" class="hidden" aria-label="Notes">
+        <section id="notes-panel" class="hidden" aria-label="Notes" aria-hidden="true">
             <div id="notes-window">
                 <header>
                     <h2>Notes</h2>
@@ -527,17 +534,6 @@
                     </div>
                     <span></span>
                 </li>
-            </template>
-
-            <template id="popup-template">
-                <div id="popup">
-                    <div id="popup_text">
-                        <div id="popup_close" tabindex="0">✕</div>
-                        <img id="popup_icon" src="src/assets/interface/version-22-promo.png" alt="Version 22 icon" />
-                        <p id="popup_desc"></p>
-                    </div>
-                    <div id="popup_buttons"></div>
-                </div>
             </template>
 
             <template id="opera-explainer-template">

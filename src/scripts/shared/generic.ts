@@ -7,10 +7,6 @@ export function randomString(len: number): string {
     return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-export function equalsCaseInsensitive(a: string, b: string): boolean {
-    return a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0
-}
-
 export function opacityFromHex(hex: string): number {
     return Number.parseInt(hex.slice(4), 16)
 }
@@ -77,44 +73,6 @@ export function hexToHSL(hex: string): { h: number; s: number; l: number } {
         h: Math.round(h),
         s: Math.round(s * 100),
         l: Math.round(l * 100),
-    }
-}
-
-export function hslToRGB(h: number, s: number, l: number): { r: number; g: number; b: number } {
-    const saturation = s / 100
-    const lightness = l / 100
-    const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
-    const x = chroma * (1 - Math.abs((h / 60) % 2 - 1))
-    const m = lightness - chroma / 2
-
-    let r = 0
-    let g = 0
-    let b = 0
-
-    if (h < 60) {
-        r = chroma
-        g = x
-    } else if (h < 120) {
-        r = x
-        g = chroma
-    } else if (h < 180) {
-        g = chroma
-        b = x
-    } else if (h < 240) {
-        g = x
-        b = chroma
-    } else if (h < 300) {
-        r = x
-        b = chroma
-    } else {
-        r = chroma
-        b = x
-    }
-
-    return {
-        r: Math.round((r + m) * 255),
-        g: Math.round((g + m) * 255),
-        b: Math.round((b + m) * 255),
     }
 }
 

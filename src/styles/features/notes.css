@@ -321,3 +321,84 @@
         border-bottom: 1px solid var(--notes-border);
     }
 }
+
+/* ===== Dark Mode ===== */
+
+[data-theme='dark'] #notes-window {
+    --notes-border: rgba(255, 255, 255, 0.12);
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] #notes-list {
+    background: #161616;
+}
+
+[data-theme='dark'] #notes-close {
+    color: #aaaaaa;
+}
+
+[data-theme='dark'] #notes-close:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+}
+
+[data-theme='dark'] #notes-new:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+}
+
+[data-theme='dark'] .notes-item-row:hover,
+[data-theme='dark'] .notes-item-row:focus-within {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .notes-item-row:has(.notes-item-title.active) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .notes-item-title {
+    color: #cccccc;
+}
+
+[data-theme='dark'] .notes-item-title.active {
+    color: #ffffff;
+}
+
+[data-theme='dark'] .notes-item-delete:hover {
+    background: rgba(255, 80, 80, 0.15);
+    color: #ff6b6b;
+}
+
+[data-theme='dark'] #notes-editor {
+    background: #1a1a1a;
+}
+
+[data-theme='dark'] #notes-title {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: #252525;
+    color: #e0e0e0;
+}
+
+[data-theme='dark'] #notes-title:focus {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: #2a2a2a;
+}
+
+[data-theme='dark'] #notes-content {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: #252525;
+    color: #e0e0e0;
+}
+
+[data-theme='dark'] #notes-content:focus {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: #2a2a2a;
+}
+
+[data-theme='dark'] #notes-new {
+    color: #aaaaaa;
+}

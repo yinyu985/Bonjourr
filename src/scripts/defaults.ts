@@ -132,7 +132,7 @@ export const SYNC_DEFAULT: Sync = {
     },
     font: {
         family: 'Noto Sans SC',
-        size: '5.1',
+        size: '7',
         system: false,
         weightlist: [],
         weight: '400',

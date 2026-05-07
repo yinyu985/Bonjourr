@@ -359,19 +359,3 @@ export function removeLinkgroupDuplicates(current: Sync): Sync {
 
     return current
 }
-
-export function convertOldCssSelectors(data: Import): Import {
-    if (data?.css) {
-        data.css = data.css
-            .replaceAll('.block', '.link')
-            .replaceAll('#clock', '#digital')
-            .replaceAll('#analogClock', '#analog')
-            .replaceAll('#center', '#analog-center')
-            .replaceAll('#hours', '#analog-hours')
-            .replaceAll('#minutes', '#analog-minutes')
-            .replaceAll('#analogSeconds', '#analog-seconds')
-            .replaceAll('#creditContainer', '#credit-container')
-    }
-
-    return data
-}

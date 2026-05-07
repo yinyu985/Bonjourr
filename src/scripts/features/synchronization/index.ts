@@ -137,7 +137,6 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
     if (isSyncType(update.type)) {
         local.syncType = update.type
         storage.local.set({ syncType: local.syncType })
-        storage.type.change(update.type === 'browser' ? 'sync' : 'local', data)
 
         toggleSyncSettingsOption(local)
         handleStoragePersistence(update.type)

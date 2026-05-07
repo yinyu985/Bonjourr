@@ -20,13 +20,15 @@ export function setPotatoComputerMode(): void {
     const gl = canvas?.getContext('webgl')
     const debugInfo = gl?.getExtension('WEBGL_debug_renderer_info')
 
-    if (BROWSER === 'chrome' && !gl) {
-        document.body.classList.add('potato')
+    if (!gl) {
+        if (BROWSER === 'chrome') {
+            document.body.classList.add('potato')
+        }
         return
     }
 
-    const vendor = gl?.getParameter(debugInfo?.UNMASKED_VENDOR_WEBGL ?? 0).toString()
-    const renderer = gl?.getParameter(debugInfo?.UNMASKED_RENDERER_WEBGL ?? 0).toString()
+    const vendor = gl.getParameter(debugInfo?.UNMASKED_VENDOR_WEBGL ?? 0)?.toString() ?? ''
+    const renderer = gl.getParameter(debugInfo?.UNMASKED_RENDERER_WEBGL ?? 0)?.toString() ?? ''
     const detectedPotato = vendor.includes('Google') && renderer.includes('SwiftShader')
 
     localStorage.potato = detectedPotato ? 'yes' : 'no'

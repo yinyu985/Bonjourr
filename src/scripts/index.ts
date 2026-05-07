@@ -1,7 +1,6 @@
 import { darkmode, favicon, tabTitle, textShadow } from './features/others.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { backgroundsInit } from './features/backgrounds/index.ts'
-import { interfacePopup } from './features/popup.ts'
 import { customFont } from './features/fonts.ts'
 import { quickLinks } from './features/links/index.ts'
 import { customCss } from './features/css.ts'
@@ -94,16 +93,8 @@ async function startup(): Promise<void> {
 
         setPotatoComputerMode()
         userActions()
-
-        interfacePopup({
-            announce: sync.announcements,
-            review: sync.review ?? 0,
-            new: CURRENT_VERSION,
-            old: oldVersion,
-        })
     })
 }
-
 function minimalHomepageSync(sync: Sync): Sync {
     return {
         ...sync,

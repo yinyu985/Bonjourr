@@ -16,7 +16,6 @@ interface StorageTypeReturn {
     init: () => StorageType
     get: () => StorageType
     set: (type: StorageType) => void
-    change: (type: 'sync' | 'local', data: Sync) => void
 }
 
 interface Storage {
@@ -35,7 +34,6 @@ interface Storage {
     type: {
         get: () => StorageType
         set: (type: StorageType) => void
-        change: (type: 'sync' | 'local', data: Sync) => void
         init: () => StorageType
     }
     init: () => Promise<AllStorage>
@@ -78,15 +76,11 @@ function storageTypeFn(): StorageTypeReturn {
         return type
     }
 
-    function change(_type: 'sync' | 'local', _data: Sync): void {
-        // no longer needed, always uses local storage
-    }
-
     function set(newType: StorageType): void {
         type = newType
     }
 
-    return { init, get, set, change }
+    return { init, get, set }
 }
 
 //	Synced data
@@ -159,7 +153,9 @@ async function syncRemove(key: string): Promise<void> {
         }
 
         case 'localstorage': {
-            localStorage.removeItem(key)
+            const data = parse<Record<string, unknown>>(localStorage.bonjourr) ?? {}
+            delete data[key]
+            localStorage.bonjourr = JSON.stringify(data)
             return
         }
 

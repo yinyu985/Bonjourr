@@ -25,7 +25,7 @@
 }
 
 @media screen and (max-height: 900px) {
-    body {
+    aside {
         font-size: 13px;
     }
 }

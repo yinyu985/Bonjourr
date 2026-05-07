@@ -94,6 +94,10 @@ input[type='checkbox'] {
     color-scheme: only light;
 }
 
+html {
+    transition: background-color 0.3s;
+}
+
 body {
     margin: 0;
     opacity: 1;

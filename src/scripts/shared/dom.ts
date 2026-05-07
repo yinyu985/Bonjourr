@@ -6,6 +6,9 @@ export function webkitRangeTrackColor(input: HTMLInputElement): void {
     input.style.setProperty('--value', value)
     input.style.setProperty('--min', min || '0')
     input.style.setProperty('--max', max || '100')
+    input.setAttribute('aria-valuenow', value)
+    input.setAttribute('aria-valuemin', min || '0')
+    input.setAttribute('aria-valuemax', max || '100')
 }
 
 export function toggleDisabled(element: Element | null, force?: boolean): void {
@@ -85,19 +88,6 @@ export function fadeOut(): void {
     setTimeout(() => {
         location.reload()
     }, 400)
-}
-
-export const inputThrottle = (elem: HTMLInputElement, time = 800) => {
-    let isThrottled = true
-
-    setTimeout(() => {
-        isThrottled = false
-        elem.removeAttribute('disabled')
-    }, time)
-
-    if (isThrottled) {
-        elem.setAttribute('disabled', '')
-    }
 }
 
 export function hexColorFromSplitRange(id: string): string {

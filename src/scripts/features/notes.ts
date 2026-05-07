@@ -45,6 +45,28 @@ function bindEvents(): void {
             toggleNotes(event?.detail?.open)
         }) as EventListener,
     )
+
+    // Focus trap for notes panel
+    document.getElementById('notes-panel')?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab') return
+
+        const panel = document.getElementById('notes-window')
+        if (!panel) return
+
+        const focusable = panel.querySelectorAll<HTMLElement>(
+            'button, input, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault()
+            last?.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault()
+            first?.focus()
+        }
+    })
 }
 
 function toggleNotes(force?: boolean): void {
@@ -61,6 +83,7 @@ function toggleNotes(force?: boolean): void {
 
     panel?.classList.toggle('hidden', !shouldOpen)
     panel?.classList.toggle('shown', shouldOpen)
+    panel?.setAttribute('aria-hidden', String(!shouldOpen))
     trigger?.classList.toggle('shown', shouldOpen)
 
     if (shouldOpen && noteState.records.length === 0) {

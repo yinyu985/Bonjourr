@@ -2,6 +2,7 @@ import { ensureDirSync, existsSync } from '@std/fs'
 import { buildSync } from 'esbuild'
 import { httpServer } from './serve.ts'
 import { langList } from '../src/scripts/langs.ts'
+import { CURRENT_VERSION } from '../src/scripts/defaults.ts'
 
 type Platform = 'chrome' | 'firefox' | 'safari' | 'edge' | 'online'
 type Env = 'dev' | 'prod' | 'test'
@@ -189,14 +190,16 @@ function scripts(platform: Platform, env: Env): void {
     )
 
     if (platform === 'online') {
-        Deno.copyFileSync(
-            'src/scripts/services/service-worker.js',
+        const sw = Deno.readTextFileSync('src/scripts/services/service-worker.js')
+        Deno.writeTextFileSync(
             `release/${platform}/service-worker.js`,
+            sw.replace("'__VERSION__'", `'${CURRENT_VERSION}'`),
         )
     } else {
-        Deno.copyFileSync(
-            'src/scripts/services/service-worker.js',
+        const sw = Deno.readTextFileSync('src/scripts/services/service-worker.js')
+        Deno.writeTextFileSync(
             `release/${platform}/src/scripts/service-worker.js`,
+            sw.replace("'__VERSION__'", `'${CURRENT_VERSION}'`),
         )
     }
 

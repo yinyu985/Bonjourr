@@ -1146,12 +1146,6 @@ function isFrequency(str = ''): str is Frequency {
     return ['tabs', 'hour', 'day', 'period', 'pause'].includes(str)
 }
 
-function _isVideo(item: BackgroundVideo | BackgroundImage): item is BackgroundVideo {
-    return item.format === 'video'
-}
-function _isImage(item: BackgroundVideo | BackgroundImage): item is BackgroundImage {
-    return item.format === 'image'
-}
 function areOnlyImages(list: Background[]): list is BackgroundImage[] {
     return list?.every((item) => item.format === 'image')
 }

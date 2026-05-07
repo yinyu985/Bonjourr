@@ -3,7 +3,6 @@ import { customFont, fontIsAvailableInSubset, systemfont } from './features/font
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
 import { changeGroupTitle, initGroups } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
-import { interfacePopup } from './features/popup.ts'
 import { hideElements } from './features/hide.ts'
 import { linksImport } from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
@@ -155,6 +154,7 @@ function settingsToggle(event?: CustomEvent): void {
     if (!isClosed && scrollTo) return
 
     domsettings?.classList.toggle('shown', isClosed)
+    domsettings?.setAttribute('aria-hidden', String(!isClosed))
     domedit?.classList.toggle('pushed', isClosed)
     dominterface?.classList.toggle('pushed', isClosed)
     domshowsettings?.classList.toggle('shown', isClosed)
@@ -190,7 +190,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_clocksize', data.clock?.size ?? 1)
     setInput('i_weight', data.font?.weight || '300')
     setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
-    setInput('i_announce', data.announcements ?? 'major')
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'browser'))
 
     setFormInput('i_customfont', systemfont.placeholder, data.font?.family)
@@ -530,12 +529,6 @@ function initOptionsEvents(): void {
         customFont(undefined, { size: this.value })
     })
 
-    // Updates
-
-    paramId('i_announce').addEventListener('change', function (this): void {
-        interfacePopup(undefined, { announcements: this.checked })
-    })
-
     // Sync
 
     paramId('i_synctype').addEventListener('change', function (this): void {
@@ -643,7 +636,6 @@ function initOptionsEvents(): void {
         }
     }
 
-    // TODO: drag event not working ?
     const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]')
 
     for (const input of fileInputs) {
@@ -1082,5 +1074,5 @@ function setFormInput(id: string, defaults: string, value?: string): void {
 }
 
 function clampFontSize(size: string): string {
-    return Math.min(15, Math.max(5, Number.parseFloat(size))).toString()
+    return Math.min(15, Math.max(7, Number.parseFloat(size))).toString()
 }

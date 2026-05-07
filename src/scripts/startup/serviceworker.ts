@@ -6,11 +6,4 @@ export function serviceWorker(): void {
     }
 
     navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-
-    let promptEvent: Event // PWA install trigger (30s interaction default)
-
-    globalThis.addEventListener('beforeinstallprompt', (e) => {
-        promptEvent = e
-        return promptEvent
-    })
 }
