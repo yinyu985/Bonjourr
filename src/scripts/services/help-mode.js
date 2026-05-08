@@ -65,7 +65,8 @@ async function downloadSettings() {
  */
 async function getDataAsString() {
     if (typeof chrome !== 'undefined' && chrome?.storage) {
-        return JSON.stringify(await chrome.storage.sync.get(), null, 2)
+        const { syncStorage } = await chrome.storage.local.get('syncStorage')
+        return JSON.stringify(syncStorage ?? {}, null, 2)
     }
 
     return localStorage.bonjourr ?? ''
@@ -90,9 +91,13 @@ async function resetApply() {
 
     // Reset
 
-    if (chrome?.storage) {
-        chrome.storage.sync.clear()
-        chrome.storage.local.clear()
+    if (typeof chrome !== 'undefined' && chrome?.storage) {
+        try {
+            await chrome.storage.sync?.clear()
+        } catch (err) {
+            console.warn('Sync storage reset failed', err)
+        }
+        await chrome.storage.local.clear()
     }
     if (localStorage) {
         Object.keys(localStorage).forEach((key) => {
@@ -197,8 +202,12 @@ function createHelpModeDisplay() {
 
     // Chrome storage
     if (typeof chrome !== 'undefined' && chrome?.storage) {
-        chrome.storage.sync.get().then((data) => {
-            container.querySelector('#help-storage-sync').textContent = JSON.stringify(data, undefined, 2)
+        chrome.storage.local.get('syncStorage').then((data) => {
+            container.querySelector('#help-storage-sync').textContent = JSON.stringify(
+                data.syncStorage ?? {},
+                undefined,
+                2,
+            )
             container.querySelector('#syncstorage-container')?.classList.remove('hidden')
         })
 

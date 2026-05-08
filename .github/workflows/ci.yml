@@ -7,14 +7,14 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/deno
-            - run: deno run build
+            - run: deno task build
 
     tests:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/deno
-            - run: deno run test
+            - run: deno task test
 
     types:
         runs-on: ubuntu-latest

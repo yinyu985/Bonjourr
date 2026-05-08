@@ -57,8 +57,6 @@ deno task online
 - Go to `edge://extensions`
 - Enable Developer mode
 - Load unpacked and select `/release/edge` folder
-- Replace manifest with `/src/manifests/edge.json`
-- And rename `edge.json` to `manifest.json`
 
 #### Safari
 
@@ -110,7 +108,7 @@ To upload a build to Firefox addons, chrome web store, edge addons, you need to 
 # Or "deno task archive"
 docker compose -f docker/compose.archive.yaml up --build
 
-# archive-1  | Task build deno run --allow-all ./tasks/build.ts
+# archive-1  | Task build deno task build
 # archive-1  | chrome built in: 129ms
 # archive-1  | Archiving chrome...
 # ...

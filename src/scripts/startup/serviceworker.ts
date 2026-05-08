@@ -5,5 +5,7 @@ export function serviceWorker(): void {
         return
     }
 
-    navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+    navigator.serviceWorker.register('./service-worker.js', { scope: './' }).catch((err) => {
+        console.warn('Service worker registration failed', err)
+    })
 }

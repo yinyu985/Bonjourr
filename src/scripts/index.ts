@@ -23,8 +23,9 @@ import { storage } from './storage.ts'
 
 import { BROWSER, CURRENT_VERSION, LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT, SYSTEM_OS } from './defaults.ts'
 
-import type { Sync } from '../types/sync.ts' // Restore cached background immediately to avoid black flash on new tab
-;(function restoreBackgroundCache(): void {
+restoreBackgroundCache()
+
+function restoreBackgroundCache(): void {
     const src = localStorage.getItem('backgroundCache')
     if (src) {
         const wrapper = document.getElementById('background-wrapper')
@@ -38,14 +39,17 @@ import type { Sync } from '../types/sync.ts' // Restore cached background immedi
             wrapper.classList.remove('hidden')
         }
     }
-})()
+}
 
 try {
-    startup()
+    const startupPromise = startup()
     serviceWorker()
     onlineAndMobile()
-} catch (_) {
-    console.warn('Startup failed')
+    startupPromise.catch((err) => {
+        console.warn('Startup failed', err)
+    })
+} catch (err) {
+    console.warn('Startup failed', err)
 }
 
 async function startup(): Promise<void> {
@@ -77,8 +81,6 @@ async function startup(): Promise<void> {
 
     await setTranslationCache(sync.lang, local)
 
-    sync = minimalHomepageSync(sync)
-
     displayInterface(undefined, sync)
     traduction(null, sync.lang)
     userDate(sync.clock.timezone)
@@ -101,23 +103,12 @@ async function startup(): Promise<void> {
     document.documentElement.dataset.browser = BROWSER as string
     document.documentElement.dataset.platform = PLATFORM as string
 
-    document.getElementById('time')?.classList.remove('hidden')
-    document.getElementById('linkblocks')?.classList.remove('hidden')
+    document.getElementById('time')?.classList.toggle('hidden', !sync.time)
+    document.getElementById('linkblocks')?.classList.toggle('hidden', !sync.quicklinks)
     onInterfaceDisplay(() => {
         document.body.classList.remove('init')
 
         setPotatoComputerMode()
         userActions()
     })
-}
-function minimalHomepageSync(sync: Sync): Sync {
-    return {
-        ...sync,
-        time: true,
-        quicklinks: true,
-        linkgroups: {
-            ...sync.linkgroups,
-            on: true,
-        },
-    }
 }
