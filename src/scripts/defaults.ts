@@ -99,6 +99,7 @@ export const SYNC_DEFAULT: Sync = {
         pinned: [],
         synced: [],
         hidden: {},
+        bookmarkFolders: {},
     },
     backgrounds: {
         type: 'color',
@@ -145,7 +146,7 @@ export const SYNC_DEFAULT: Sync = {
 }
 
 export const LOCAL_DEFAULT: Local = {
-    syncType: PLATFORM === 'online' ? 'off' : 'browser',
+    syncType: PLATFORM === 'online' ? 'off' : 'gist',
     gistToken: '',
     translations: undefined,
     backgroundUrls: {},

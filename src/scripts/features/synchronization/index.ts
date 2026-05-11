@@ -1,11 +1,14 @@
 import { findGistId, isGistTokenValid, retrieveGist, sendGist, setGistStatus } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
+import { dedupeSyncLinks, mergeSyncAppend } from './merge.ts'
+import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { networkForm } from '../../shared/form.ts'
 import { fadeOut } from '../../shared/dom.ts'
 import { storage } from '../../storage.ts'
 
 import type { Local, SyncType } from '../../../types/local.ts'
+import type { Sync } from '../../../types/sync.ts'
 
 interface SyncUpdate {
     type?: string
@@ -45,8 +48,9 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             try {
                 const id = local.gistId ?? ''
                 const token = local.gistToken ?? ''
-                const update = await retrieveGist(token, id)
-                storage.sync.set(update)
+                const incoming = await retrieveGist(token, id)
+                const update = await mergeDownloadedSync(data, incoming)
+                await renderLinksFromSync(update)
                 fadeOut()
             } catch (err) {
                 gistsyncform.warn(err as string)
@@ -57,8 +61,9 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             urlsyncform.load()
 
             try {
-                const update = await receiveFromURL(local.distantUrl)
-                storage.sync.set(update)
+                const incoming = await receiveFromURL(local.distantUrl)
+                const update = await mergeDownloadedSync(data, incoming)
+                await renderLinksFromSync(update)
                 fadeOut()
             } catch (err) {
                 urlsyncform.warn(err as string)
@@ -72,7 +77,10 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
             try {
                 const token = local.gistToken ?? ''
-                const id = await sendGist(token, local.gistId, data)
+                const latest = getSettingsTextAreaSync() ??
+                    await bootstrapBookmarksFromConfig(await storage.sync.get())
+
+                const id = await sendGist(token, local.gistId, latest)
 
                 gistsyncform.accept()
 
@@ -239,6 +247,43 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
 
 function isSyncType(val = ''): val is SyncType {
     return ['browser', 'gist', 'url', 'off'].includes(val)
+}
+
+async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
+    let update = mergeSyncAppend(current, incoming)
+
+    await storage.sync.clear()
+    await storage.sync.set(update)
+
+    const restored = await restoreBookmarksFromConfig(incoming)
+
+    if (restored) {
+        update = await bootstrapBookmarksFromConfig(update)
+        await storage.sync.set(update)
+    }
+
+    return update
+}
+
+function getSettingsTextAreaSync(): Sync | undefined {
+    const textarea = document.getElementById('settings-data') as HTMLTextAreaElement | null
+    const value = textarea?.value.trim()
+
+    if (!value) {
+        return
+    }
+
+    try {
+        const parsed = JSON.parse(value) as Partial<Sync>
+
+        if (parsed?.about && parsed?.linkgroups) {
+            return dedupeSyncLinks(parsed as Sync)
+        }
+
+        throw 'Settings JSON is missing required fields.'
+    } catch (_) {
+        throw 'Invalid settings JSON.'
+    }
 }
 
 // function isSyncFreq(val: string): val is SyncFreq {

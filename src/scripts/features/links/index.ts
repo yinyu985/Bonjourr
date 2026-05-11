@@ -7,7 +7,7 @@ import {
     toggleGroups,
     updateSelectedGroupPosition,
 } from './groups.ts'
-import { initBookmarkSync } from './bookmarks.ts'
+import { initBookmarkSync, syncBookmarksUpdate } from './bookmarks.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { storeIconFile } from './fileicons.ts'
 import { folderClick } from './folders.ts'
@@ -37,6 +37,7 @@ type AddLinks = {
     title: string
     url: string
     group?: string
+    bookmark?: LinkElem['bookmark']
 }[]
 
 type UpdateLink = {
@@ -170,10 +171,11 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
 
 export function initblocks(sync: Sync, local?: Local): true {
     const allLinks = Object.values(sync).filter((val) => isLink(val)) as Link[]
-    const { pinned, synced, selected } = sync.linkgroups
+    const { groups, pinned, synced, selected } = sync.linkgroups
     const activeGroups: LinkGroups = []
+    const visibleGroups = uniqueStrings([selected, ...pinned]).filter((group) => groups.includes(group))
 
-    for (const group of [selected, ...pinned]) {
+    for (const group of visibleGroups) {
         const div = document.querySelector<HTMLDivElement>(`.link-group[data-group="${group}"]`)
         const folder = div?.dataset.folder
         const lis: HTMLLIElement[] = []
@@ -232,10 +234,9 @@ export function initblocks(sync: Sync, local?: Local): true {
 
             fragment.appendChild(li)
 
-            li.addEventListener('keyup', openContextMenu)
-            li.addEventListener('pointerdown', startDrag)
-
             if (!group.synced) {
+                li.addEventListener('keyup', openContextMenu)
+                li.addEventListener('pointerdown', startDrag)
                 li.addEventListener('click', selectAll)
                 li.addEventListener('pointerdown', selectAll)
             }
@@ -314,9 +315,6 @@ export function initFavorites(sync: Sync): void {
         if (sync.linknewtab || anchor.href.startsWith('data:')) {
             anchor.target = '_blank'
         }
-
-        li.addEventListener('keyup', openContextMenu)
-        li.addEventListener('pointerdown', startDrag)
 
         container.appendChild(li)
     }
@@ -435,6 +433,10 @@ function initRows(row: number, style: string): void {
     }
 }
 
+function uniqueStrings(values: string[]): string[] {
+    return [...new Set(values.filter(Boolean))]
+}
+
 //	Select All
 
 queueMicrotask(() => {
@@ -484,6 +486,10 @@ function removeSelectAll(): void {
 
 export async function linksUpdate(update: LinksUpdate): Promise<void> {
     let data = await storage.sync.get()
+
+    if (await syncBookmarksUpdate(update, data)) {
+        return
+    }
 
     if (update.addLinks) {
         data = linkSubmission({ type: 'link', links: update.addLinks }, data)
@@ -563,12 +569,15 @@ function linkSubmission(args: SubmitLink | SubmitFolder, data: Sync): Sync {
 
     if (type === 'link') {
         for (const link of args.links) {
-            newlinks.push(validateLink(
+            const validated = validateLink(
                 link.title,
                 link.url,
                 // if no group is specified, adds to the selected one
                 link.group || data.linkgroups.selected,
-            ))
+            )
+
+            validated.bookmark = link.bookmark
+            newlinks.push(validated)
         }
     }
 

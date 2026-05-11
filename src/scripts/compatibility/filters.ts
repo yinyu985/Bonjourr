@@ -193,6 +193,7 @@ export function validateLinkGroups(current: Import): Import {
             synced: [],
             pinned: [],
             hidden: {},
+            bookmarkFolders: {},
         }
 
         for (const link of links) {
@@ -210,6 +211,9 @@ export function validateLinkGroups(current: Import): Import {
 
     if (!current.linkgroups.hidden) {
         current.linkgroups.hidden = {}
+    }
+    if (!current.linkgroups.bookmarkFolders) {
+        current.linkgroups.bookmarkFolders = {}
     }
 
     const { groups, pinned, synced, selected } = current.linkgroups

@@ -211,7 +211,10 @@ async function localGet(keys?: string | string[]): Promise<Local> {
     switch (storage.type.get()) {
         case 'webext-local': {
             const data = await chrome.storage.local.get(keys) as unknown as Local
-            return data
+            return {
+                ...structuredClone(LOCAL_DEFAULT),
+                ...data,
+            }
         }
 
         default: {

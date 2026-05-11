@@ -68,7 +68,7 @@ export async function populateDialogWithEditLink(
         link: classNames.some((cl) => cl.includes('link-elem')),
         folder: classNames.some((cl) => cl.includes('link-folder')),
         title: classNames.some((cl) => cl.includes('link-title')),
-        synced: classNames.some((cl) => cl.includes('synced')),
+        synced: isFavorite || classNames.some((cl) => cl.includes('synced')),
         addgroup: classNames.some((cl) => cl.includes('add-group')),
     }
 
@@ -173,10 +173,7 @@ function toggleEditInputs(): string[] {
 
     if (container.mini) {
         if (target.synced && target.title) {
-            // Synced group title in the mini-tab list: allow stopping the sync
-            // and deleting the group, but not in-place rename (the source of
-            // truth is the browser bookmark folder).
-            inputs = ['unsync', 'delete']
+            inputs = []
         } else if (target.addgroup) {
             inputs = ['title*', 'add'] // * for required inputs
             setSubmitOnEnter('edit-add')
@@ -186,13 +183,8 @@ function toggleEditInputs(): string[] {
     }
 
     if (container.group) {
-        if (target.synced && !target.title) {
-            // Right-click on a link inside a synced group: the only meaningful
-            // action is to stop syncing the whole group, after which the user
-            // can edit individual links freely.
-            inputs = ['unsync']
-        } else if (target.synced && target.title) {
-            inputs = ['unsync', 'delete']
+        if (target.synced) {
+            inputs = []
         } else if (selectall) {
             inputs = ['delete', 'add']
             setSubmitOnEnter('edit-add')

@@ -532,7 +532,7 @@
     <button class="tooltip ttlinks" title="Tips on Quick Links" aria-label="Tips on Quick Links">?</button>
 
     <p class="tooltiptext dropdown ttlinks">
-        <span class="trn">These are Bonjourr's bookmarks. Edit your Quick Links by right clicking the icon.</span>
+        <span class="trn">Browser bookmarks are mirrored from your browser's bookmark manager.</span>
         <a class="trn" href="https://github.com/yinyu985/Bonjourr" rel="noreferrer noopener" target="_blank"
         >Learn more</a>
     </p>
@@ -549,9 +549,9 @@
             <hr />
 
             <div class="wrapper">
-                <label for="b_importbookmarks" class="trn">Import bookmarks</label>
+                <label for="b_importbookmarks" class="trn">Sync bookmarks</label>
                 <div>
-                    <button id="b_importbookmarks" class="param-btn trn">Import</button>
+                    <button id="b_importbookmarks" class="param-btn trn">Sync</button>
                 </div>
             </div>
         </div>
@@ -875,8 +875,8 @@
             <label for="i_synctype" class="trn">Synchronization type</label>
 
             <select id="i_synctype">
-                <option class="trn not-online" value="browser" selected>Browser</option>
-                <option value="gist">Github Gist</option>
+                <option value="gist" selected>Github Gist</option>
+                <option class="trn not-online" value="browser">Browser</option>
                 <option class="trn" value="url">Distant URL</option>
                 <option class="trn" value="off">Disabled</option>
             </select>

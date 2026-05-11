@@ -55,6 +55,12 @@ export interface LinkElem {
     title: string
     url: string
     icon?: LinkIcon
+    bookmark?: BookmarkRef
+}
+
+export interface BookmarkRef {
+    id: string
+    parentId?: string
 }
 
 export interface LinkIcon {

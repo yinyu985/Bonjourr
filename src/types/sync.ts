@@ -40,6 +40,7 @@ export interface LinkGroups {
     pinned: string[]
     synced: string[]
     hidden: Record<string, string[]>
+    bookmarkFolders: Record<string, string>
 }
 
 export interface Hide {

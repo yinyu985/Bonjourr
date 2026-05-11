@@ -43,6 +43,12 @@ export function openContextMenu(event: Event): void {
 
     const target = getContextTarget(event)
 
+    if (target.closest('#link-favorites')) {
+        event.preventDefault()
+        closeContextMenu()
+        return
+    }
+
     eventLocation = {
         widgets: {
             link: !!target.closest('#linkblocks'),

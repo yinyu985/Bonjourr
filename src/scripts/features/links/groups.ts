@@ -65,8 +65,9 @@ export function initGroups(data: Sync, init?: true): void {
 
 function createGroups(linkgroups: LinkGroups): void {
     const { groups, pinned, synced, selected } = linkgroups
+    const visibleGroups = groups.length === 0 ? [] : [...groups, '+']
 
-    for (const group of [...groups, '+']) {
+    for (const group of visibleGroups) {
         const button = document.createElement('button')
         const isTopSite = group === 'topsites'
         const isDefault = group === 'default'
@@ -101,9 +102,9 @@ function createGroups(linkgroups: LinkGroups): void {
         document.querySelector('#link-mini div')?.appendChild(button)
     }
 
-    domlinkblocks?.classList.toggle('with-groups', linkgroups.on)
+    domlinkblocks?.classList.toggle('with-groups', linkgroups.on && groups.length > 0)
 
-    if (!linkgroups.on) {
+    if (!linkgroups.on || groups.length === 0) {
         setGroupFocus(false)
     }
 }
@@ -149,7 +150,7 @@ function changeGroup(event: Event): void {
 
     async function recreateLinksFromNewGroup(): Promise<void> {
         const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
-        const data = await storage.sync.get()
+        const data = await refreshBookmarksBeforeGroupRender(await storage.sync.get())
         const group = button.dataset.group ?? data.linkgroups.groups[0]
 
         for (const div of buttons ?? []) {
@@ -157,7 +158,7 @@ function changeGroup(event: Event): void {
         }
         button.classList.add('selected-group')
         data.linkgroups.selected = group
-        storage.sync.set(data)
+        await storage.sync.set({ linkgroups: data.linkgroups })
         initblocks(data)
     }
 
@@ -170,6 +171,15 @@ function changeGroup(event: Event): void {
         domlinkblocks.classList.remove('hiding')
         setGroupFocus(true)
         updateSelectedGroupPosition()
+    }
+}
+
+async function refreshBookmarksBeforeGroupRender(data: Sync): Promise<Sync> {
+    try {
+        const { bootstrapBookmarksFromConfig } = await import('./bookmarks.ts')
+        return await bootstrapBookmarksFromConfig(data)
+    } catch (_) {
+        return data
     }
 }
 

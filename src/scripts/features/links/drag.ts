@@ -63,7 +63,7 @@ let domlinkgroup: HTMLDivElement
 queueMicrotask(() => {
     document.getElementById('link-mini')?.addEventListener('pointerdown', (event) => {
         const target = getTitleFromEvent(event)
-        if (!target || target.classList.contains('add-group')) return
+        if (!target || target.classList.contains('add-group') || target.classList.contains('synced')) return
         startDrag(event)
     })
 })

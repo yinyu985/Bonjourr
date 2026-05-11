@@ -3,8 +3,15 @@ import { customFont, fontIsAvailableInSubset, systemfont } from './features/font
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
 import { changeGroupTitle, initGroups } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
+import { dedupeSyncLinks, mergeSyncAppend } from './features/synchronization/merge.ts'
 import { hideElements } from './features/hide.ts'
-import { linksImport } from './features/links/bookmarks.ts'
+import {
+    bootstrapBookmarksFromConfig,
+    linksImport,
+    renderLinksFromSync,
+    replaceBookmarksFromConfig,
+    restoreBookmarksFromConfig,
+} from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
 import { clock } from './features/clock/index.ts'
 import { openSettingsButtonEvent } from './features/contextmenu.ts'
@@ -33,6 +40,7 @@ import type { Local } from '../types/local.ts'
 
 let settingsInitSync: Sync
 let settingsInitLocal: Local
+let settingsJsonUpdateId = 0
 
 export function settingsInit(sync: Sync, local: Local): void {
     const showsettings = document.getElementById('show-settings')
@@ -196,7 +204,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_clocksize', data.clock?.size ?? 1)
     setInput('i_weight', data.font?.weight || '300')
     setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
-    setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'browser'))
+    setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'gist'))
 
     setFormInput('i_customfont', systemfont.placeholder, data.font?.family)
     setFormInput('i_gistsync', 'github_pat_XX000X00X', local?.gistToken)
@@ -367,7 +375,7 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('b_importbookmarks'), async () => {
         await getPermissions('bookmarks')
-        linksImport()
+        await linksImport()
     })
 
     // Backgrounds
@@ -612,7 +620,7 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('b_settings-apply'), () => {
         const val = paramId('settings-data').value
-        importSettings(parse<Partial<Sync>>(val) ?? {})
+        importSettings(parse<Partial<Sync>>(val) ?? {}, 'replace')
     })
 
     onclickdown(paramId('b_reset-first'), () => {
@@ -866,7 +874,7 @@ async function copySettings(): Promise<void> {
     const copybtn = document.querySelector('#b_settings-copy span')
 
     try {
-        const data = await storage.sync.get()
+        const data = await getLatestExportData()
         const json = stringify(data)
 
         navigator.clipboard.writeText(json)
@@ -882,6 +890,10 @@ async function copySettings(): Promise<void> {
     }
 }
 
+async function getLatestExportData(): Promise<Sync> {
+    return dedupeSyncLinks(await bootstrapBookmarksFromConfig(await storage.sync.get()))
+}
+
 async function saveImportFile(): Promise<void> {
     const a = document.getElementById('file-download')
 
@@ -890,7 +902,7 @@ async function saveImportFile(): Promise<void> {
     }
 
     const date = new Date()
-    const data = ((await storage.sync.get()) as Sync) ?? {}
+    const data = await getLatestExportData()
     const zero = (n: number) => (n.toString().length === 1 ? `0${n}` : n.toString())
     const yyyymmdd = date.toISOString().slice(0, 10)
     const hhmmss = `${zero(date.getHours())}_${zero(date.getMinutes())}_${zero(date.getSeconds())}`
@@ -941,15 +953,15 @@ function loadImportFile(target: HTMLInputElement): void {
 
         // data has at least one valid key from default sync storage => import
         if (Object.keys(SYNC_DEFAULT).filter((key) => key in importData).length > 0) {
-            importSettings(importData as Sync)
+            importSettings(importData as Sync, 'replace')
         }
     }
     reader.readAsText(file)
 }
 
-async function importSettings(imported: Partial<Sync>): Promise<void> {
+async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace' = 'merge'): Promise<void> {
     try {
-        let data = await storage.sync.get()
+        const current = await storage.sync.get()
 
         // #308 - verify font subset before importing
         if (imported?.font?.system === false) {
@@ -962,10 +974,22 @@ async function importSettings(imported: Partial<Sync>): Promise<void> {
             }
         }
 
-        data = filterData('import', data, imported)
+        const importedData = dedupeSyncLinks(filterData('import', structuredClone(SYNC_DEFAULT), imported))
+        let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
 
+        if (mode === 'replace') {
+            await replaceBookmarksFromConfig(current, importedData)
+        }
         await storage.sync.clear()
         await storage.sync.set(data)
+        if (mode === 'replace') {
+            data = await bootstrapBookmarksFromConfig(data)
+            await storage.sync.set(data)
+            await renderLinksFromSync(data)
+        } else if (await restoreBookmarksFromConfig(importedData)) {
+            data = await bootstrapBookmarksFromConfig(data)
+            await storage.sync.set(data)
+        }
         fadeOut()
     } catch (_) {
         // ...
@@ -982,9 +1006,15 @@ function resetSettings(action: 'yes' | 'no' | 'first'): void {
     document.getElementById('reset-conf')?.classList.toggle('shown', action === 'first')
 }
 
-export function updateSettingsJson(data?: Sync): void {
+export async function updateSettingsJson(data?: Sync): Promise<void> {
+    const updateId = ++settingsJsonUpdateId
+
     try {
-        data ? updateTextArea(data) : storage.sync.get().then(updateTextArea)
+        const latest = data ?? await getLatestExportData()
+
+        if (updateId === settingsJsonUpdateId) {
+            updateTextArea(latest)
+        }
     } catch (err) {
         console.warn(err)
     }
@@ -1016,7 +1046,7 @@ function updateSettingsEvent(): void {
 
 async function toggleSettingsChangesButtons(action: string): Promise<void> {
     const textarea = paramId('settings-data')
-    const data = await storage.sync.get()
+    const data = await getLatestExportData()
     let hasChanges = false
 
     if (action === 'input') {
