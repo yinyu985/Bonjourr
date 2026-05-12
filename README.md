@@ -1,38 +1,39 @@
 # Bonjourr
 
-Forked from [victrme/Bonjourr](https://github.com/victrme/Bonjourr), a minimalist browser start page inspired by the looks of iOS.
+[简体中文](./README.zh-CN.md)
 
-- 🍏 iOS design language
-- 🏞 Dynamic 4K backgrounds that change according to the mood of the day
-- ⚡️ Fast & lightweight!
-- 🕰 Analog clock with multiple clock faces
-- 🔗 Quick Links
-- 🌘 Dark mode
-- 🥖 Emoji as favicon
-- 🧑‍💻 Custom CSS styling
-- 📝 Custom fonts
-- 🔒 Privacy focused & no generative AI
-- 🌎 Multilanguage
+Bonjourr is a minimalist, highly customizable new tab extension for modern browsers.
 
-<br>
+This repository is forked from [victrme/Bonjourr](https://github.com/victrme/Bonjourr). It has evolved into a
+privacy-focused new tab page built around a clean interface, browser bookmark links, and local customization.
 
-## 🔧 Built with
+## Features
 
-- No frameworks, plain Typescript & CSS
-- Deno for tasks, checks, and local development
+- Minimal new tab page with a quiet, customizable interface
+- Quick Links shown from the browser's native bookmarks
+- Read-only bookmark groups that follow the browser bookmark structure
+- Backgrounds from images, videos, remote URLs, local files, or solid colors
+- Background filters, texture overlays, local media options, and video mute controls
+- Digital clock with seconds, 12-hour time, time zone, and date format options
+- Simple memo panel for lightweight notes
+- Custom fonts, font weights, sizing, and text shadow controls
+- Custom CSS for advanced styling
+- Dark mode, tab title, tab icon, and layout controls
+- Settings import/export and synchronization through GitHub Gist or a remote URL
+- Multilanguage support, including English and Simplified Chinese
+- Privacy-focused: no account requirement and no generative AI features
 
-<br>
+## Built With
 
-## 👨‍💻 Running Bonjourr
+- Plain TypeScript, HTML, and CSS
+- Deno for tasks, checks, tests, and local development
+- No frontend framework
 
-### Run locally
+## Run Locally
 
-- Install Deno runtime: https://docs.deno.com/runtime/
-- Clone this repository
-- Run one of the development tasks below
+Install the [Deno runtime](https://docs.deno.com/runtime/), clone this repository, then run one of the platform tasks:
 
 ```bash
-# In root directory
 deno task chrome
 deno task edge
 deno task firefox
@@ -40,76 +41,87 @@ deno task safari
 deno task online
 ```
 
-#### Chrome
+### Chrome
 
-- Go to `chrome://extensions`
-- Enable Developer mode
-- Load unpacked and select `/release/chrome` folder
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click "Load unpacked" and select `release/chrome`.
 
-#### Firefox
+### Firefox
 
-- Go to `about:debugging#/runtime/this-firefox`
-- Select "Load temporary Add-on"
-- Select `manifest.json` in `/release/firefox` folder
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click "Load Temporary Add-on".
+3. Select `release/firefox/manifest.json`.
 
-#### Edge
+### Edge
 
-- Go to `edge://extensions`
-- Enable Developer mode
-- Load unpacked and select `/release/edge` folder
+1. Open `edge://extensions`.
+2. Enable Developer mode.
+3. Click "Load unpacked" and select `release/edge`.
 
-#### Safari
+### Safari
 
-- Follow install steps on the [upstream Safari repository](https://github.com/victrme/Bonjourr-Safari)
+Follow the install steps from the [upstream Safari repository](https://github.com/victrme/Bonjourr-Safari).
 
-#### Online (web version)
+### Web Version
 
-- A live server opens with `deno task online`
-- Go to http://0.0.0.0:8000/
-
-### Using Docker
-
-Prerequisites:
-
-- [Docker](https://docs.docker.com/get-started)
-
-#### Docker CLI
+Run:
 
 ```bash
-# Build the container image
-docker build -t bonjourr/bonjourr . -f docker/app/Dockerfile
+deno task online
+```
 
+Then open http://0.0.0.0:8000/.
+
+## Docker
+
+Docker is optional for running the web version.
+
+```bash
+docker build -t bonjourr/bonjourr . -f docker/app/Dockerfile
 docker run --rm -p "8000:80/tcp" -it bonjourr/bonjourr
 ```
 
-```bash
-# Build using docker compose
-docker compose up -f docker/compose.app.yaml -d
-```
-
-Go to http://0.0.0.0:8000/
-
-#### Docker Desktop
-
-- Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Search for `bonjourr/bonjourr` Hub image
-- Run a new container with `8000` as host port
-- Go to http://0.0.0.0:8000/
-
-## 🌍 Publish Bonjourr
-
-To upload a build to Firefox addons, chrome web store, edge addons, you need to create an archive. Docker is needed to ensure Bonjourr is always built the same way across different devices.
-
-- Start Docker
-- Run docker compose `docker compose up -f docker/compose.archive.yaml --build` or `deno task archive`
-- Archives are located in "release/<platform>"
+Or use Docker Compose:
 
 ```bash
-# Or "deno task archive"
-docker compose -f docker/compose.archive.yaml up --build
-
-# archive-1  | Task build deno task build
-# archive-1  | chrome built in: 129ms
-# archive-1  | Archiving chrome...
-# ...
+docker compose -f docker/compose.app.yaml up -d
 ```
+
+Then open http://0.0.0.0:8000/.
+
+## Development
+
+Use Deno for all project tasks:
+
+```bash
+deno task build
+deno task check
+deno task test
+deno task types
+deno task translate
+```
+
+`deno task check` runs formatting, linting, type checking, and tests.
+
+Useful documentation:
+
+- [Technical documentation](./docs/TECHNICAL.md)
+- [Manual release checklist](./tests/README.md)
+- [Changelog](./CHANGELOG.md)
+
+## Publish
+
+To publish browser builds, create release archives:
+
+```bash
+deno task archive
+```
+
+The archives are generated under `release/<platform>`.
+
+Docker is used by the archive task so builds stay consistent across machines.
+
+## License
+
+Bonjourr is released under the [GPL-3.0 license](./LICENSE.md).

@@ -26,9 +26,128 @@ type CustomFontUpdate = {
     weight?: string
 }
 
-const FONTS_API = 'https://api.fontsource.org/v1/fonts'
 const FONTS_CDN = 'https://cdn.jsdelivr.net/fontsource/fonts'
-let fontlistCache: Fontsource[] | undefined
+const FONT_CHOICES: Fontsource[] = [
+    {
+        id: 'nunito',
+        family: 'Nunito',
+        subsets: ['latin', 'latin-ext', 'vietnamese'],
+        weights: [200, 300, 400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'fira-code',
+        family: 'Fira Code',
+        subsets: ['latin', 'latin-ext'],
+        weights: [300, 400, 500, 600, 700],
+        variable: true,
+    },
+    {
+        id: 'merriweather',
+        family: 'Merriweather',
+        subsets: ['latin', 'latin-ext', 'vietnamese'],
+        weights: [300, 400, 700, 900],
+        variable: false,
+    },
+    {
+        id: 'rubik',
+        family: 'Rubik',
+        subsets: ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext', 'hebrew'],
+        weights: [300, 400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'cormorant-garamond',
+        family: 'Cormorant Garamond',
+        subsets: ['latin', 'latin-ext', 'cyrillic', 'vietnamese'],
+        weights: [300, 400, 500, 600, 700],
+        variable: false,
+    },
+    {
+        id: 'quicksand',
+        family: 'Quicksand',
+        subsets: ['latin', 'latin-ext', 'vietnamese'],
+        weights: [300, 400, 500, 600, 700],
+        variable: true,
+    },
+    {
+        id: 'inconsolata',
+        family: 'Inconsolata',
+        subsets: ['latin', 'latin-ext', 'vietnamese'],
+        weights: [200, 300, 400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'bebas-neue',
+        family: 'Bebas Neue',
+        subsets: ['latin', 'latin-ext'],
+        weights: [400],
+        variable: false,
+    },
+    {
+        id: 'exo-2',
+        family: 'Exo 2',
+        subsets: ['latin', 'latin-ext', 'cyrillic', 'vietnamese'],
+        weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'rajdhani',
+        family: 'Rajdhani',
+        subsets: ['latin', 'latin-ext', 'devanagari'],
+        weights: [300, 400, 500, 600, 700],
+        variable: false,
+    },
+    {
+        id: 'vt323',
+        family: 'VT323',
+        subsets: ['latin', 'latin-ext', 'vietnamese'],
+        weights: [400],
+        variable: false,
+    },
+    {
+        id: 'alegreya',
+        family: 'Alegreya',
+        subsets: ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext', 'vietnamese'],
+        weights: [400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'kiwi-maru',
+        family: 'Kiwi Maru',
+        subsets: ['latin', 'latin-ext', 'japanese'],
+        weights: [300, 400, 500],
+        variable: false,
+    },
+    {
+        id: 'cormorant',
+        family: 'Cormorant',
+        subsets: ['latin', 'latin-ext', 'cyrillic', 'vietnamese'],
+        weights: [300, 400, 500, 600, 700],
+        variable: false,
+    },
+    {
+        id: 'special-elite',
+        family: 'Special Elite',
+        subsets: ['latin'],
+        weights: [400],
+        variable: false,
+    },
+    {
+        id: 'doto',
+        family: 'Doto',
+        subsets: ['latin', 'latin-ext'],
+        weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
+        variable: true,
+    },
+    {
+        id: 'kode-mono',
+        family: 'Kode Mono',
+        subsets: ['latin', 'latin-ext'],
+        weights: [400, 500, 600, 700],
+        variable: true,
+    },
+]
 
 export const systemfont = (() => {
     const fonts = {
@@ -127,7 +246,7 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
 
     switch (familyType) {
         case 'fontsource': {
-            const newfont = await getNewFont(font, family)
+            const newfont = getNewFont(font, family)
 
             if (newfont && navigator.onLine) {
                 font = { ...font, ...newfont }
@@ -160,14 +279,14 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
     return font
 }
 
-async function handleLangSwitch(font: Font): Promise<void> {
+function handleLangSwitch(font: Font): void {
     const noCustomOrSystemFont = !font.family || font?.system
 
     if (noCustomOrSystemFont) {
         return
     }
 
-    const newfont = await getNewFont(font, font.family)
+    const newfont = getNewFont(font, font.family)
 
     // remove font if not available with subset
     if (newfont === undefined) {
@@ -183,12 +302,12 @@ async function handleLangSwitch(font: Font): Promise<void> {
     setAutocompleteSettings(true)
 }
 
-async function getNewFont(font: Font, newfamily: string): Promise<Font | undefined> {
-    const fontlist = await getFontList()
+function getNewFont(font: Font, newfamily: string): Font | undefined {
+    const fontlist = getFontList()
     let newfont: Fontsource | undefined
 
-    for (const item of fontlist as Fontsource[]) {
-        const hasCorrectSubset = item.subsets.includes(getRequiredSubset())
+    for (const item of fontlist) {
+        const hasCorrectSubset = fontCanBeSelected(item, getRequiredSubset())
         const isFamily = item.family.toLowerCase() === newfamily.toLowerCase()
 
         if (hasCorrectSubset && isFamily) {
@@ -218,6 +337,7 @@ function displayFont({ family, id, size, weight, system }: Font): void {
     const subset = getRequiredSubset()
     const fontId = id ?? family.toLocaleLowerCase().replaceAll(' ', '-')
     const fontfacedom = document.getElementById('fontface')
+    const fontsource = FONT_CHOICES.find((item) => item.id === fontId || item.family === family)
 
     if (!system) {
         let fontface = `
@@ -227,7 +347,7 @@ function displayFont({ family, id, size, weight, system }: Font): void {
 			}
 		`
 
-        if (subset !== 'latin') {
+        if (subset !== 'latin' && fontsource?.subsets.includes(subset)) {
             fontface += fontface.replace('latin', subset)
         }
 
@@ -257,15 +377,15 @@ function initFontSettings(font?: Font): void {
     setWeightSettings(weights)
 
     // Set the select value after populating options
-    setAutocompleteSettings().then(() => {
-        const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
-        if (selectFont && font?.family) {
-            selectFont.value = font.family
-        }
-    })
+    setAutocompleteSettings()
+
+    const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
+    if (selectFont && font?.family) {
+        selectFont.value = font.family
+    }
 }
 
-async function setAutocompleteSettings(isLangSwitch?: boolean): Promise<void> {
+function setAutocompleteSettings(isLangSwitch?: boolean): void {
     const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
 
     if (!selectFont) {
@@ -278,11 +398,11 @@ async function setAutocompleteSettings(isLangSwitch?: boolean): Promise<void> {
             selectFont.remove(1)
         }
 
-        const fontlist = await getFontList()
+        const fontlist = getFontList()
         const requiredSubset = getRequiredSubset()
 
-        for (const item of fontlist as Fontsource[]) {
-            if (item.subsets.includes(requiredSubset)) {
+        for (const item of fontlist) {
+            if (fontCanBeSelected(item, requiredSubset)) {
                 const option = document.createElement('option')
                 option.textContent = item.family
                 option.value = item.family
@@ -306,31 +426,20 @@ function setWeightSettings(weights: string[]): void {
 //	Helpers
 //
 
-export async function fontIsAvailableInSubset(lang?: string, family?: string): Promise<boolean | undefined> {
-    const fontlist = await getFontList()
+export function fontIsAvailableInSubset(lang?: string, family?: string): boolean | undefined {
+    const fontlist = getFontList()
     const font = fontlist?.find((item) => item.family === family)
     const subset = getRequiredSubset(lang)
 
-    return font?.subsets.includes(subset)
+    return font ? fontCanBeSelected(font, subset) : undefined
 }
 
-async function getFontList(): Promise<Fontsource[]> {
-    if (fontlistCache) {
-        return fontlistCache
-    }
+function getFontList(): Fontsource[] {
+    return FONT_CHOICES
+}
 
-    try {
-        const response = await fetch(FONTS_API)
-
-        if (!response.ok) {
-            return []
-        }
-
-        fontlistCache = await response.json() as Fontsource[]
-        return fontlistCache
-    } catch (_) {
-        return []
-    }
+function fontCanBeSelected(font: Fontsource, subset: string): boolean {
+    return font.subsets.includes(subset) || font.subsets.includes('latin')
 }
 
 function systemFontChecker(family: string): boolean {

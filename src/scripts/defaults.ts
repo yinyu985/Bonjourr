@@ -135,12 +135,12 @@ export const SYNC_DEFAULT: Sync = {
         background: '#fff2',
     },
     font: {
-        family: 'Noto Sans SC',
+        family: 'Nunito',
         size: '7',
         system: false,
-        weightlist: [],
+        weightlist: ['200', '300', '400', '500', '600', '700', '800', '900'],
         weight: '400',
-        id: 'noto-sans-sc',
+        id: 'nunito',
     },
     notes: {
         active: '',
