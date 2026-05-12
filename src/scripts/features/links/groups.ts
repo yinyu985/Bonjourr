@@ -61,7 +61,7 @@ function createFolderTabs(data: Sync): void {
         button.dataset.group = folder.id
         button.classList.add('link-title')
         button.classList.toggle('selected-group', folder.id === data.links.selectedFolder)
-        button.classList.toggle('synced', folder.source.type === 'bookmarks')
+        button.classList.toggle('synced', folder.source === 'bookmarks')
 
         if (isTopSite) {
             button.textContent = tradThis('Most visited')
@@ -202,7 +202,7 @@ export function addFolder(folders: { title: string; sync?: boolean }[], data: Sy
             id: newFolderId(),
             title,
             pinned: false,
-            source: sync ? { type: 'bookmarks' } : { type: 'local' },
+            source: sync ? 'bookmarks' : 'local',
             items: [],
         }
 
@@ -296,7 +296,7 @@ function addFolderPlaceholder(): LinkFolder {
         id: '+',
         title: '+',
         pinned: false,
-        source: { type: 'local' },
+        source: 'local',
         items: [],
     }
 }

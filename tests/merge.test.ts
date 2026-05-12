@@ -2,7 +2,7 @@ import './init.test.ts'
 
 import { assert, assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
-import { allLinks, getSubfolder, removeNode } from '../src/scripts/features/links/model.ts'
+import { allLinks, getSubfolder, isElem, removeNode } from '../src/scripts/features/links/model.ts'
 import { mergeSyncAppend } from '../src/scripts/features/synchronization/merge.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../src/types/shared.ts'
@@ -20,7 +20,7 @@ Deno.test({
             id: 'work',
             title: 'Work',
             pinned: false,
-            source: { type: 'bookmarks', folderId: 'folder-work' },
+            source: 'bookmarks',
             items: [
                 bookmarkLink('Remote work', 'https://example.com/work', 'bm-work'),
             ],
@@ -31,13 +31,15 @@ Deno.test({
         const work = merged.links.folders.find((group) => group.id === 'work')
 
         assert(work)
-        assertEquals(work.source, { type: 'local' })
+        assertEquals(work.source, 'local')
         assert(
-            work.items.some((link) =>
-                link.type === 'link' && link.url === 'https://example.com/work' && !link.bookmarkId
+            work.items.some((link) => isElem(link) && link.url === 'https://example.com/work' && link.id !== 'bm-work'),
+        )
+        assert(
+            merged.links.favorites.some((link) =>
+                link.url === 'https://example.com/favorite' && link.id !== 'bm-favorite'
             ),
         )
-        assert(merged.links.favorites.some((link) => link.url === 'https://example.com/favorite' && !link.bookmarkId))
     },
 })
 
@@ -62,16 +64,16 @@ Deno.test({
         const work = merged.links.folders.find((group) => group.id === 'work')?.items ?? []
         const personal = merged.links.folders.find((group) => group.id === 'personal')?.items ?? []
 
-        assertEquals(work.filter((link) => link.type === 'link' && link.url === 'https://example.com/docs').length, 1)
+        assertEquals(work.filter((link) => isElem(link) && link.url === 'https://example.com/docs').length, 1)
         assertEquals(
-            personal.filter((link) => link.type === 'link' && link.url === 'https://example.com/docs').length,
+            personal.filter((link) => isElem(link) && link.url === 'https://example.com/docs').length,
             1,
         )
     },
 })
 
 Deno.test({
-    name: 'merge combines same-title subfolders and strips bookmark ids',
+    name: 'merge combines same-title subfolders and localizes bookmark ids',
     sanitizeOps: false,
     sanitizeResources: false,
     fn: () => {
@@ -99,7 +101,7 @@ Deno.test({
 
         assert(docs)
         assertEquals(docs.items.filter((link) => link.url === 'https://example.com/design').length, 1)
-        assert(docs.items.some((link) => link.url === 'https://example.com/spec' && !link.bookmarkId))
+        assert(docs.items.some((link) => link.url === 'https://example.com/spec' && link.id !== 'bm-spec'))
     },
 })
 
@@ -134,24 +136,21 @@ function group(id: string, title: string, items: LinkNode[]): LinkFolder {
         id,
         title,
         pinned: false,
-        source: { type: 'local' as const },
+        source: 'local',
         items,
     }
 }
 
-function bookmarkLink(title: string, url: string, bookmarkId: string): LinkElem {
+function bookmarkLink(title: string, url: string, id: string): LinkElem {
     return {
-        type: 'link',
-        id: `links${bookmarkId}`,
+        id,
         title,
         url,
-        bookmarkId,
     }
 }
 
 function plainLink(title: string, url: string): LinkElem {
     return {
-        type: 'link',
         id: `links${title.replaceAll(' ', '')}`,
         title,
         url,
@@ -160,7 +159,6 @@ function plainLink(title: string, url: string): LinkElem {
 
 function subfolder(id: string, title: string, items: LinkElem[]): LinkSubfolder {
     return {
-        type: 'subfolder',
         id,
         title,
         items,

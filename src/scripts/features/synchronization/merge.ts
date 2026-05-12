@@ -12,12 +12,12 @@ export function mergeSyncAppend(current: Sync, incoming: Sync): Sync {
         if (groupIds.has(group.id)) {
             const target = merged.links.folders.find((item) => item.id === group.id)
             if (target) {
-                mergeItems(target.items, group.items, true)
+                mergeItems(target.items, group.items)
             }
         } else {
             const clone = structuredClone(group)
-            clone.source = { type: 'local' }
-            stripBookmarkRefs(clone.items)
+            clone.source = 'local'
+            localizeNodeIds(clone.items)
             merged.links.folders.push(clone)
             groupIds.add(clone.id)
         }
@@ -42,7 +42,7 @@ export function dedupeSyncLinks(data: Sync): Sync {
     return data
 }
 
-function mergeItems(target: LinkNode[], incoming: LinkNode[], stripBookmarks: boolean): void {
+function mergeItems(target: LinkNode[], incoming: LinkNode[]): void {
     const folderByTitle = new Map(target.filter(isSubfolder).map((folder) => [folder.title, folder]))
     const urls = new Set(target.filter(isElem).map((link) => normalizeUrl(link.url)))
 
@@ -52,7 +52,6 @@ function mergeItems(target: LinkNode[], incoming: LinkNode[], stripBookmarks: bo
             if (urls.has(url)) continue
 
             const clone = structuredClone(item)
-            if (stripBookmarks) delete clone.bookmarkId
             clone.id = uniqueNodeId(target)
             target.push(clone)
             urls.add(url)
@@ -61,10 +60,10 @@ function mergeItems(target: LinkNode[], incoming: LinkNode[], stripBookmarks: bo
 
         const existing = folderByTitle.get(item.title)
         if (existing) {
-            mergeItems(existing.items, item.items, stripBookmarks)
+            mergeItems(existing.items, item.items)
         } else {
             const clone = structuredClone(item)
-            if (stripBookmarks) stripBookmarkRefs(clone.items)
+            localizeNodeIds(clone.items)
             clone.id = uniqueNodeId(target)
             target.push(clone)
             folderByTitle.set(clone.title, clone)
@@ -80,7 +79,6 @@ function mergeFavorites(data: Sync, incoming: LinkElem[]): void {
         if (urls.has(url)) continue
 
         const clone = structuredClone(item)
-        delete clone.bookmarkId
         clone.id = uniqueNodeId(data.links.favorites)
         data.links.favorites.push(clone)
         urls.add(url)
@@ -122,17 +120,20 @@ function uniqueLinks(links: LinkElem[]): LinkElem[] {
     return result
 }
 
-function stripBookmarkRefs(items: LinkNode[]): void {
+function localizeNodeIds(items: LinkNode[]): void {
+    const usedIds = new Set<string>()
+
     for (const item of items) {
-        if (isElem(item)) {
-            delete item.bookmarkId
-        } else {
-            stripBookmarkRefs(item.items)
+        if (isSubfolder(item)) {
+            localizeNodeIds(item.items)
         }
+
+        item.id = uniqueNodeId([...items, ...[...usedIds].map((id) => ({ id }))])
+        usedIds.add(item.id)
     }
 }
 
-function uniqueNodeId(items: LinkNode[] | LinkElem[]): string {
+function uniqueNodeId(items: { id: string }[]): string {
     const ids = new Set(items.map((item) => item.id))
     let id = `links${randomString(6)}`
 

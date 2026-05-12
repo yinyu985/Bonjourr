@@ -99,7 +99,7 @@ export const SYNC_DEFAULT: Sync = {
             id: 'default',
             title: 'default',
             pinned: false,
-            source: { type: 'local' },
+            source: 'local',
             items: [],
         }],
         favorites: [],

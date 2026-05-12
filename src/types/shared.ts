@@ -49,12 +49,10 @@ export interface BackgroundVideo {
 }
 
 export interface LinkElem {
-    type: 'link'
     id: string
     title: string
     url: string
     icon?: LinkIcon
-    bookmarkId?: string
 }
 
 export interface LinkIcon {
@@ -63,7 +61,6 @@ export interface LinkIcon {
 }
 
 export interface LinkSubfolder {
-    type: 'subfolder'
     id: string
     title: string
     items: LinkElem[]

@@ -33,6 +33,7 @@ const dropzones: Record<DropType, Dropzones> = { group: new Map(), link: new Map
 let [dx, dy, cox, coy, lastIndex] = [0, 0, 0, 0, 0, 0]
 let lastdropAreas: DropArea[] = ['']
 let draggedId = ''
+let draggedType: 'link' | 'mini' = 'link'
 let targetId = ''
 let targetGroup = ''
 let crossGroupTarget = ''
@@ -129,6 +130,7 @@ export function startDrag(event: PointerEvent): void {
 
     const pos = getPosFromEvent(event)
     draggedId = nextDraggedId
+    draggedType = isMini ? 'mini' : 'link'
     originalGroup = isFavoritesDrag
         ? FAVORITES_GROUP
         : isMini
@@ -296,7 +298,7 @@ function moveDrag(event: TouchEvent | PointerEvent): void {
     dx = x - cox
     dy = y - coy
 
-    if (draggedId.startsWith('links') && !isFavoritesDrag) {
+    if (isDraggingLink() && !isFavoritesDrag) {
         overFavorites = isOverFavoritesBar(x, y)
         if (overFavorites) {
             cancelPendingGroupHover()
@@ -309,7 +311,7 @@ function moveDrag(event: TouchEvent | PointerEvent): void {
     const result = isDraggingOver({ x, y })
     const [curr, id, type] = result ?? ['', '']
     const last = lastdropAreas[lastdropAreas.length - 1]
-    const isDraggingMiniTab = !draggedId.startsWith('links')
+    const isDraggingMiniTab = isDraggingMini()
 
     if (type === 'mini' && !isDraggingMiniTab) {
         handleMiniTabHover(id)
@@ -360,7 +362,7 @@ function moveDrag(event: TouchEvent | PointerEvent): void {
 
 function handleMiniTabHover(groupName: string): void {
     // Only switch groups when dragging a link, not when dragging mini tabs
-    const isDraggingMiniTab = !draggedId.startsWith('links')
+    const isDraggingMiniTab = isDraggingMini()
     if (isDraggingMiniTab) {
         applyDragChangeParent(groupName, 'mini')
         return
@@ -507,7 +509,7 @@ function applyDragMoveBlocks(id: string, area: DropArea): void {
     ids.splice(currentIndex, 1)
     ids.splice(nextIndex, 0, draggedId)
 
-    if (!draggedId.startsWith('links')) {
+    if (isDraggingMini()) {
         coords = measureMiniTabCoords(ids) ?? coords
     }
 
@@ -636,12 +638,12 @@ function endDrag(event: Event): void {
 
     const isDroppable = !!document.querySelector('.drop-source')
     const outOfFolder = !path[0]?.classList.contains('link-list') && domlinkgroup?.classList.contains('in-folder')
-    const targetIdIsLink = targetId.startsWith('links') && targetId.length === 11
+    const targetIsLink = blocks.get(targetId)?.tagName === 'LI'
     const targetIsFolder = blocks.get(targetId)?.classList.contains('link-folder')
     const draggedIsFolder = blocks.get(draggedId)?.classList.contains('link-folder')
-    const toFolder = isDroppable && targetIdIsLink && targetIsFolder && !draggedIsFolder
-    const toTab = targetId !== '' && targetId !== originalGroup && !targetIdIsLink
-    const toFavorites = overFavorites && draggedId.startsWith('links')
+    const toFolder = isDroppable && targetIsLink && targetIsFolder && !draggedIsFolder
+    const toTab = targetId !== '' && targetId !== originalGroup && !targetIsLink
+    const toFavorites = overFavorites && isDraggingLink()
     // Use originalGroup to detect cross-group (not draggedGroup which no longer exists)
     const isCrossGroup = crossGroupTarget !== '' && crossGroupTarget !== originalGroup
 
@@ -740,7 +742,7 @@ function deplaceDraggedElem(): void {
 }
 
 function isDraggingOver({ x, y }: { x: number; y: number }): [DropArea, string, DropType] | undefined {
-    const miniPaddingY = draggedId.startsWith('links') && !isFavoritesDrag ? MINI_HOVER_PADDING_Y : 0
+    const miniPaddingY = isDraggingLink() && !isFavoritesDrag ? MINI_HOVER_PADDING_Y : 0
     const la = findDropzoneArea(dropzones.link, linkDropDirection, x, y)
 
     if (isFavoritesDrag) {
@@ -751,20 +753,29 @@ function isDraggingOver({ x, y }: { x: number; y: number }): [DropArea, string, 
     }
 
     const ma = findDropzoneArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
-    if (ma && draggedId.startsWith('links')) return [ma.area, ma.id, 'mini']
+    if (ma && isDraggingLink()) return [ma.area, ma.id, 'mini']
     if (la) return [la.area, la.id, 'link']
     if (ma) return [ma.area, ma.id, 'mini']
 
-    const slot = findCurrentSlotArea(!draggedId.startsWith('links') ? 'horizontal' : linkDropDirection, x, y)
-    if (slot) return [slot.area, slot.id, !draggedId.startsWith('links') ? 'mini' : 'link']
+    const slotDirection = isDraggingMini() ? 'horizontal' : linkDropDirection
+    const slot = findCurrentSlotArea(slotDirection, x, y)
+    if (slot) return [slot.area, slot.id, isDraggingMini() ? 'mini' : 'link']
 
-    const miniSlot = draggedId.startsWith('links')
+    const miniSlot = isDraggingLink()
         ? findDropzoneSlotArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
         : undefined
     if (miniSlot) return [miniSlot.area, miniSlot.id, 'mini']
 
     const ga = findDropzoneArea(dropzones.group, 'center', x, y)
     if (ga) return [ga.area, ga.id, 'group']
+}
+
+function isDraggingLink(): boolean {
+    return draggedType === 'link'
+}
+
+function isDraggingMini(): boolean {
+    return draggedType === 'mini'
 }
 
 function findDropzoneArea(

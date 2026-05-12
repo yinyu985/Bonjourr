@@ -48,12 +48,7 @@ export interface LinkFolder {
     items: LinkNode[]
 }
 
-export type LinkFolderSource =
-    | { type: 'local' }
-    | {
-        type: 'bookmarks'
-        folderId?: string
-    }
+export type LinkFolderSource = 'local' | 'bookmarks'
 
 export interface LegacyLinkGroups {
     on: boolean

@@ -38,7 +38,7 @@ type AddLinks = {
     url: string
     folder?: string
     group?: string
-    bookmarkId?: string
+    id?: string
 }[]
 
 type UpdateLink = {
@@ -251,7 +251,7 @@ function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
         folder,
         items: folder.items,
         pinned: folder.id !== sync.links.selectedFolder,
-        synced: folder.source.type === 'bookmarks',
+        synced: folder.source === 'bookmarks',
         div: null,
         lis: [],
     }))
@@ -339,12 +339,16 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
 }
 
 function createIcons(local: Local): void {
-    for (const [img, url] of initIconList) {
-        img.src = url.startsWith('links') ? local[`x-icon-${url}`] ?? '' : url
+    const resolvedIcons = initIconList.map(([img, url]) =>
+        [img, resolveIconUrl(local, url)] as [HTMLImageElement, string]
+    )
+
+    for (const [img, url] of resolvedIcons) {
+        img.src = url
     }
 
     setTimeout(() => {
-        const incomplete = initIconList.filter(([img]) => !img.complete || img.naturalWidth === 0)
+        const incomplete = resolvedIcons.filter(([img]) => !img.complete || img.naturalWidth === 0)
 
         for (const [img, url] of incomplete) {
             img.src = 'src/assets/interface/loading.svg'
@@ -365,6 +369,14 @@ function createIcons(local: Local): void {
 
         initIconList = []
     }, 400)
+}
+
+function resolveIconUrl(local: Local, url: string): string {
+    if (url.startsWith('local-icon:')) {
+        return local[`x-icon-${url.slice('local-icon:'.length)}`] ?? ''
+    }
+
+    return url
 }
 
 function initRows(row: number, style: string): void {
@@ -475,13 +487,7 @@ function linkSubmission(args: SubmitLink | SubmitSubfolder, data: Sync): Sync {
         for (const link of args.links) {
             const folderId = link.folder ?? link.group ?? data.links.selectedFolder
             const targetFolder = getFolder(data, folderId) ?? getFolderByTitleOrDefault(data, folderId)
-            const created = validateLink(link.title, link.url, link.bookmarkId)
-
-            if (link.bookmarkId) {
-                created.bookmarkId = link.bookmarkId
-            }
-
-            targetFolder.items.push(created)
+            targetFolder.items.push(validateLink(link.title, link.url, link.id))
         }
     }
 
@@ -508,9 +514,10 @@ function getSubfolderTitle(title?: string): string {
 }
 
 function updateLink({ id, title, icon, url, file }: UpdateLink, data: Sync): Sync {
-    const titledom = document.querySelector<HTMLSpanElement>(`#${id} span`)
-    const icondom = document.querySelector<HTMLImageElement>(`#${id} img`)
-    const urldom = document.querySelector<HTMLAnchorElement>(`#${id} a`)
+    const linkElement = document.getElementById(id)
+    const titledom = linkElement?.querySelector<HTMLSpanElement>('span')
+    const icondom = linkElement?.querySelector<HTMLImageElement>('img')
+    const urldom = linkElement?.querySelector<HTMLAnchorElement>('a')
     const node = getNode(data, id)
 
     if (!node) {
@@ -711,11 +718,11 @@ function refreshIcons(ids: string[], data: Sync): Sync {
 function unsyncFolder(folderId: string, data: Sync): Sync {
     const folder = getFolder(data, folderId) ?? data.links.folders.find((item) => item.title === folderId)
 
-    if (!folder || folder.source.type !== 'bookmarks') {
+    if (!folder || folder.source !== 'bookmarks') {
         return data
     }
 
-    folder.source = { type: 'local' }
+    folder.source = 'local'
     const folderDiv = document.querySelector<HTMLDivElement>(`.link-group[data-group="${folder.id}"]`)
     folderDiv?.classList.remove('synced')
 
@@ -776,8 +783,8 @@ function setRows(row: string): void {
     })
 }
 
-export function validateLink(title: string, url: string, bookmarkId?: string): LinkElem {
-    return createLink(title, normalizeLinkUrl(url), bookmarkId)
+export function validateLink(title: string, url: string, id?: string): LinkElem {
+    return createLink(title, normalizeLinkUrl(url), id)
 }
 
 function normalizeLinkUrl(url: string): string {
@@ -802,7 +809,7 @@ function getIconFromLinkElem(link: LinkElem): string {
         try {
             const url = new URL(link.url)
             if (url.protocol === 'data:') {
-                return link.id
+                return `local-icon:${link.id}`
             }
             return getDefaultIcon(url.origin + url.pathname)
         } catch (_) {
@@ -811,7 +818,7 @@ function getIconFromLinkElem(link: LinkElem): string {
     }
 
     if (link.icon.type === 'file') {
-        return link.id
+        return `local-icon:${link.id}`
     }
 
     return link.icon.value
@@ -832,7 +839,7 @@ function getFolderByTitleOrDefault(data: Sync, idOrTitle?: string): LinkFolder {
         id: idOrTitle && idOrTitle !== '+' ? idOrTitle : newFolderId(),
         title: idOrTitle && idOrTitle !== '+' ? idOrTitle : 'default',
         pinned: false,
-        source: { type: 'local' },
+        source: 'local',
         items: [],
     }
     data.links.folders.push(created)

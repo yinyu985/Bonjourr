@@ -33,7 +33,7 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
             id: 'default',
             title: 'default',
             pinned: false,
-            source: { type: 'local' },
+            source: 'local',
             items: [],
         }],
         favorites: [],
@@ -50,19 +50,16 @@ export function newFolderId(): string {
     return `folder${randomString(6)}`
 }
 
-export function createLink(title: string, url: string, bookmarkId?: string): LinkElem {
+export function createLink(title: string, url: string, id?: string): LinkElem {
     return {
-        type: 'link',
-        id: newLinkId(),
+        id: id ?? newLinkId(),
         title: stringMaxSize(title, 64),
         url,
-        bookmarkId,
     }
 }
 
 export function createSubfolder(title: string, items: LinkElem[] = []): LinkSubfolder {
     return {
-        type: 'subfolder',
         id: newLinkId(),
         title: stringMaxSize(title, 64),
         items,
@@ -90,9 +87,7 @@ export function getFolderByTitle(data: Sync, title: string): LinkFolder | undefi
 }
 
 export function getFolderByBookmarkSource(data: Sync, folderId: string): LinkFolder | undefined {
-    return data.links.folders.find((folder) =>
-        folder.source.type === 'bookmarks' && folder.source.folderId === folderId
-    )
+    return data.links.folders.find((folder) => folder.source === 'bookmarks' && folder.id === folderId)
 }
 
 export function getNode(data: Sync, id: string): LinkNode | undefined {
@@ -170,7 +165,7 @@ export function ensureDefaultFolder(data: Sync): LinkFolder {
             id: 'default',
             title: 'default',
             pinned: false,
-            source: { type: 'local' },
+            source: 'local',
             items: [],
         }
         data.links.folders.push(folder)
@@ -181,11 +176,13 @@ export function ensureDefaultFolder(data: Sync): LinkFolder {
 }
 
 export function isElem(link: unknown): link is LinkElem {
-    return (link as LinkElem)?.type === 'link'
+    const value = link as LinkElem | LinkSubfolder | undefined
+    return !!value && typeof value.id === 'string' && typeof value.title === 'string' && !isSubfolder(value)
 }
 
 export function isSubfolder(link: unknown): link is LinkSubfolder {
-    return (link as LinkSubfolder)?.type === 'subfolder'
+    const value = link as LinkSubfolder | undefined
+    return !!value && typeof value.id === 'string' && typeof value.title === 'string' && Array.isArray(value.items)
 }
 
 export function isLink(link: unknown): link is LinkNode {
@@ -209,7 +206,7 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
             id: 'default',
             title: 'default',
             pinned: false,
-            source: { type: 'local' },
+            source: 'local',
             items: [],
         })
     }
@@ -234,10 +231,6 @@ function normalizeItems(items: LinkNode[] = []): LinkNode[] {
     return items.filter(isLink).map((node) => {
         if (isSubfolder(node)) {
             node.items = normalizeItems(node.items).filter(isElem)
-        } else {
-            const legacy = node as LinkElem & { bookmark?: { id?: string } }
-            legacy.bookmarkId ??= legacy.bookmark?.id
-            delete legacy.bookmark
         }
         return node
     })
@@ -249,20 +242,15 @@ function isLinksState(value: unknown): value is LinksState {
 }
 
 function isFolderSource(source: unknown): source is LinkFolderSource {
-    const value = source as LinkFolderSource
-    return value?.type === 'local' || value?.type === 'bookmarks'
+    return source === 'local' || source === 'bookmarks'
 }
 
 function normalizeFolderSource(source: unknown): LinkFolderSource {
-    if (!isFolderSource(source)) {
-        return { type: 'local' }
+    if (isFolderSource(source)) {
+        return source
     }
 
-    if (source.type === 'local') {
-        return { type: 'local' }
-    }
-
-    return source.folderId ? { type: 'bookmarks', folderId: source.folderId } : { type: 'bookmarks' }
+    return 'local'
 }
 
 function findNodeInItems(
@@ -294,7 +282,7 @@ function favoritesFolder(): LinkFolder {
         id: FAVORITES_FOLDER,
         title: FAVORITES_FOLDER,
         pinned: false,
-        source: { type: 'bookmarks', folderId: FAVORITES_FOLDER },
+        source: 'bookmarks',
         items: [],
     }
 }

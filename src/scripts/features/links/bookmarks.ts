@@ -36,7 +36,7 @@ type BookmarkLinksUpdate = {
         url: string
         folder?: string
         group?: string
-        bookmarkId?: string
+        id?: string
     }[]
     updateLink?: {
         id: string
@@ -116,7 +116,7 @@ export async function initBookmarkSync(data: Sync): Promise<Sync> {
 function applySyncedFolders(data: Sync): boolean {
     let mutated = false
     const syncedFolderIds: string[] = []
-    const previousSynced = data.links.folders.filter((folder) => folder.source.type === 'bookmarks')
+    const previousSynced = data.links.folders.filter((folder) => folder.source === 'bookmarks')
 
     for (const browserFolder of browserBookmarkFolders) {
         if (browserFolder.title === FAVORITES_FOLDER) {
@@ -131,10 +131,10 @@ function applySyncedFolders(data: Sync): boolean {
 
         if (!folder) {
             folder = {
-                id: `folder${browserFolder.id}`,
+                id: browserFolder.id,
                 title: browserFolder.title,
                 pinned: false,
-                source: { type: 'bookmarks', folderId: browserFolder.id },
+                source: 'bookmarks',
                 items: [],
             }
             data.links.folders.push(folder)
@@ -146,8 +146,16 @@ function applySyncedFolders(data: Sync): boolean {
             mutated = true
         }
 
-        if (folder.source.type !== 'bookmarks' || folder.source.folderId !== browserFolder.id) {
-            folder.source = { type: 'bookmarks', folderId: browserFolder.id }
+        if (folder.source !== 'bookmarks') {
+            folder.source = 'bookmarks'
+            mutated = true
+        }
+
+        if (folder.id !== browserFolder.id) {
+            if (data.links.selectedFolder === folder.id) {
+                data.links.selectedFolder = browserFolder.id
+            }
+            folder.id = browserFolder.id
             mutated = true
         }
 
@@ -162,8 +170,8 @@ function applySyncedFolders(data: Sync): boolean {
         }
     }
 
-    const synced = data.links.folders.filter((folder) => folder.source.type === 'bookmarks')
-    const local = data.links.folders.filter((folder) => folder.source.type !== 'bookmarks')
+    const synced = data.links.folders.filter((folder) => folder.source === 'bookmarks')
+    const local = data.links.folders.filter((folder) => folder.source !== 'bookmarks')
     const nextFolders = [...synced, ...local]
 
     if (!sameFolderList(data.links.folders, nextFolders)) {
@@ -191,26 +199,23 @@ function applySyncedFolders(data: Sync): boolean {
 function mirrorFolderIntoFolder(folder: LinkFolder, bookmarks: BookmarksFolderItem[]): boolean {
     const sourceBookmarks = uniqueBookmarksByUrl(bookmarks)
     const previous = JSON.stringify(folder.items)
-    const existingByBookmarkId = new Map<string, LinkElem>()
+    const existingById = new Map<string, LinkElem>()
     const existingByUrl = new Map<string, LinkElem>()
 
     for (const link of flattenLinks(folder.items)) {
-        if (link.bookmarkId) {
-            existingByBookmarkId.set(link.bookmarkId, link)
-        } else {
-            existingByUrl.set(normalizeBookmarkUrl(link.url), link)
-        }
+        existingById.set(link.id, link)
+        existingByUrl.set(normalizeBookmarkUrl(link.url), link)
     }
 
     const nextItems: LinkElem[] = []
 
     for (const bookmark of sourceBookmarks) {
-        const existing = existingByBookmarkId.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
+        const existing = existingById.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
         const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
 
+        link.id = bookmark.id
         link.title = bookmark.title
         link.url = bookmark.url
-        link.bookmarkId = bookmark.id
         nextItems.push(link)
     }
 
@@ -226,24 +231,21 @@ function applyFavoritesFromToolbar(data: Sync): boolean {
     }
 
     const previous = JSON.stringify(data.links.favorites)
-    const existingByBookmarkId = new Map<string, LinkElem>()
+    const existingById = new Map<string, LinkElem>()
     const existingByUrl = new Map<string, LinkElem>()
 
     for (const link of data.links.favorites) {
-        if (link.bookmarkId) {
-            existingByBookmarkId.set(link.bookmarkId, link)
-        } else {
-            existingByUrl.set(normalizeBookmarkUrl(link.url), link)
-        }
+        existingById.set(link.id, link)
+        existingByUrl.set(normalizeBookmarkUrl(link.url), link)
     }
 
     data.links.favorites = uniqueBookmarksByUrl(folder.bookmarks).map((bookmark) => {
-        const existing = existingByBookmarkId.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
+        const existing = existingById.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
         const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
 
+        link.id = bookmark.id
         link.title = bookmark.title
         link.url = bookmark.url
-        link.bookmarkId = bookmark.id
         return link
     })
 
@@ -581,19 +583,24 @@ function isSyncedBookmarkFolder(data: Sync, folder?: string): boolean {
     }
 
     return !!folder && data.links.folders.some((item) => {
-        return (item.id === folder || item.title === folder) && item.source.type === 'bookmarks'
+        return (item.id === folder || item.title === folder) && item.source === 'bookmarks'
     })
 }
 
 function isMirroredBookmarkLink(data: Sync, id: string): boolean {
-    return allLinks(data).some((link) => link.id === id && !!link.bookmarkId)
+    const existsInConfig = allLinks(data).some((link) => link.id === id)
+    const existsInBrowserBookmarks = browserBookmarkFolders.some((folder) => {
+        return folder.bookmarks.some((bookmark) => bookmark.id === id)
+    })
+
+    return existsInConfig && existsInBrowserBookmarks
 }
 
 function collectRestorableBookmarkFolders(data: Sync): Map<string, LinkElem[]> {
     const folders = new Map<string, LinkElem[]>()
 
     for (const folder of data.links.folders) {
-        if (folder.source.type !== 'bookmarks') {
+        if (folder.source !== 'bookmarks') {
             continue
         }
 
