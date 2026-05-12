@@ -13,7 +13,7 @@
 
     --text-shadow-alpha: 0.2;
     --font-family: -apple-system, system-ui, Ubuntu, Roboto, 'Open Sans', 'Segoe UI', 'Helvetica Neue';
-    --monospace-font-family: Consolas, Monaco, Ubuntu Mono, monospace;
+    --monospace-font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
     --font-weight-clock: 200;
     --font-weight: 400;
     --font-size: 1em;
@@ -26,50 +26,65 @@
     --color-orange: #fe9030;
     --border-radius: 10px; /* global border-radius value */
     --out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+
+    /* Enhanced easing curves */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Glass design tokens */
+    --glass-blur: 20px;
+    --glass-saturation: 1.8;
+    --glass-tint-light: rgba(255, 255, 255, 0.72);
+    --glass-tint-dark: rgba(20, 20, 22, 0.68);
+    --glass-border-light: rgba(255, 255, 255, 0.28);
+    --glass-border-dark: rgba(255, 255, 255, 0.08);
+    --glass-shadow-light: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+    --glass-shadow-dark: 0 8px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.16);
 }
 
 [data-theme='light'] {
-    --color-text: #222222;
+    --color-text: #1a1a1a;
     --color-param: 255, 255, 255;
-    --color-settings: #f2f2f7;
-    --color-settings-section: #ffffff;
-    --color-settings-section-border: #d7d8df;
-    --color-settings-section-highlight: #ffffffb3;
-    --color-areas: #f2f2f7;
+    --color-settings: rgba(244, 244, 249, 0.92);
+    --color-settings-section: rgba(255, 255, 255, 0.82);
+    --color-settings-section-border: rgba(0, 0, 0, 0.06);
+    --color-settings-section-highlight: rgba(255, 255, 255, 0.9);
+    --color-areas: rgba(242, 242, 247, 0.8);
     --color-areas-text: var(--color-blue);
-    --color-input: #eaeaee;
-    --color-input-outside: #e3e3ea;
-    --color-focused: #dddde4;
-    --color-border: #c8c7cc;
-    --color-placeholder: #7c7d7e;
-    --color-light-text: #5a5858;
-    --color-dialog: #fffb;
-    --color-dialog-border: #3334;
-    --color-dialog-highlight: #fff4;
-    --color-dialog-input-text: #716f6d;
-    --color-dialog-input-bg: rgba(106, 104, 111, 0.12);
+    --color-input: rgba(0, 0, 0, 0.04);
+    --color-input-outside: rgba(0, 0, 0, 0.06);
+    --color-focused: rgba(0, 0, 0, 0.07);
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-placeholder: #8e8e93;
+    --color-light-text: #636366;
+    --color-dialog: rgba(255, 255, 255, 0.85);
+    --color-dialog-border: rgba(0, 0, 0, 0.08);
+    --color-dialog-highlight: rgba(255, 255, 255, 0.6);
+    --color-dialog-input-text: #636366;
+    --color-dialog-input-bg: rgba(118, 118, 128, 0.08);
 }
 
 [data-theme='dark'] {
-    --color-text: #eeeeee;
-    --color-light-text: #929294;
+    --color-text: #f0f0f5;
+    --color-light-text: #98989f;
     --color-param: 28, 28, 30;
-    --color-settings: #000000;
-    --color-settings-section: #2b2b2f;
-    --color-settings-section-border: #4c4d55;
-    --color-settings-section-highlight: #ffffff14;
-    --color-input: #39383d;
-    --color-input-outside: #39383d;
-    --color-border: var(--color-input);
-    --color-areas: var(--color-input);
+    --color-settings: rgba(18, 18, 20, 0.88);
+    --color-settings-section: rgba(44, 44, 48, 0.72);
+    --color-settings-section-border: rgba(255, 255, 255, 0.06);
+    --color-settings-section-highlight: rgba(255, 255, 255, 0.04);
+    --color-input: rgba(255, 255, 255, 0.06);
+    --color-input-outside: rgba(255, 255, 255, 0.06);
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-areas: rgba(255, 255, 255, 0.06);
     --color-areas-text: var(--color-text);
-    --color-placeholder: #a4a5a6;
-    --color-focused: #323135;
-    --color-dialog: #191919aa;
-    --color-dialog-border: #fff4;
-    --color-dialog-highlight: #fff2;
+    --color-placeholder: #7c7c82;
+    --color-focused: rgba(255, 255, 255, 0.1);
+    --color-dialog: rgba(22, 22, 24, 0.82);
+    --color-dialog-border: rgba(255, 255, 255, 0.1);
+    --color-dialog-highlight: rgba(255, 255, 255, 0.04);
     --color-dialog-input-text: #a4a7a8;
-    --color-dialog-input-bg: rgba(110, 107, 114, 0.25);
+    --color-dialog-input-bg: rgba(118, 118, 128, 0.2);
 }
 
 [data-browser='edge'] .firefox-only,
@@ -112,6 +127,8 @@ body {
     -webkit-user-select: none;
     background-color: var(--average-color);
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body p,

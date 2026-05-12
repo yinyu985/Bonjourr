@@ -23,7 +23,7 @@
 
 #show-settings img {
     width: 28px;
-    transition: transform 0.33s var(--out-cubic);
+    transition: transform 0.4s var(--ease-out-expo);
 }
 
 #show-settings.he_hidden {
@@ -40,7 +40,7 @@
 }
 
 #show-settings:hover img {
-    transform: rotate(20deg);
+    transform: rotate(22deg) scale(1.05);
 }
 
 #show-settings.shown {

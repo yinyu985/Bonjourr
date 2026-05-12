@@ -42,19 +42,6 @@ export function initFolders(data: Sync, init?: true): void {
         positionListenerAdded = true
         globalThis.addEventListener('resize', updateSelectedFolderPosition)
     }
-
-    document.querySelector('#link-mini')?.addEventListener('wheel', (event) => {
-        const target = event.target as HTMLElement
-        const isOverFolderList = target.closest('.link-list') !== null
-        const isOverLink = target.closest('.link') !== null
-
-        if (isOverFolderList || isOverLink) {
-            return
-        }
-
-        changeFolder(event)
-        event.preventDefault()
-    }, { passive: false })
 }
 
 function createFolderTabs(data: Sync): void {
@@ -103,17 +90,7 @@ function createFolderTabs(data: Sync): void {
 }
 
 function changeFolder(event: Event): void {
-    let button: HTMLButtonElement
-
-    if (event.type === 'wheel') {
-        const buttons = Array.from(
-            document.querySelectorAll<HTMLButtonElement>('.link-title:not(.add-group)[data-group]'),
-        )
-        const index = buttons.findIndex((btn) => btn.classList.contains('selected-group'))
-        button = buttons[(index + ((event as WheelEvent).deltaY > 0 ? 1 : -1) + buttons.length) % buttons.length]
-    } else {
-        button = event.currentTarget as HTMLButtonElement
-    }
+    const button = event.currentTarget as HTMLButtonElement
 
     if (!button) {
         return
@@ -126,10 +103,8 @@ function changeFolder(event: Event): void {
     }
 
     if (button.classList.contains('selected-group')) {
-        if (event.type !== 'wheel') {
-            setGroupFocus(!isGroupFocus())
-            updateSelectedFolderPosition()
-        }
+        setGroupFocus(!isGroupFocus())
+        updateSelectedFolderPosition()
         return
     }
 
@@ -153,6 +128,7 @@ function changeFolder(event: Event): void {
     }
 
     function hideCurrentFolder(): void {
+        setGroupFocus(false)
         domlinkblocks.classList.remove('in-folder')
         domlinkblocks.classList.add('hiding')
     }

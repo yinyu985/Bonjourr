@@ -31,7 +31,7 @@
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: transform 0.2s var(--out-cubic), opacity 0.2s var(--out-cubic);
+    transition: transform 0.3s var(--ease-out-expo), opacity 0.2s var(--out-cubic);
 }
 
 #show-notes.he_hidden {
@@ -48,7 +48,7 @@
 }
 
 #show-notes:hover svg {
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.05);
 }
 
 #show-notes.shown {

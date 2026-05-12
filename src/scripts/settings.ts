@@ -1,5 +1,5 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
-import { customFont, fontIsAvailableInSubset, systemfont } from './features/fonts.ts'
+import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
@@ -206,7 +206,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'gist'))
 
-    setFormInput('i_customfont', systemfont.placeholder, data.font?.family)
     setFormInput('i_gistsync', 'github_pat_XX000X00X', local?.gistToken)
     setFormInput('i_urlsync', 'https://pastebin.com/raw/y7XhhiDs', local?.distantUrl)
 
@@ -528,13 +527,12 @@ function initOptionsEvents(): void {
 
     // Custom fonts
 
-    paramId('i_customfont').addEventListener('pointerenter', () => {
+    paramId('i_customfont').addEventListener('focus', () => {
         customFont(undefined, { autocomplete: true })
     })
 
-    paramId('f_customfont').addEventListener('submit', (event) => {
-        customFont(undefined, { family: paramId('i_customfont').value })
-        event.preventDefault()
+    paramId('i_customfont').addEventListener('change', function (): void {
+        customFont(undefined, { family: this.value })
     })
 
     paramId('i_weight').addEventListener('input', function (): void {

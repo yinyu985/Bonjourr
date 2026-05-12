@@ -477,21 +477,8 @@
                 <option value="diagonalDots" class="trn">Diagonal dots</option>
                 <option value="verticalDots" class="trn">Vertical dots</option>
                 <option value="topographic" class="trn">Topographic</option>
-                <option value="aztec" class="trn">Aztec</option>
                 <option value="checkerboard" class="trn">Checkerboard</option>
                 <option value="isometric" class="trn">Isometric</option>
-                <option value="circuitBoard" class="trn">Circuit board</option>
-                <option value="ticTacToe" class="trn">Tic-tac-toe</option>
-                <option value="endlessClouds" class="trn">Endless clouds</option>
-                <option value="waves" class="trn">Waves</option>
-                <option value="honeycomb" class="trn">Honeycomb</option>
-                <option value="grid" class="trn">Grid</option>
-                <option value="verticalLines" class="trn">Vertical lines</option>
-                <option value="horizontalLines" class="trn">Horizontal lines</option>
-                <option value="diagonalLines" class="trn">Diagonal lines</option>
-                <option value="verticalStripes" class="trn">Vertical stripes</option>
-                <option value="horizontalStripes" class="trn">Horizontal stripes</option>
-                <option value="diagonalStripes" class="trn">Diagonal stripes</option>
             </select>
         </div>
 
@@ -809,17 +796,9 @@
                 </button>
             </span>
 
-            <form id="f_customfont" class="network-form">
-                <div>
-                    <input list="dl_fontfamily" id="i_customfont" type="text" name="customfont" autocomplete="off" />
-                    <datalist id="dl_fontfamily"></datalist>
-
-                    <button type="submit">
-                        <span></span>
-                    </button>
-                </div>
-                <small class="network-form-warning"></small>
-            </form>
+            <select id="i_customfont">
+                <option value="" class="trn">System default</option>
+            </select>
         </div>
 
         <p class="tooltiptext dropdown ttfontfamily">

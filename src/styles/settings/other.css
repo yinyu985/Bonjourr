@@ -15,11 +15,7 @@
     width: 100%;
 }
 
-/*  Links  */
-
-#i_customfont {
-    text-transform: capitalize;
-}
+/*  Fonts  */
 
 #i_weight option.hidden {
     display: none;

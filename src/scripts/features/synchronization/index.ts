@@ -1,6 +1,6 @@
 import { findGistId, isGistTokenValid, retrieveGist, sendGist, setGistStatus } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
-import { dedupeSyncLinks, mergeSyncAppend } from './merge.ts'
+import { dedupeSyncLinks } from './merge.ts'
 import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { filterData } from '../../compatibility/apply.ts'
@@ -251,13 +251,15 @@ function isSyncType(val = ''): val is SyncType {
     return ['browser', 'gist', 'url', 'off'].includes(val)
 }
 
-async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
+async function mergeDownloadedSync(_current: Sync, incoming: Sync): Promise<Sync> {
     incoming = normalizeExternalSync(incoming)
-    let update = mergeSyncAppend(current, incoming)
+    let update = dedupeSyncLinks(structuredClone(incoming))
 
     await storage.sync.clear()
     await storage.sync.set(update)
 
+    // restoreBookmarksFromConfig is append-only: it never deletes
+    // existing browser bookmarks, only adds missing ones from the config.
     const restored = await restoreBookmarksFromConfig(incoming)
 
     if (restored) {

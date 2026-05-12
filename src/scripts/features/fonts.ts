@@ -1,8 +1,8 @@
 import { getLang, tradThis } from '../utils/translations.ts'
 import { displayInterface } from '../shared/display.ts'
+import { refreshCustomSelects } from '../shared/custom-select.ts'
 import { onSettingsLoad } from '../utils/onsettingsload.ts'
 import { eventDebounce } from '../utils/debounce.ts'
-import { networkForm } from '../shared/form.ts'
 import { SYSTEM_OS } from '../defaults.ts'
 import { subsets } from '../langs.ts'
 import { storage } from '../storage.ts'
@@ -26,7 +26,6 @@ type CustomFontUpdate = {
     weight?: string
 }
 
-const familyForm = networkForm('f_customfont')
 const FONTS_API = 'https://api.fontsource.org/v1/fonts'
 const FONTS_CDN = 'https://cdn.jsdelivr.net/fontsource/fonts'
 let fontlistCache: Fontsource[] | undefined
@@ -128,20 +127,16 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
 
     switch (familyType) {
         case 'fontsource': {
-            familyForm.load()
-
             const newfont = await getNewFont(font, family)
 
             if (newfont && navigator.onLine) {
                 font = { ...font, ...newfont }
                 displayFont(font)
                 await waitForFontLoad(family)
-                familyForm.accept('i_customfont', family)
                 clock(undefined, {})
             }
 
             if (font.family === '') {
-                familyForm.warn(tradThis('Cannot load this font'))
                 return data.font
             }
             break
@@ -150,13 +145,11 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
         case 'system': {
             font.family = family
             displayFont(font)
-            familyForm.accept('i_customfont', family)
             break
         }
 
         default: {
             displayFont(font)
-            familyForm.accept('i_customfont', systemfont.placeholder)
         }
     }
 
@@ -262,20 +255,30 @@ function initFontSettings(font?: Font): void {
     const hasCustomWeights = font && font.weightlist.length > 0
     const weights = hasCustomWeights ? font.weightlist : systemfont.weights
     setWeightSettings(weights)
+
+    // Set the select value after populating options
+    setAutocompleteSettings().then(() => {
+        const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
+        if (selectFont && font?.family) {
+            selectFont.value = font.family
+        }
+    })
 }
 
 async function setAutocompleteSettings(isLangSwitch?: boolean): Promise<void> {
-    const dlFontfamily = document.querySelector<HTMLDataListElement>('#dl_fontfamily')
+    const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
 
-    if (isLangSwitch && dlFontfamily?.childNodes) {
-        for (const node of dlFontfamily.childNodes) {
-            node.remove()
-        }
+    if (!selectFont) {
+        return
     }
 
-    if (dlFontfamily?.childElementCount === 0) {
+    if (isLangSwitch || selectFont.options.length <= 1) {
+        // Clear existing options except the first "System default"
+        while (selectFont.options.length > 1) {
+            selectFont.remove(1)
+        }
+
         const fontlist = await getFontList()
-        const fragment = new DocumentFragment()
         const requiredSubset = getRequiredSubset()
 
         for (const item of fontlist as Fontsource[]) {
@@ -283,12 +286,12 @@ async function setAutocompleteSettings(isLangSwitch?: boolean): Promise<void> {
                 const option = document.createElement('option')
                 option.textContent = item.family
                 option.value = item.family
-                fragment.appendChild(option)
+                selectFont.appendChild(option)
             }
         }
-
-        dlFontfamily?.appendChild(fragment)
     }
+
+    refreshCustomSelects(selectFont.parentElement ?? document)
 }
 
 function setWeightSettings(weights: string[]): void {

@@ -10,6 +10,8 @@ aside {
     padding: 0 14px 14px;
     --border-radius: 10px;
     background-color: var(--color-settings);
+    backdrop-filter: saturate(var(--glass-saturation)) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(var(--glass-saturation)) blur(var(--glass-blur));
     color: var(--color-text);
     font-size: 15px;
     font-weight: 400;
@@ -19,7 +21,7 @@ aside {
     overflow-x: hidden;
     touch-action: pan-y;
     box-sizing: border-box;
-    transition: transform 0.33s, background-color 0.33s, border-color 0.33s;
+    transition: transform 0.4s var(--ease-out-expo), background-color 0.33s, border-color 0.33s;
     border-left: 1px solid var(--color-settings-section-border);
 }
 
@@ -30,7 +32,7 @@ aside.hidden {
 aside.shown {
     -webkit-transform: translateX(-100%);
     transform: translateX(-100%);
-    box-shadow: 0px 1px 20px 1px rgba(0, 0, 0, 0.15);
+    box-shadow: -1px 0 1px rgba(255, 255, 255, 0.06), 0 8px 40px rgba(0, 0, 0, 0.18), 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 aside.see-through {
@@ -45,13 +47,13 @@ aside.init .dropdown {
     max-height: 0;
     overflow: hidden;
     visibility: hidden;
-    transition: max-height 0.3s, padding 0.2s, margin 0.2s, visibility 0s 0.3s;
+    transition: max-height 0.35s var(--ease-out-expo), padding 0.25s, margin 0.25s, visibility 0s 0.35s;
 }
 
 .all .as,
 .dropdown.shown {
     visibility: visible;
-    transition: max-height 0.3s, padding 0.2s, margin 0.2s, visibility 0s 0s;
+    transition: max-height 0.35s var(--ease-out-expo), padding 0.25s, margin 0.25s, visibility 0s 0s;
 }
 
 aside.change-theme .tooltip,

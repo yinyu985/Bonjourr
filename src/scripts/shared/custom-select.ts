@@ -1,4 +1,5 @@
 let initializedCloseHandler = false
+const refreshBySelect = new WeakMap<HTMLSelectElement, () => void>()
 
 export function initCustomSelects(root: ParentNode = document): void {
     const selects = root.querySelectorAll<HTMLSelectElement>('select:not([data-custom-select])')
@@ -56,16 +57,22 @@ export function initCustomSelects(root: ParentNode = document): void {
             }
         }
 
+        refreshBySelect.set(select, refresh)
+
         const positionList = (): void => {
             const rect = button.getBoundingClientRect()
             const spaceBelow = globalThis.innerHeight - rect.bottom - 8
             const spaceAbove = rect.top - 8
             const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow
             const maxHeight = Math.max(120, Math.floor(openAbove ? spaceAbove : spaceBelow))
+            const optionHeight = 28
+            const verticalPadding = 8
+            const listHeight = Math.min(maxHeight, list.children.length * optionHeight + verticalPadding)
 
             list.style.position = 'fixed'
             list.style.left = `${rect.left}px`
             list.style.minWidth = `${rect.width}px`
+            list.style.height = listHeight === maxHeight ? `${maxHeight}px` : ''
             list.style.maxHeight = `${maxHeight}px`
 
             if (openAbove) {
@@ -80,6 +87,11 @@ export function initCustomSelects(root: ParentNode = document): void {
         button.addEventListener('click', () => {
             const willOpen = !custom.classList.contains('open')
             closeCustomSelects()
+
+            if (willOpen) {
+                select.dispatchEvent(new Event('focus'))
+            }
+
             refresh()
             if (willOpen) {
                 positionList()
@@ -130,12 +142,7 @@ export function refreshCustomSelects(root: ParentNode = document): void {
             continue
         }
 
-        const button = custom.querySelector<HTMLButtonElement>('.custom-select-button')
-        const selected = select.selectedOptions[0] ?? select.options[0]
-
-        if (button) {
-            button.textContent = selected?.textContent ?? ''
-        }
+        refreshBySelect.get(select)?.()
     }
 }
 

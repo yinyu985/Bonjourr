@@ -357,7 +357,7 @@
     pointer-events: none;
     transform: translate(-50%, 32px);
     z-index: 10;
-    transition: opacity 0.12s var(--out-cubic), transform 0.18s var(--out-cubic);
+    transition: opacity 0.2s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
 }
 
 /* Glass container: clear center, refractive edges */
@@ -446,7 +446,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
 /* Link */
 
 .link {
-    transition: transform 0.2s var(--in-out-bounce), opacity 0.1s var(--in-out-bounce), filter 0.06s;
+    transition: transform 0.25s var(--ease-out-expo), opacity 0.1s var(--in-out-bounce), filter 0.06s;
 }
 
 .link {

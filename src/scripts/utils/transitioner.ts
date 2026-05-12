@@ -43,7 +43,7 @@ export function transitioner(): Transitioner {
             })
 
             if (steps.after) {
-                steps.after(rest)
+                await steps.after(rest)
             }
 
             if (steps.finally) {

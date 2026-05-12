@@ -17,7 +17,7 @@
     grid-template-rows: minmax(0, 1fr);
     align-items: center;
     justify-items: center;
-    transition: opacity var(--load-time-transition), transform 0.33s;
+    transition: opacity var(--load-time-transition), transform 0.4s var(--ease-out-expo);
 }
 
 @supports not (min-height: 100dvh) {
@@ -36,7 +36,7 @@
 }
 
 #time {
-    transition: opacity 0.3s var(--out-cubic), transform 0.35s var(--out-cubic);
+    transition: opacity 0.4s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
 }
 
 body.group-focus #time {

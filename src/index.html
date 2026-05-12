@@ -443,25 +443,22 @@
 
         <section id="notes-panel" class="hidden" aria-label="Notes" aria-hidden="true">
             <div id="notes-window">
-                <header>
-                    <h2>Notes</h2>
-                    <button id="notes-close" title="Close notes" aria-label="Close notes">✕</button>
-                </header>
-
                 <div id="notes-layout">
                     <aside id="notes-list">
-                        <div id="notes-list-header">
-                            <span id="notes-list-title">All notes</span>
-                            <span id="notes-count">0</span>
-                        </div>
                         <ul id="notes-items"></ul>
-                        <button id="notes-new" title="Create note" aria-label="Create note">+</button>
+                        <button id="notes-new" title="Create note" aria-label="Create note">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                    d="M12 5v14M5 12h14"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                        </button>
                     </aside>
 
                     <section id="notes-editor">
-                        <div id="notes-editor-header">
-                            <input id="notes-title" type="text" maxlength="120" placeholder="Untitled note" />
-                        </div>
                         <textarea id="notes-content" placeholder="Write your note..."></textarea>
                     </section>
                 </div>

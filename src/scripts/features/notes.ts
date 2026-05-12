@@ -17,24 +17,26 @@ export function notes(init: Sync): void {
 
 function bindEvents(): void {
     const openButton = document.querySelector<HTMLButtonElement>('#show-notes button')
-    const closeButton = document.getElementById('notes-close')
     const newButton = document.getElementById('notes-new')
-    const titleInput = document.getElementById('notes-title') as HTMLInputElement | null
     const contentInput = document.getElementById('notes-content') as HTMLTextAreaElement | null
 
     openButton?.addEventListener('click', () => toggleNotes())
-    closeButton?.addEventListener('click', () => toggleNotes(false))
     newButton?.addEventListener('click', createNote)
 
+    const notesPanel = document.getElementById('notes-panel')
+
     // Close notes panel when clicking outside the window
-    document.getElementById('notes-panel')?.addEventListener('click', (event) => {
-        if (event.target === document.getElementById('notes-panel')) {
+    notesPanel?.addEventListener('click', (event) => {
+        if (event.target === notesPanel) {
             toggleNotes(false)
         }
     })
-    titleInput?.addEventListener('input', () => {
-        updateActiveNote({ title: titleInput.value.trimStart() || tradThis('Untitled note') })
+
+    notesPanel?.addEventListener('contextmenu', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
     })
+
     contentInput?.addEventListener('input', () => {
         updateActiveNote({ content: contentInput.value })
     })
@@ -46,8 +48,13 @@ function bindEvents(): void {
         }) as EventListener,
     )
 
-    // Focus trap for notes panel
+    // Escape to close
     document.getElementById('notes-panel')?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            toggleNotes(false)
+            return
+        }
+
         if (event.key !== 'Tab') return
 
         const panel = document.getElementById('notes-window')
@@ -106,9 +113,13 @@ function createNote(): void {
     persist()
     renderNotes()
 
-    const titleInput = document.getElementById('notes-title') as HTMLInputElement | null
-    titleInput?.focus()
-    titleInput?.select()
+    // Trigger inline rename on the newly created note
+    const firstRow = document.querySelector<HTMLElement>('#notes-items .notes-item-row')
+    const firstTitle = firstRow?.querySelector<HTMLSpanElement>('.notes-item-title')
+
+    if (firstRow && firstTitle) {
+        startInlineRename(firstRow, firstTitle, id)
+    }
 }
 
 function deleteNote(noteId: string): void {
@@ -120,14 +131,17 @@ function deleteNote(noteId: string): void {
 }
 
 function updateActiveNote(update: Partial<NoteRecord>): void {
-    const activeId = noteState.active
-
-    if (!activeId) {
+    if (!noteState.active) {
         return
     }
 
+    updateNote(noteState.active, update)
+    renderNotes(false)
+}
+
+function updateNote(noteId: string, update: Partial<NoteRecord>): void {
     noteState.records = noteState.records.map((note) => {
-        if (note.id !== activeId) {
+        if (note.id !== noteId) {
             return note
         }
 
@@ -139,19 +153,31 @@ function updateActiveNote(update: Partial<NoteRecord>): void {
     })
 
     persist()
-    renderNotes(false)
+}
+
+function selectNote(noteId: string): void {
+    if (noteState.active === noteId) {
+        return
+    }
+
+    noteState.active = noteId
+
+    for (const row of document.querySelectorAll<HTMLElement>('#notes-items .notes-item-row')) {
+        row.classList.toggle('active', row.dataset.noteId === noteId)
+    }
+
+    const content = document.getElementById('notes-content') as HTMLTextAreaElement | null
+    const active = noteState.records.find((note) => note.id === noteId)
+
+    if (content) {
+        content.value = active?.content ?? ''
+    }
 }
 
 function renderNotes(syncEditor = true): void {
     const list = document.getElementById('notes-items')
-    const count = document.getElementById('notes-count')
-    const title = document.getElementById('notes-title') as HTMLInputElement | null
     const content = document.getElementById('notes-content') as HTMLTextAreaElement | null
     const active = noteState.records.find((note) => note.id === noteState.active) ?? noteState.records[0]
-
-    if (count) {
-        count.textContent = noteState.records.length.toString()
-    }
 
     if (active && noteState.active !== active.id) {
         noteState.active = active.id
@@ -163,36 +189,33 @@ function renderNotes(syncEditor = true): void {
         for (const note of noteState.records) {
             const li = document.createElement('li')
             const row = document.createElement('div')
-            const titleButton = document.createElement('button')
-            const actionWrap = document.createElement('div')
+            const titleSpan = document.createElement('span')
             const deleteButton = document.createElement('button')
+            const isActive = note.id === noteState.active
 
             row.className = 'notes-item-row'
+            row.classList.toggle('active', isActive)
+            row.dataset.noteId = note.id
             row.tabIndex = 0
-            actionWrap.className = 'notes-item-actions'
 
             row.addEventListener('click', () => {
-                noteState.active = note.id
-                renderNotes()
+                selectNote(note.id)
             })
             row.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') {
                     return
                 }
-
                 event.preventDefault()
-                noteState.active = note.id
-                renderNotes()
+                selectNote(note.id)
             })
 
-            titleButton.type = 'button'
-            titleButton.textContent = note.title || tradThis('Untitled note')
-            titleButton.className = 'notes-item-title'
-            titleButton.classList.toggle('active', note.id === noteState.active)
-            titleButton.tabIndex = -1
-            titleButton.addEventListener('click', () => {
-                noteState.active = note.id
-                renderNotes()
+            titleSpan.textContent = note.title || tradThis('Untitled note')
+            titleSpan.className = 'notes-item-title'
+            titleSpan.addEventListener('dblclick', (event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                selectNote(note.id)
+                startInlineRename(row, titleSpan, note.id)
             })
 
             deleteButton.type = 'button'
@@ -206,18 +229,56 @@ function renderNotes(syncEditor = true): void {
                 deleteNote(note.id)
             })
 
-            actionWrap.appendChild(deleteButton)
-            row.appendChild(titleButton)
-            row.appendChild(actionWrap)
+            row.appendChild(titleSpan)
+            row.appendChild(deleteButton)
             li.appendChild(row)
             list.appendChild(li)
         }
     }
 
     if (syncEditor) {
-        title && (title.value = active?.title ?? '')
         content && (content.value = active?.content ?? '')
     }
+}
+
+function startInlineRename(_row: HTMLElement, titleSpan: HTMLSpanElement, noteId: string): void {
+    const note = noteState.records.find((n) => n.id === noteId)
+
+    if (!note) {
+        return
+    }
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'notes-item-title-edit'
+    input.value = note.title || ''
+    input.maxLength = 120
+    input.setAttribute('aria-label', tradThis('Rename note'))
+
+    titleSpan.replaceWith(input)
+    input.focus()
+    input.select()
+
+    function commitRename(): void {
+        const newTitle = input.value.trim() || tradThis('Untitled note')
+        updateNote(noteId, { title: newTitle })
+        noteState.active = noteId
+        renderNotes()
+    }
+
+    input.addEventListener('blur', commitRename)
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault()
+            input.blur()
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault()
+            input.removeEventListener('blur', commitRename)
+            renderNotes()
+        }
+    })
+    input.addEventListener('click', (event) => event.stopPropagation())
 }
 
 let pendingPersist: Promise<void> = Promise.resolve()

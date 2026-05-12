@@ -7,8 +7,10 @@ aside span {
 }
 
 aside h2 {
-    font-weight: 450;
-    font-size: 1em;
+    font-weight: 600;
+    font-size: 0.82em;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .settings-title {
