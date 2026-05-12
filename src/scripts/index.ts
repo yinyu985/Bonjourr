@@ -104,7 +104,7 @@ async function startup(): Promise<void> {
     document.documentElement.dataset.platform = PLATFORM as string
 
     document.getElementById('time')?.classList.toggle('hidden', !sync.time)
-    document.getElementById('linkblocks')?.classList.toggle('hidden', !sync.quicklinks)
+    document.getElementById('linkblocks')?.classList.toggle('hidden', !sync.links.enabled)
     onInterfaceDisplay(() => {
         document.body.classList.remove('init')
 

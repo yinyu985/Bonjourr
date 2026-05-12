@@ -1,5 +1,6 @@
 import { LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { deepEqual } from './dependencies/deepequal.ts'
+import { normalizeLinksState } from './features/links/model.ts'
 import { parse } from './utils/parse.ts'
 
 import type { Local } from '../types/local.ts'
@@ -415,10 +416,14 @@ export function isStorageDefault(data: Sync): boolean {
 }
 
 function verifyDataAsSync(data: Partial<Sync> = {}): Sync {
-    return {
+    const sync = {
         ...SYNC_DEFAULT,
         ...data,
     }
+
+    normalizeLinksState(sync)
+
+    return sync
 }
 
 function verifyDataAsLocal(data: Partial<Local> = {}): Local {

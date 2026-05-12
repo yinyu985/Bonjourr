@@ -1,4 +1,4 @@
-import { getLinksInGroup } from './helpers.ts'
+import { newFolderId } from './model.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { initblocks, initFavorites } from './index.ts'
 
@@ -6,7 +6,7 @@ import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkGroups, Sync } from '../../../types/sync.ts'
+import type { LinkFolder, Sync } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 let positionListenerAdded = false
@@ -18,70 +18,63 @@ export function isGroupFocus(): boolean {
 export function setGroupFocus(focused: boolean): void {
     document.body.classList.toggle('group-focus', focused)
 
-    // Re-render favorites when entering group-focus to ensure they are visible
-    // even if the initial render missed them due to timing issues.
     if (focused) {
         const container = document.getElementById('link-favorites')
         const hasRendered = container && container.children.length > 0
 
         if (!hasRendered) {
-            storage.sync.get().then((data) => {
-                initFavorites(data)
-            })
+            storage.sync.get().then((data) => initFavorites(data))
         }
     }
 }
 
-export function initGroups(data: Sync, init?: true): void {
+export function initFolders(data: Sync, init?: true): void {
     if (!init) {
         for (const node of document.querySelectorAll('#link-mini button') ?? []) {
             node.remove()
         }
     }
 
-    createGroups(data.linkgroups)
-    updateSelectedGroupPosition()
+    createFolderTabs(data)
+    updateSelectedFolderPosition()
 
     if (!positionListenerAdded) {
         positionListenerAdded = true
-        globalThis.addEventListener('resize', updateSelectedGroupPosition)
+        globalThis.addEventListener('resize', updateSelectedFolderPosition)
     }
 
-    // navigating through groups with scroll wheel
     document.querySelector('#link-mini')?.addEventListener('wheel', (event) => {
-        // Only switch groups when hovering over group buttons, not when scrolling inside a group list
         const target = event.target as HTMLElement
-        const isOverGroupList = target.closest('.link-list') !== null
+        const isOverFolderList = target.closest('.link-list') !== null
         const isOverLink = target.closest('.link') !== null
 
-        if (isOverGroupList || isOverLink) {
-            return // Let the scroll event propagate normally for inner content scrolling
+        if (isOverFolderList || isOverLink) {
+            return
         }
 
-        changeGroup(event)
+        changeFolder(event)
         event.preventDefault()
     }, { passive: false })
 }
 
-function createGroups(linkgroups: LinkGroups): void {
-    const { groups, pinned, synced, selected } = linkgroups
-    const visibleGroups = groups.length === 0 ? [] : [...groups, '+']
+function createFolderTabs(data: Sync): void {
+    const visibleFolders = data.links.folders.length === 0 ? [] : [...data.links.folders, addFolderPlaceholder()]
 
-    for (const group of visibleGroups) {
+    for (const folder of visibleFolders) {
         const button = document.createElement('button')
-        const isTopSite = group === 'topsites'
-        const isDefault = group === 'default'
-        const isAddMore = group === '+'
+        const isTopSite = folder.id === 'topsites'
+        const isDefault = folder.id === 'default'
+        const isAddMore = folder.id === '+'
 
-        if (pinned.includes(group)) {
+        if (folder.pinned) {
             continue
         }
 
-        button.textContent = group
-        button.dataset.group = group
+        button.textContent = folder.title
+        button.dataset.group = folder.id
         button.classList.add('link-title')
-        button.classList.toggle('selected-group', group === selected)
-        button.classList.toggle('synced', synced.includes(group))
+        button.classList.toggle('selected-group', folder.id === data.links.selectedFolder)
+        button.classList.toggle('synced', folder.source.type === 'bookmarks')
 
         if (isTopSite) {
             button.textContent = tradThis('Most visited')
@@ -89,44 +82,41 @@ function createGroups(linkgroups: LinkGroups): void {
         }
 
         if (isDefault) {
-            button.textContent = tradThis('Default group')
+            button.textContent = tradThis('Default folder')
         }
 
         if (isAddMore) {
             button.classList.add('add-group')
             button.addEventListener('click', openContextMenu)
         } else {
-            button.addEventListener('click', changeGroup)
+            button.addEventListener('click', changeFolder)
         }
 
         document.querySelector('#link-mini div')?.appendChild(button)
     }
 
-    domlinkblocks?.classList.toggle('with-groups', linkgroups.on && groups.length > 0)
+    domlinkblocks?.classList.toggle('with-groups', data.links.foldersOn && data.links.folders.length > 0)
 
-    if (!linkgroups.on || groups.length === 0) {
+    if (!data.links.foldersOn || data.links.folders.length === 0) {
         setGroupFocus(false)
     }
 }
 
-function changeGroup(event: Event): void {
+function changeFolder(event: Event): void {
     let button: HTMLButtonElement
 
     if (event.type === 'wheel') {
-        // all the selectable group buttons
         const buttons = Array.from(
             document.querySelectorAll<HTMLButtonElement>('.link-title:not(.add-group)[data-group]'),
         )
-
-        // gets the index of the currently selected group
         const index = buttons.findIndex((btn) => btn.classList.contains('selected-group'))
-
-        button = buttons[
-            // unsmooth brain thing to get the index for the previous/next button
-            (index + ((event as WheelEvent).deltaY > 0 ? 1 : -1) + buttons.length) % buttons.length
-        ]
-    } else { // click event (probably)
+        button = buttons[(index + ((event as WheelEvent).deltaY > 0 ? 1 : -1) + buttons.length) % buttons.length]
+    } else {
         button = event.currentTarget as HTMLButtonElement
+    }
+
+    if (!button) {
+        return
     }
 
     const transition = transitioner()
@@ -138,43 +128,43 @@ function changeGroup(event: Event): void {
     if (button.classList.contains('selected-group')) {
         if (event.type !== 'wheel') {
             setGroupFocus(!isGroupFocus())
-            updateSelectedGroupPosition()
+            updateSelectedFolderPosition()
         }
         return
     }
 
-    transition.first(hideCurrentGroup)
-    transition.after(recreateLinksFromNewGroup)
-    transition.finally(showNewGroup)
+    transition.first(hideCurrentFolder)
+    transition.after(recreateLinksFromNewFolder)
+    transition.finally(showNewFolder)
     transition.transition(100)
 
-    async function recreateLinksFromNewGroup(): Promise<void> {
+    async function recreateLinksFromNewFolder(): Promise<void> {
         const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
-        const data = await refreshBookmarksBeforeGroupRender(await storage.sync.get())
-        const group = button.dataset.group ?? data.linkgroups.groups[0]
+        const data = await refreshBookmarksBeforeFolderRender(await storage.sync.get())
+        const folderId = button.dataset.group ?? data.links.folders[0]?.id ?? 'default'
 
         for (const div of buttons ?? []) {
             div.classList.remove('selected-group')
         }
         button.classList.add('selected-group')
-        data.linkgroups.selected = group
-        await storage.sync.set({ linkgroups: data.linkgroups })
+        data.links.selectedFolder = folderId
+        await storage.sync.set({ links: data.links })
         initblocks(data)
     }
 
-    function hideCurrentGroup(): void {
+    function hideCurrentFolder(): void {
         domlinkblocks.classList.remove('in-folder')
         domlinkblocks.classList.add('hiding')
     }
 
-    function showNewGroup(): void {
+    function showNewFolder(): void {
         domlinkblocks.classList.remove('hiding')
         setGroupFocus(true)
-        updateSelectedGroupPosition()
+        updateSelectedFolderPosition()
     }
 }
 
-async function refreshBookmarksBeforeGroupRender(data: Sync): Promise<Sync> {
+async function refreshBookmarksBeforeFolderRender(data: Sync): Promise<Sync> {
     try {
         const { bootstrapBookmarksFromConfig } = await import('./bookmarks.ts')
         return await bootstrapBookmarksFromConfig(data)
@@ -183,7 +173,7 @@ async function refreshBookmarksBeforeGroupRender(data: Sync): Promise<Sync> {
     }
 }
 
-export function updateSelectedGroupPosition(): void {
+export function updateSelectedFolderPosition(): void {
     const selected = document.querySelector<HTMLElement>('#link-mini .link-title.selected-group')
     const linkblocks = document.getElementById('linkblocks')
 
@@ -198,131 +188,139 @@ export function updateSelectedGroupPosition(): void {
     linkblocks.style.setProperty('--active-group-x', `${Math.round(center)}px`)
 }
 
-// Updates
-
-export function toggleGroups(on: boolean, data: Sync): Sync {
+export function toggleFolders(on: boolean, data: Sync): Sync {
     domlinkblocks?.classList.toggle('with-groups', on)
     setGroupFocus(false)
-    data.linkgroups.on = on
+    data.links.foldersOn = on
     return data
 }
 
-export function changeGroupTitle(title: { old: string; new: string }, data: Sync): Sync {
-    const index = data.linkgroups.groups.indexOf(title.old)
-
-    for (const link of getLinksInGroup(data, title.old)) {
-        data[link._id] = {
-            ...link,
-            parent: title.new,
-        }
+export function changeFolderTitle(title: { old: string; new: string }, data: Sync): Sync {
+    if (!title.old && !title.new) {
+        initFolders(data)
+        return data
     }
 
-    data.linkgroups.groups[index] = title.new
-    data.linkgroups.selected = title.new
-    initGroups(data)
+    const folder = data.links.folders.find((item) => item.id === title.old || item.title === title.old)
+
+    if (!folder) {
+        return data
+    }
+
+    folder.title = title.new
+    data.links.selectedFolder = folder.id
+    initFolders(data)
     return data
 }
 
-export function addGroup(groups: { title: string; sync?: boolean }[], data: Sync): Sync {
-    for (const { title, sync } of groups) {
+export function addFolder(folders: { title: string; sync?: boolean }[], data: Sync): Sync {
+    for (const { title, sync } of folders) {
         const isReserved = title === 'default' || title === '+'
-        const isAlreadyUsed = data.linkgroups.groups.includes(title)
+        const isAlreadyUsed = data.links.folders.some((folder) => folder.title === title || folder.id === title)
 
         if (isReserved || isAlreadyUsed) {
             continue
         }
 
-        for (const link of getLinksInGroup(data, '+')) {
-            data[link._id] = {
-                ...link,
-                parent: title,
-            }
+        const folder: LinkFolder = {
+            id: newFolderId(),
+            title,
+            pinned: false,
+            source: sync ? { type: 'bookmarks' } : { type: 'local' },
+            items: [],
         }
 
-        data.linkgroups.selected = title
-        data.linkgroups.groups.push(title)
-
-        if (sync) {
-            data.linkgroups.synced.push(title)
-        }
+        data.links.folders.push(folder)
+        data.links.selectedFolder = folder.id
     }
 
-    // Remove empty "default" group when other groups exist with actual links
-    const defaultHasLinks = getLinksInGroup(data, 'default').length > 0
-    const hasOtherGroups = data.linkgroups.groups.some((g) => g !== 'default')
-
-    if (!defaultHasLinks && hasOtherGroups) {
-        data.linkgroups.groups = data.linkgroups.groups.filter((g) => g !== 'default')
-        data.linkgroups.pinned = data.linkgroups.pinned.filter((g) => g !== 'default')
-        data.linkgroups.synced = data.linkgroups.synced.filter((g) => g !== 'default')
-
-        if (data.linkgroups.selected === 'default') {
-            data.linkgroups.selected = data.linkgroups.groups[0]
-        }
-    }
-
-    initGroups(data)
+    removeEmptyDefaultFolder(data)
+    initFolders(data)
     initblocks(data)
     return data
 }
 
-export function deleteGroup(group: string, data: Sync): Sync {
-    const { groups, pinned, synced, selected } = data.linkgroups
+export function deleteFolder(folderId: string, data: Sync): Sync {
+    const { folders } = data.links
+    const index = folders.findIndex((folder) => folder.id === folderId || folder.title === folderId)
 
-    const isBroken = groups.indexOf(group) === -1
-    const isMinimum = groups.length === 1
-
-    if (isMinimum || isBroken) {
+    if (folders.length <= 1 || index < 0) {
         return data
     }
 
-    for (const link of getLinksInGroup(data, group)) {
-        delete data[link._id]
+    const [removed] = folders.splice(index, 1)
+
+    if (data.links.selectedFolder === removed.id || removed.pinned) {
+        data.links.selectedFolder = folders.find((folder) => !folder.pinned)?.id ?? folders[0]?.id ?? 'default'
     }
 
-    data.linkgroups.selected = group === selected || pinned.includes(group) ? groups[0] : selected
-    data.linkgroups.pinned = pinned.filter((p) => p !== group)
-    data.linkgroups.synced = synced.filter((g) => g !== group)
-    data.linkgroups.groups = groups.filter((g) => g !== group)
-    delete data.linkgroups.hidden[group]
-
-    if (groups.length === 2) {
-        data.linkgroups.pinned = []
+    if (folders.length === 1) {
+        folders[0].pinned = false
     }
 
     storage.sync.clear()
     initblocks(data)
-    initGroups(data)
+    initFolders(data)
     return data
 }
 
-export function moveGroups(mini: string[], data: Sync): Sync {
-    const userMini = mini.filter((name) => name !== '+')
+export function moveFolders(mini: string[], data: Sync): Sync {
+    const order = mini.filter((id) => id !== '+')
+    const folderById = new Map(data.links.folders.map((folder) => [folder.id, folder]))
+    const pinned = data.links.folders.filter((folder) => folder.pinned)
+    const ordered = order.map((id) => folderById.get(id)).filter((folder): folder is LinkFolder => !!folder)
+    const missing = data.links.folders.filter((folder) => !order.includes(folder.id) && !folder.pinned)
 
-    data.linkgroups.groups = data.linkgroups.pinned.concat(userMini)
-    initGroups(data)
+    data.links.folders = [...pinned, ...ordered, ...missing]
+    initFolders(data)
 
     return data
 }
 
-export async function togglePinGroup(group: string, action: 'pin' | 'unpin'): Promise<void> {
+export async function togglePinFolder(folderId: string, action: 'pin' | 'unpin'): Promise<void> {
     const data = await storage.sync.get()
-    const { groups, pinned } = data.linkgroups
+    const folder = data.links.folders.find((item) => item.id === folderId || item.title === folderId)
 
-    if (action === 'pin') {
-        data.linkgroups.pinned.push(group)
-    }
-    if (action === 'unpin') {
-        data.linkgroups.pinned = pinned.filter((pinned) => pinned !== group)
+    if (!folder) {
+        return
     }
 
-    if (group === data.linkgroups.selected) {
-        const unpinned = groups.filter((id) => pinned.includes(id) === false)
-        data.linkgroups.selected = unpinned[0]
+    folder.pinned = action === 'pin'
+
+    if (folder.id === data.links.selectedFolder && action === 'pin') {
+        const unpinned = data.links.folders.filter((item) => !item.pinned)
+        data.links.selectedFolder = unpinned[0]?.id ?? folder.id
     }
 
     storage.sync.set(data)
-
     initblocks(data)
-    initGroups(data)
+    initFolders(data)
+}
+
+function removeEmptyDefaultFolder(data: Sync): void {
+    if (data.links.folders.length < 2) {
+        return
+    }
+
+    const defaultFolder = data.links.folders.find((folder) => folder.id === 'default')
+
+    if (!defaultFolder || defaultFolder.items.length > 0) {
+        return
+    }
+
+    data.links.folders = data.links.folders.filter((folder) => folder.id !== 'default')
+
+    if (data.links.selectedFolder === 'default') {
+        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
+    }
+}
+
+function addFolderPlaceholder(): LinkFolder {
+    return {
+        id: '+',
+        title: '+',
+        pinned: false,
+        source: { type: 'local' },
+        items: [],
+    }
 }

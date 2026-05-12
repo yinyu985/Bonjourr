@@ -2,12 +2,11 @@ import './init.test.ts'
 
 import { assert, assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
+import { allLinks, getSubfolder, removeNode } from '../src/scripts/features/links/model.ts'
 import { mergeSyncAppend } from '../src/scripts/features/synchronization/merge.ts'
-import { isElem, isLink } from '../src/scripts/features/links/helpers.ts'
 
-import type { LinkElem } from '../src/types/shared.ts'
-
-const FAVORITES_GROUP = '__favorites'
+import type { LinkElem, LinkNode, LinkSubfolder } from '../src/types/shared.ts'
+import type { LinkFolder } from '../src/types/sync.ts'
 
 Deno.test({
     name: 'merge keeps incoming browser bookmarks as a local fallback',
@@ -17,41 +16,28 @@ Deno.test({
         const current = structuredClone(SYNC_DEFAULT)
         const incoming = structuredClone(SYNC_DEFAULT)
 
-        incoming.linkgroups.groups = ['default', 'Work']
-        incoming.linkgroups.synced = ['Work']
-        incoming.linkgroups.bookmarkFolders = {
-            [FAVORITES_GROUP]: 'toolbar',
-            Work: 'folder-work',
-        }
-        incoming.linksRemote01 = bookmarkLink(
-            'linksRemote01',
-            'Work',
-            'Remote work',
-            'https://example.com/work',
-            'bm-work',
-        )
-        incoming.linksRemote02 = bookmarkLink(
-            'linksRemote02',
-            FAVORITES_GROUP,
-            'Remote favorite',
-            'https://example.com/favorite',
-            'bm-favorite',
-        )
+        incoming.links.folders.push({
+            id: 'work',
+            title: 'Work',
+            pinned: false,
+            source: { type: 'bookmarks', folderId: 'folder-work' },
+            items: [
+                bookmarkLink('Remote work', 'https://example.com/work', 'bm-work'),
+            ],
+        })
+        incoming.links.favorites.push(bookmarkLink('Remote favorite', 'https://example.com/favorite', 'bm-favorite'))
 
         const merged = mergeSyncAppend(current, incoming)
-        const links = Object.values(merged).filter((value) => isLink(value) && isElem(value)) as LinkElem[]
+        const work = merged.links.folders.find((group) => group.id === 'work')
 
-        assert(merged.linkgroups.groups.includes('Work'))
-        assert(!merged.linkgroups.groups.includes(FAVORITES_GROUP))
-        assertEquals(merged.linkgroups.synced, [])
+        assert(work)
+        assertEquals(work.source, { type: 'local' })
         assert(
-            links.some((link) => link.parent === 'Work' && link.url === 'https://example.com/work' && !link.bookmark),
-        )
-        assert(
-            links.some((link) =>
-                link.parent === FAVORITES_GROUP && link.url === 'https://example.com/favorite' && !link.bookmark
+            work.items.some((link) =>
+                link.type === 'link' && link.url === 'https://example.com/work' && !link.bookmarkId
             ),
         )
+        assert(merged.links.favorites.some((link) => link.url === 'https://example.com/favorite' && !link.bookmarkId))
     },
 })
 
@@ -63,46 +49,120 @@ Deno.test({
         const current = structuredClone(SYNC_DEFAULT)
         const incoming = structuredClone(SYNC_DEFAULT)
 
-        current.linkgroups.groups = ['Work', 'Personal']
-        current.linksCurrent01 = plainLink('linksCurrent01', 'Work', 'Docs', 'https://example.com/docs')
-        current.linksCurrent02 = plainLink('linksCurrent02', 'Personal', 'Docs', 'https://example.com/docs')
-
-        incoming.linkgroups.groups = ['Work', 'Personal']
-        incoming.linksIncoming01 = plainLink('linksIncoming01', 'Work', 'Docs copy', 'https://example.com/docs')
-        incoming.linksIncoming02 = plainLink('linksIncoming02', 'Personal', 'Docs copy', 'https://example.com/docs')
+        current.links.folders = [
+            group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
+            group('personal', 'Personal', [plainLink('Docs', 'https://example.com/docs')]),
+        ]
+        incoming.links.folders = [
+            group('work', 'Work', [plainLink('Docs copy', 'https://example.com/docs')]),
+            group('personal', 'Personal', [plainLink('Docs copy', 'https://example.com/docs')]),
+        ]
 
         const merged = mergeSyncAppend(current, incoming)
-        const links = Object.values(merged).filter((value) => isLink(value) && isElem(value)) as LinkElem[]
-        const workLinks = links.filter((link) => link.parent === 'Work' && link.url === 'https://example.com/docs')
-        const personalLinks = links.filter((link) =>
-            link.parent === 'Personal' && link.url === 'https://example.com/docs'
-        )
+        const work = merged.links.folders.find((group) => group.id === 'work')?.items ?? []
+        const personal = merged.links.folders.find((group) => group.id === 'personal')?.items ?? []
 
-        assertEquals(workLinks.length, 1)
-        assertEquals(personalLinks.length, 1)
+        assertEquals(work.filter((link) => link.type === 'link' && link.url === 'https://example.com/docs').length, 1)
+        assertEquals(
+            personal.filter((link) => link.type === 'link' && link.url === 'https://example.com/docs').length,
+            1,
+        )
     },
 })
 
-function bookmarkLink(_id: string, parent: string, title: string, url: string, bookmarkId: string): LinkElem {
+Deno.test({
+    name: 'merge combines same-title subfolders and strips bookmark ids',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const current = structuredClone(SYNC_DEFAULT)
+        const incoming = structuredClone(SYNC_DEFAULT)
+
+        current.links.folders = [
+            group('work', 'Work', [
+                subfolder('docs-local', 'Docs', [
+                    plainLink('Design', 'https://example.com/design'),
+                ]),
+            ]),
+        ]
+        incoming.links.folders = [
+            group('work', 'Work', [
+                subfolder('docs-remote', 'Docs', [
+                    bookmarkLink('Design copy', 'https://example.com/design', 'bm-design'),
+                    bookmarkLink('Spec', 'https://example.com/spec', 'bm-spec'),
+                ]),
+            ]),
+        ]
+
+        const merged = mergeSyncAppend(current, incoming)
+        const docs = getSubfolder(merged, 'docs-local')
+
+        assert(docs)
+        assertEquals(docs.items.filter((link) => link.url === 'https://example.com/design').length, 1)
+        assert(docs.items.some((link) => link.url === 'https://example.com/spec' && !link.bookmarkId))
+    },
+})
+
+Deno.test({
+    name: 'model helpers find and remove nested subfolder links',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const data = structuredClone(SYNC_DEFAULT)
+
+        data.links.folders = [
+            group('work', 'Work', [
+                plainLink('Top level', 'https://example.com/top'),
+                subfolder('docs', 'Docs', [
+                    plainLink('Nested', 'https://example.com/nested'),
+                ]),
+            ]),
+        ]
+
+        const nested = getSubfolder(data, 'docs')?.items[0]
+
+        assert(nested)
+        assertEquals(allLinks(data).length, 2)
+        assertEquals(removeNode(data, nested.id), nested)
+        assertEquals(getSubfolder(data, 'docs')?.items.length, 0)
+        assertEquals(allLinks(data).length, 1)
+    },
+})
+
+function group(id: string, title: string, items: LinkNode[]): LinkFolder {
     return {
-        _id,
-        parent,
-        order: 0,
+        id,
         title,
-        url,
-        bookmark: {
-            id: bookmarkId,
-            parentId: parent === FAVORITES_GROUP ? 'toolbar' : 'folder-work',
-        },
-    } satisfies LinkElem
+        pinned: false,
+        source: { type: 'local' as const },
+        items,
+    }
 }
 
-function plainLink(_id: string, parent: string, title: string, url: string): LinkElem {
+function bookmarkLink(title: string, url: string, bookmarkId: string): LinkElem {
     return {
-        _id,
-        parent,
-        order: 0,
+        type: 'link',
+        id: `links${bookmarkId}`,
         title,
         url,
-    } satisfies LinkElem
+        bookmarkId,
+    }
+}
+
+function plainLink(title: string, url: string): LinkElem {
+    return {
+        type: 'link',
+        id: `links${title.replaceAll(' ', '')}`,
+        title,
+        url,
+    }
+}
+
+function subfolder(id: string, title: string, items: LinkElem[]): LinkSubfolder {
+    return {
+        type: 'subfolder',
+        id,
+        title,
+        items,
+    }
 }

@@ -3,7 +3,8 @@ import type { langList } from '../scripts/langs.ts'
 import type { Sync } from './sync.ts'
 
 export type Langs = keyof typeof langList
-export type Link = LinkFolder | LinkElem
+export type Link = LinkSubfolder | LinkElem
+export type LinkNode = LinkSubfolder | LinkElem
 export type Background = BackgroundImage | BackgroundVideo
 export type Frequency = 'tabs' | 'hour' | 'day' | 'period' | 'pause'
 export type LinkIconType = 'auto' | 'library' | 'file' | 'url'
@@ -48,19 +49,12 @@ export interface BackgroundVideo {
 }
 
 export interface LinkElem {
-    _id: string
-    parent?: string
-    folder?: false
-    order: number
+    type: 'link'
+    id: string
     title: string
     url: string
     icon?: LinkIcon
-    bookmark?: BookmarkRef
-}
-
-export interface BookmarkRef {
-    id: string
-    parentId?: string
+    bookmarkId?: string
 }
 
 export interface LinkIcon {
@@ -68,12 +62,11 @@ export interface LinkIcon {
     value?: string
 }
 
-export interface LinkFolder {
-    _id: string
-    parent?: string
-    folder: true
-    order: number
+export interface LinkSubfolder {
+    type: 'subfolder'
+    id: string
     title: string
+    items: LinkElem[]
 }
 
 // Old

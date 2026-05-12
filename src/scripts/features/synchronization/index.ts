@@ -3,8 +3,10 @@ import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { dedupeSyncLinks, mergeSyncAppend } from './merge.ts'
 import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
+import { filterData } from '../../compatibility/apply.ts'
 import { networkForm } from '../../shared/form.ts'
 import { fadeOut } from '../../shared/dom.ts'
+import { SYNC_DEFAULT } from '../../defaults.ts'
 import { storage } from '../../storage.ts'
 
 import type { Local, SyncType } from '../../../types/local.ts'
@@ -48,7 +50,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             try {
                 const id = local.gistId ?? ''
                 const token = local.gistToken ?? ''
-                const incoming = await retrieveGist(token, id)
+                const incoming = normalizeExternalSync(await retrieveGist(token, id))
                 const update = await mergeDownloadedSync(data, incoming)
                 await renderLinksFromSync(update)
                 fadeOut()
@@ -61,7 +63,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             urlsyncform.load()
 
             try {
-                const incoming = await receiveFromURL(local.distantUrl)
+                const incoming = normalizeExternalSync(await receiveFromURL(local.distantUrl))
                 const update = await mergeDownloadedSync(data, incoming)
                 await renderLinksFromSync(update)
                 fadeOut()
@@ -250,6 +252,7 @@ function isSyncType(val = ''): val is SyncType {
 }
 
 async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
+    incoming = normalizeExternalSync(incoming)
     let update = mergeSyncAppend(current, incoming)
 
     await storage.sync.clear()
@@ -276,14 +279,18 @@ function getSettingsTextAreaSync(): Sync | undefined {
     try {
         const parsed = JSON.parse(value) as Partial<Sync>
 
-        if (parsed?.about && parsed?.linkgroups) {
-            return dedupeSyncLinks(parsed as Sync)
+        if (parsed?.about) {
+            return dedupeSyncLinks(normalizeExternalSync(parsed))
         }
 
         throw 'Settings JSON is missing required fields.'
     } catch (_) {
         throw 'Invalid settings JSON.'
     }
+}
+
+function normalizeExternalSync(data: Partial<Sync>): Sync {
+    return filterData('import', structuredClone(SYNC_DEFAULT), data)
 }
 
 // function isSyncFreq(val: string): val is SyncFreq {

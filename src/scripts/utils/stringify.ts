@@ -1,17 +1,11 @@
 import { SYNC_DEFAULT } from '../defaults.ts'
-import { bundleLinks } from './bundlelinks.ts'
 
 import type { Sync } from '../../types/sync.ts'
 
 export function stringify(data: Partial<Sync>): string {
     const defaultSyncData = structuredClone(SYNC_DEFAULT)
 
-    // 1a. Add links to defaults
-    for (const link of bundleLinks(data)) {
-        defaultSyncData[link._id] = link
-    }
-
-    // 1b. Add missing fields inside default objects
+    // 1. Add missing fields inside default objects
     for (const [key, value] of Object.entries(data)) {
         const defaultValue = defaultSyncData[key]
 

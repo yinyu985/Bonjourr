@@ -1,6 +1,7 @@
-import { FAVORITES_GROUP, initblocks, validateLink } from './index.ts'
-import { initGroups } from './groups.ts'
-import { isElem, isLink } from './helpers.ts'
+import { initblocks, validateLink } from './index.ts'
+import { initFolders } from './groups.ts'
+import { isElem, isSubfolder } from './helpers.ts'
+import { allLinks, FAVORITES_FOLDER, getFolderByBookmarkSource, getFolderByTitle, removeFolder } from './model.ts'
 
 import { EXTENSION } from '../../defaults.ts'
 import { tradThis } from '../../utils/translations.ts'
@@ -8,8 +9,8 @@ import { settingsNotifications } from '../../utils/notifications.ts'
 import { getPermissions } from '../../utils/permissions.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkElem } from '../../../types/shared.ts'
-import type { Sync } from '../../../types/sync.ts'
+import type { LinkElem, LinkNode } from '../../../types/shared.ts'
+import type { LinkFolder, Sync } from '../../../types/sync.ts'
 
 type Treenode = browser.bookmarks.BookmarkTreeNode
 
@@ -33,8 +34,9 @@ type BookmarkLinksUpdate = {
     addLinks?: {
         title: string
         url: string
+        folder?: string
         group?: string
-        bookmark?: LinkElem['bookmark']
+        bookmarkId?: string
     }[]
     updateLink?: {
         id: string
@@ -43,21 +45,21 @@ type BookmarkLinksUpdate = {
     }
     moveLinks?: string[]
     moveFavorites?: string[]
-    moveToGroup?: {
+    moveToFolder?: {
         source?: string
         target: string
-        ids: string[]
+        ids?: string[]
     }
-    moveToFolder?: {
+    moveToSubfolder?: {
         source: string
         target: string
     }
-    moveOutFolder?: { ids: string[]; group: string }
+    moveOutSubfolder?: { ids: string[]; folder: string }
     deleteLinks?: string[]
-    deleteGroup?: string
-    groupTitle?: { old: string; new: string }
-    moveGroups?: string[]
-    unsyncGroup?: string
+    deleteFolder?: string
+    folderTitle?: { old: string; new: string }
+    moveFolders?: string[]
+    unsyncFolder?: string
 }
 
 let browserBookmarkFolders: BookmarksFolder[] = []
@@ -68,7 +70,6 @@ let bookmarkRestoreReleaseTimer = 0
 
 export async function linksImport(): Promise<void> {
     const data = await storage.sync.get()
-
     const refreshed = await initBookmarkSync(data)
     await renderLinksFromSync(refreshed)
 }
@@ -79,23 +80,10 @@ export async function renderLinksFromSync(data: Sync): Promise<void> {
     }
 
     const local = await storage.local.get()
-    initGroups(data)
+    initFolders(data)
     initblocks(data, local)
 }
 
-/**
- * Loads the browser bookmark tree, then mirrors any synced state into `data`.
- * Returns the (possibly mutated) `data` so callers can keep their in-memory
- * reference consistent with what was just persisted to storage.
- *
- * Safety guarantees:
- * - If the bookmark tree cannot be loaded, the caller's data is left untouched.
- * - If a synced group's source folder is missing, that group's local links are
- *   kept as-is. We never clear local data on a transient read failure.
- * - __favorites is never treated as a generic synced group. It is implicitly
- *   mirrored from the toolbar's direct links and reset whenever the toolbar
- *   has none, but it is not user-tracked in linkgroups.synced.
- */
 export async function initBookmarkSync(data: Sync): Promise<Sync> {
     let treenode = await getBookmarkTree()
 
@@ -114,14 +102,7 @@ export async function initBookmarkSync(data: Sync): Promise<Sync> {
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    ensureBookmarkFolderRefs(data)
-
-    // Mirror every browser bookmark folder. Chrome Bookmarks is the source of
-    // truth; Bonjourr only keeps a local rendering snapshot.
-    let mutated = applySyncedGroups(data)
-
-    // Always mirror toolbar direct links into the implicit __favorites bucket.
-    //    The favorites bar is a derived view of the toolbar, not a user group.
+    let mutated = applySyncedFolders(data)
     mutated = applyFavoritesFromToolbar(data) || mutated
 
     if (mutated) {
@@ -129,326 +110,187 @@ export async function initBookmarkSync(data: Sync): Promise<Sync> {
     }
 
     addBookmarkListeners()
-
     return data
 }
 
-/**
- * Mirror each synced group's links from the current browser bookmark tree.
- * Returns true when `data` was mutated.
- *
- * A missing source folder is treated as a no-op for that group, never as
- * "clear it". This avoids data loss when the bookmark tree is briefly
- * unavailable or the user has temporarily renamed/moved the source folder.
- */
-function applySyncedGroups(data: Sync): boolean {
+function applySyncedFolders(data: Sync): boolean {
     let mutated = false
-    const syncedGroups: string[] = []
-    const previousSynced = data.linkgroups.synced.filter((group) => group !== FAVORITES_GROUP)
+    const syncedFolderIds: string[] = []
+    const previousSynced = data.links.folders.filter((folder) => folder.source.type === 'bookmarks')
 
-    data.linkgroups.bookmarkFolders ??= {}
-    const previousGroupByFolderId = new Map(
-        Object.entries(data.linkgroups.bookmarkFolders).map(([group, folderId]) => [folderId, group]),
-    )
-
-    for (const folder of browserBookmarkFolders) {
-        const oldGroup = previousGroupByFolderId.get(folder.id)
-        const group = folder.title
-
-        if (group === FAVORITES_GROUP) {
+    for (const browserFolder of browserBookmarkFolders) {
+        if (browserFolder.title === FAVORITES_FOLDER) {
             continue
         }
 
-        if (oldGroup && oldGroup !== group && oldGroup !== FAVORITES_GROUP) {
-            mutated = renameMirroredGroup(data, oldGroup, group) || mutated
+        let folder = getFolderByBookmarkSource(data, browserFolder.id)
+
+        if (!folder) {
+            folder = getFolderByTitle(data, browserFolder.title)
         }
 
-        syncedGroups.push(group)
-
-        if (!data.linkgroups.groups.includes(group)) {
-            data.linkgroups.groups.push(group)
+        if (!folder) {
+            folder = {
+                id: `folder${browserFolder.id}`,
+                title: browserFolder.title,
+                pinned: false,
+                source: { type: 'bookmarks', folderId: browserFolder.id },
+                items: [],
+            }
+            data.links.folders.push(folder)
             mutated = true
         }
 
-        if (data.linkgroups.bookmarkFolders[group] !== folder.id) {
-            data.linkgroups.bookmarkFolders[group] = folder.id
+        if (folder.title !== browserFolder.title) {
+            folder.title = browserFolder.title
             mutated = true
         }
 
-        if (mirrorFolderIntoGroup(data, group, folder.bookmarks)) {
+        if (folder.source.type !== 'bookmarks' || folder.source.folderId !== browserFolder.id) {
+            folder.source = { type: 'bookmarks', folderId: browserFolder.id }
+            mutated = true
+        }
+
+        syncedFolderIds.push(folder.id)
+        mutated = mirrorFolderIntoFolder(folder, browserFolder.bookmarks) || mutated
+    }
+
+    for (const folder of previousSynced) {
+        if (!syncedFolderIds.includes(folder.id)) {
+            removeFolder(data, folder.id)
             mutated = true
         }
     }
 
-    for (const group of previousSynced) {
-        if (!syncedGroups.includes(group)) {
-            mutated = removeMirroredGroup(data, group) || mutated
-        }
-    }
+    const synced = data.links.folders.filter((folder) => folder.source.type === 'bookmarks')
+    const local = data.links.folders.filter((folder) => folder.source.type !== 'bookmarks')
+    const nextFolders = [...synced, ...local]
 
-    const localGroups = data.linkgroups.groups.filter((group) => {
-        return group !== FAVORITES_GROUP && !syncedGroups.includes(group)
-    })
-    const nextGroups = uniqueStrings([...syncedGroups, ...localGroups])
-
-    if (!sameStringList(data.linkgroups.groups, nextGroups)) {
-        data.linkgroups.groups = nextGroups
+    if (!sameFolderList(data.links.folders, nextFolders)) {
+        data.links.folders = nextFolders
         mutated = true
     }
 
-    if (!sameStringList(data.linkgroups.synced, syncedGroups)) {
-        data.linkgroups.synced = syncedGroups
+    if (data.links.folders.length > 1 && !data.links.foldersOn) {
+        data.links.foldersOn = true
         mutated = true
     }
 
-    if (data.linkgroups.groups.length > 1 && !data.linkgroups.on) {
-        data.linkgroups.on = true
+    if (removeEmptyDefaultFolder(data)) {
         mutated = true
     }
 
-    if (removeEmptyDefaultGroup(data)) {
-        mutated = true
-    }
-
-    if (!data.linkgroups.groups.includes(data.linkgroups.selected)) {
-        data.linkgroups.selected = data.linkgroups.groups[0] ?? 'default'
+    if (!data.links.folders.some((folder) => folder.id === data.links.selectedFolder)) {
+        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
         mutated = true
     }
 
     return mutated
 }
 
-function renameMirroredGroup(data: Sync, oldGroup: string, newGroup: string): boolean {
-    if (oldGroup === newGroup) {
-        return false
-    }
+function mirrorFolderIntoFolder(folder: LinkFolder, bookmarks: BookmarksFolderItem[]): boolean {
+    const sourceBookmarks = uniqueBookmarksByUrl(bookmarks)
+    const previous = JSON.stringify(folder.items)
+    const existingByBookmarkId = new Map<string, LinkElem>()
+    const existingByUrl = new Map<string, LinkElem>()
 
-    for (const value of Object.values(data)) {
-        if (isLink(value) && value.parent === oldGroup) {
-            value.parent = newGroup
+    for (const link of flattenLinks(folder.items)) {
+        if (link.bookmarkId) {
+            existingByBookmarkId.set(link.bookmarkId, link)
+        } else {
+            existingByUrl.set(normalizeBookmarkUrl(link.url), link)
         }
     }
 
-    data.linkgroups.groups = data.linkgroups.groups.map((group) => group === oldGroup ? newGroup : group)
-    data.linkgroups.pinned = data.linkgroups.pinned.map((group) => group === oldGroup ? newGroup : group)
-    data.linkgroups.synced = data.linkgroups.synced.map((group) => group === oldGroup ? newGroup : group)
+    const nextItems: LinkElem[] = []
 
-    if (data.linkgroups.selected === oldGroup) {
-        data.linkgroups.selected = newGroup
+    for (const bookmark of sourceBookmarks) {
+        const existing = existingByBookmarkId.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
+        const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
+
+        link.title = bookmark.title
+        link.url = bookmark.url
+        link.bookmarkId = bookmark.id
+        nextItems.push(link)
     }
 
-    if (data.linkgroups.hidden[oldGroup]) {
-        data.linkgroups.hidden[newGroup] = data.linkgroups.hidden[oldGroup]
-        delete data.linkgroups.hidden[oldGroup]
-    }
-
-    if (data.linkgroups.bookmarkFolders[oldGroup]) {
-        data.linkgroups.bookmarkFolders[newGroup] = data.linkgroups.bookmarkFolders[oldGroup]
-        delete data.linkgroups.bookmarkFolders[oldGroup]
-    }
-
-    return true
+    folder.items = nextItems
+    return previous !== JSON.stringify(folder.items)
 }
 
-function removeMirroredGroup(data: Sync, group: string): boolean {
-    let mutated = false
-
-    for (const [key, value] of Object.entries(data)) {
-        if (isLink(value) && value.parent === group) {
-            delete data[key]
-            mutated = true
-        }
-    }
-
-    const groups = data.linkgroups.groups.filter((value) => value !== group)
-    const pinned = data.linkgroups.pinned.filter((value) => value !== group)
-    const synced = data.linkgroups.synced.filter((value) => value !== group)
-
-    if (!sameStringList(data.linkgroups.groups, groups)) {
-        data.linkgroups.groups = groups
-        mutated = true
-    }
-    if (!sameStringList(data.linkgroups.pinned, pinned)) {
-        data.linkgroups.pinned = pinned
-        mutated = true
-    }
-    if (!sameStringList(data.linkgroups.synced, synced)) {
-        data.linkgroups.synced = synced
-        mutated = true
-    }
-
-    if (data.linkgroups.hidden[group]) {
-        delete data.linkgroups.hidden[group]
-        mutated = true
-    }
-    if (data.linkgroups.bookmarkFolders[group]) {
-        delete data.linkgroups.bookmarkFolders[group]
-        mutated = true
-    }
-
-    if (data.linkgroups.selected === group) {
-        data.linkgroups.selected = data.linkgroups.groups[0] ?? 'default'
-        mutated = true
-    }
-
-    return mutated
-}
-
-function removeEmptyDefaultGroup(data: Sync): boolean {
-    if (data.linkgroups.groups.length < 2) {
-        return false
-    }
-
-    const defaultHasLinks = Object.values(data).some((value) => isLink(value) && value.parent === 'default')
-
-    if (defaultHasLinks) {
-        return false
-    }
-
-    data.linkgroups.groups = data.linkgroups.groups.filter((group) => group !== 'default')
-    data.linkgroups.pinned = data.linkgroups.pinned.filter((group) => group !== 'default')
-    data.linkgroups.synced = data.linkgroups.synced.filter((group) => group !== 'default')
-
-    if (data.linkgroups.selected === 'default') {
-        data.linkgroups.selected = data.linkgroups.groups[0] ?? 'default'
-    }
-
-    return true
-}
-
-function sameStringList(a: string[], b: string[]): boolean {
-    if (a.length !== b.length) {
-        return false
-    }
-
-    return a.every((value, index) => value === b[index])
-}
-
-function uniqueStrings(values: string[]): string[] {
-    return [...new Set(values.filter(Boolean))]
-}
-
-/**
- * Strictly mirror the toolbar's direct links into the implicit __favorites
- * group. Always runs (independent of linkgroups.synced) so the favorites bar
- * is a 1:1 view of the toolbar at all times: add a toolbar link → it appears,
- * remove it → it disappears.
- *
- * Pre-requisite: addToolbarDirectLinksToFavorites always registers a
- * FAVORITES_GROUP bucket (possibly empty) when the bookmark tree was loaded.
- * If the bucket is missing it means we never managed to read the tree, so we
- * skip — never silently drop local data on a transient API failure.
- *
- * Deletions are scoped to entries whose parent is FAVORITES_GROUP, so this
- * cannot affect any other group.
- */
 function applyFavoritesFromToolbar(data: Sync): boolean {
-    const folder = browserBookmarkFolders.find((f) => f.title === FAVORITES_GROUP)
+    const folder = browserBookmarkFolders.find((item) => item.title === FAVORITES_FOLDER)
 
     if (!folder) {
         return false
     }
 
-    data.linkgroups.bookmarkFolders[FAVORITES_GROUP] = folder.id
-
-    return mirrorFolderIntoGroup(data, FAVORITES_GROUP, folder.bookmarks)
-}
-
-/**
- * Replace the contents of `group` in `data` with `bookmarks`, preserving
- * existing _id when a URL already exists locally. Returns true when something
- * actually changed.
- *
- * Chrome Bookmarks is the source of truth for mirrored groups. Local hidden
- * entries from older two-way sync versions are ignored so the full browser
- * bookmark state is rendered.
- */
-function mirrorFolderIntoGroup(
-    data: Sync,
-    group: string,
-    bookmarks: BookmarksFolderItem[],
-): boolean {
-    let mutated = false
-    const sourceBookmarks = uniqueBookmarksByUrl(bookmarks)
-
-    // Snapshot existing links in this group, indexed by browser bookmark id.
-    // URL matching is kept only as a migration fallback for older configs.
-    const existingByUrl = new Map<string, LinkElem>()
+    const previous = JSON.stringify(data.links.favorites)
     const existingByBookmarkId = new Map<string, LinkElem>()
-    const existingKeys: string[] = []
+    const existingByUrl = new Map<string, LinkElem>()
 
-    for (const [key, val] of Object.entries(data)) {
-        if (isLink(val) && isElem(val) && val.parent === group) {
-            if (val.bookmark?.id) {
-                existingByBookmarkId.set(val.bookmark.id, val)
-            } else {
-                existingByUrl.set(val.url, val)
-            }
-            existingKeys.push(key)
-        }
-    }
-
-    const incomingUrls = new Set(sourceBookmarks.map((b) => normalizeBookmarkUrl(b.url)))
-    const incomingIds = new Set(sourceBookmarks.map((b) => b.id))
-
-    // Remove links that are no longer in the source folder.
-    for (const key of existingKeys) {
-        const link = data[key] as LinkElem
-        const stillInBrowser = link.bookmark?.id
-            ? incomingIds.has(link.bookmark.id)
-            : incomingUrls.has(normalizeBookmarkUrl(link.url))
-
-        if (!stillInBrowser) {
-            delete data[key]
-            mutated = true
-        }
-    }
-
-    // Add or update links from the source folder, in source order.
-    for (let i = 0; i < sourceBookmarks.length; i++) {
-        const bookmark = sourceBookmarks[i]
-
-        let existing = existingByBookmarkId.get(bookmark.id)
-
-        if (!existing) {
-            existing = existingByUrl.get(bookmark.url)
-            existingByUrl.delete(bookmark.url)
-        }
-
-        if (existing) {
-            const titleChanged = existing.title !== bookmark.title
-            const urlChanged = existing.url !== bookmark.url
-            const orderChanged = existing.order !== i
-            const bookmarkChanged = existing.bookmark?.id !== bookmark.id ||
-                existing.bookmark?.parentId !== bookmark.parentId
-
-            if (titleChanged || urlChanged || orderChanged || bookmarkChanged) {
-                existing.title = bookmark.title
-                existing.url = bookmark.url
-                existing.order = i
-                existing.bookmark = {
-                    id: bookmark.id,
-                    parentId: bookmark.parentId,
-                }
-                data[existing._id] = existing
-                mutated = true
-            }
+    for (const link of data.links.favorites) {
+        if (link.bookmarkId) {
+            existingByBookmarkId.set(link.bookmarkId, link)
         } else {
-            const link = validateLink(bookmark.title, bookmark.url, group)
-            link.order = i
-            link.bookmark = {
-                id: bookmark.id,
-                parentId: bookmark.parentId,
-            }
-            data[link._id] = link
-            mutated = true
+            existingByUrl.set(normalizeBookmarkUrl(link.url), link)
         }
     }
 
-    return mutated
+    data.links.favorites = uniqueBookmarksByUrl(folder.bookmarks).map((bookmark) => {
+        const existing = existingByBookmarkId.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
+        const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
+
+        link.title = bookmark.title
+        link.url = bookmark.url
+        link.bookmarkId = bookmark.id
+        return link
+    })
+
+    return previous !== JSON.stringify(data.links.favorites)
 }
 
-// Auto-sync: listen for Chrome bookmark changes and re-sync synced groups
+function removeEmptyDefaultFolder(data: Sync): boolean {
+    if (data.links.folders.length < 2) {
+        return false
+    }
+
+    const defaultFolder = data.links.folders.find((folder) => folder.id === 'default')
+
+    if (!defaultFolder || defaultFolder.items.length > 0) {
+        return false
+    }
+
+    data.links.folders = data.links.folders.filter((folder) => folder.id !== 'default')
+
+    if (data.links.selectedFolder === 'default') {
+        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
+    }
+
+    return true
+}
+
+function sameFolderList(first: LinkFolder[], second: LinkFolder[]): boolean {
+    return first.length === second.length && first.every((folder, index) => folder.id === second[index]?.id)
+}
+
+function uniqueBookmarksByUrl(bookmarks: BookmarksFolderItem[]): BookmarksFolderItem[] {
+    const seen = new Set<string>()
+    const unique: BookmarksFolderItem[] = []
+
+    for (const bookmark of bookmarks) {
+        const url = normalizeBookmarkUrl(bookmark.url)
+
+        if (!url || seen.has(url)) {
+            continue
+        }
+
+        seen.add(url)
+        unique.push(bookmark)
+    }
+
+    return unique
+}
 
 function addBookmarkListeners(): void {
     if (bookmarkListenerAdded) {
@@ -476,16 +318,11 @@ export async function refreshSyncedGroups(): Promise<void> {
     const treenode = await getBookmarkTree()
 
     if (!treenode) {
-        // Cannot read the tree right now; do not touch local data.
         return
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    ensureBookmarkFolderRefs(data)
-
-    let mutated = applySyncedGroups(data)
-
-    // The favorites bar always tracks the toolbar, even with no named synced groups.
+    let mutated = applySyncedFolders(data)
     mutated = applyFavoritesFromToolbar(data) || mutated
 
     if (!mutated) {
@@ -494,7 +331,7 @@ export async function refreshSyncedGroups(): Promise<void> {
 
     await storage.sync.set(data)
     const local = await storage.local.get()
-    initGroups(data)
+    initFolders(data)
     initblocks(data, local)
 }
 
@@ -517,50 +354,30 @@ export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
 }
 
 export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
-    const groups = collectRestorableBookmarkGroups(data)
+    const folders = collectRestorableBookmarkFolders(data)
 
-    if (!EXTENSION || groups.size === 0) {
+    if (!EXTENSION || folders.size === 0) {
         return false
     }
 
     holdBookmarkRefreshes()
+    const root = await getRestorableRoot()
 
-    let treenode = await getBookmarkTree()
-
-    if (!treenode) {
-        try {
-            await getPermissions('bookmarks')
-            treenode = await getBookmarkTree()
-        } catch (_error) {
-            settingsNotifications({ 'accept-permissions': true })
-            releaseBookmarkRefreshesSoon()
-            return false
-        }
-    }
-
-    const root = treenode?.[0]
-
-    if (!root) {
+    if (!root || !EXTENSION.bookmarks) {
         releaseBookmarkRefreshesSoon()
         return false
     }
 
     const bookmarksApi = EXTENSION.bookmarks
-
-    if (!bookmarksApi) {
-        releaseBookmarkRefreshesSoon()
-        return false
-    }
-
     const toolbar = root.children?.[0] ?? root
     const folderIdsByTitle = bookmarkFolderIdsByTitle(root)
     const urlsByParentId = directBookmarkUrlsByParentId(root)
     let createdAny = false
 
-    for (const [group, links] of orderedRestorableGroups(data, groups)) {
-        const parentId = group === FAVORITES_GROUP
+    for (const [folderTitle, links] of orderedRestorableFolders(data, folders)) {
+        const parentId = folderTitle === FAVORITES_FOLDER
             ? toolbar.id
-            : await getOrCreateRestoreFolder(group, toolbar.id, bookmarksApi, folderIdsByTitle, urlsByParentId)
+            : await getOrCreateRestoreFolder(folderTitle, toolbar.id, bookmarksApi, folderIdsByTitle, urlsByParentId)
 
         if (!parentId) {
             continue
@@ -577,11 +394,7 @@ export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
             }
 
             try {
-                await bookmarksApi.create({
-                    parentId,
-                    title: link.title,
-                    url,
-                })
+                await bookmarksApi.create({ parentId, title: link.title, url })
                 existingUrls.add(url)
                 createdAny = true
             } catch (_error) {
@@ -595,29 +408,15 @@ export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
 }
 
 export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Promise<boolean> {
-    const desiredGroups = collectRestorableBookmarkGroups(next)
-    const currentGroups = collectRestorableBookmarkGroups(current)
+    const desiredFolders = collectRestorableBookmarkFolders(next)
+    const currentFolders = collectRestorableBookmarkFolders(current)
 
     if (!EXTENSION || !EXTENSION.bookmarks) {
         return false
     }
 
     holdBookmarkRefreshes()
-
-    let treenode = await getBookmarkTree()
-
-    if (!treenode) {
-        try {
-            await getPermissions('bookmarks')
-            treenode = await getBookmarkTree()
-        } catch (_error) {
-            settingsNotifications({ 'accept-permissions': true })
-            releaseBookmarkRefreshesSoon()
-            return false
-        }
-    }
-
-    const root = treenode?.[0]
+    const root = await getRestorableRoot()
 
     if (!root) {
         releaseBookmarkRefreshesSoon()
@@ -628,14 +427,14 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
     const toolbar = root.children?.[0] ?? root
     const folderIdsByTitle = bookmarkFolderIdsByTitle(root)
     const bookmarksByParentId = directBookmarksByParentId(root)
-    const targetGroups = uniqueStrings([...currentGroups.keys(), ...desiredGroups.keys()])
+    const targetFolders = uniqueStrings([...currentFolders.keys(), ...desiredFolders.keys()])
     let mutated = false
 
-    for (const group of orderedRestorableGroupNames(next, desiredGroups, targetGroups)) {
-        const desiredLinks = desiredGroups.get(group) ?? []
-        const parentId = group === FAVORITES_GROUP
+    for (const folderTitle of orderedRestorableFolderNames(next, desiredFolders, targetFolders)) {
+        const desiredLinks = desiredFolders.get(folderTitle) ?? []
+        const parentId = folderTitle === FAVORITES_FOLDER
             ? toolbar.id
-            : await getOrCreateRestoreFolder(group, toolbar.id, bookmarksApi, folderIdsByTitle, new Map())
+            : await getOrCreateRestoreFolder(folderTitle, toolbar.id, bookmarksApi, folderIdsByTitle, new Map())
 
         if (!parentId) {
             continue
@@ -648,7 +447,6 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
         for (const bookmark of existingBookmarks) {
             const url = normalizeBookmarkUrl(bookmark.url)
             const list = existingByUrl.get(url) ?? []
-
             list.push(bookmark)
             existingByUrl.set(url, list)
         }
@@ -682,7 +480,6 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
                         await bookmarksApi.update(existing.id, { title: link.title, url })
                         mutated = true
                     }
-
                     if (existing.index !== index) {
                         await bookmarksApi.move(existing.id, { parentId, index })
                         mutated = true
@@ -692,12 +489,7 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
                 }
             } else {
                 try {
-                    await bookmarksApi.create({
-                        parentId,
-                        index,
-                        title: link.title,
-                        url,
-                    })
+                    await bookmarksApi.create({ parentId, index, title: link.title, url })
                     mutated = true
                 } catch (_error) {
                     // Keep applying the rest of the explicit config.
@@ -727,173 +519,158 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
 
 function shouldBlockLocalBookmarkUpdate(update: BookmarkLinksUpdate, data: Sync): boolean {
     if (update.addLinks) {
-        return update.addLinks.some((link) => isSyncedBookmarkGroup(data, link.group ?? data.linkgroups.selected))
+        return update.addLinks.some((link) =>
+            isSyncedBookmarkFolder(data, link.folder ?? link.group ?? data.links.selectedFolder)
+        )
     }
 
     if (update.updateLink) {
-        return isMirroredBookmarkLink(data[update.updateLink.id], data)
+        return isMirroredBookmarkLink(data, update.updateLink.id)
     }
 
     if (update.deleteLinks) {
-        return update.deleteLinks.some((id) => isMirroredBookmarkLink(data[id], data))
+        return update.deleteLinks.some((id) => isMirroredBookmarkLink(data, id))
     }
 
     if (update.moveLinks) {
-        return update.moveLinks.some((id) => isMirroredBookmarkLink(data[id], data))
+        return update.moveLinks.some((id) => isMirroredBookmarkLink(data, id))
     }
 
     if (update.moveFavorites) {
         return true
     }
 
-    if (update.moveToGroup) {
-        return isSyncedBookmarkGroup(data, update.moveToGroup.target) ||
-            update.moveToGroup.ids.some((id) => isMirroredBookmarkLink(data[id], data))
-    }
-
     if (update.moveToFolder) {
-        return isMirroredBookmarkLink(data[update.moveToFolder.source], data)
+        const target = update.moveToFolder.target
+        const ids = update.moveToFolder.ids ?? (update.moveToFolder.source ? [update.moveToFolder.source] : [])
+        return isSyncedBookmarkFolder(data, target) || ids.some((id) => isMirroredBookmarkLink(data, id))
     }
 
-    if (update.moveOutFolder) {
-        return isSyncedBookmarkGroup(data, update.moveOutFolder.group) ||
-            update.moveOutFolder.ids.some((id) => isMirroredBookmarkLink(data[id], data))
+    if (update.moveToSubfolder) {
+        return isMirroredBookmarkLink(data, update.moveToSubfolder.source)
     }
 
-    if (update.groupTitle) {
-        return isSyncedBookmarkGroup(data, update.groupTitle.old) ||
-            isSyncedBookmarkGroup(data, update.groupTitle.new)
+    if (update.moveOutSubfolder) {
+        return isSyncedBookmarkFolder(data, update.moveOutSubfolder.folder) ||
+            update.moveOutSubfolder.ids.some((id) => isMirroredBookmarkLink(data, id))
     }
 
-    if (update.deleteGroup) {
-        return isSyncedBookmarkGroup(data, update.deleteGroup)
+    if (update.folderTitle) {
+        return isSyncedBookmarkFolder(data, update.folderTitle.old) ||
+            isSyncedBookmarkFolder(data, update.folderTitle.new)
     }
 
-    if (update.moveGroups) {
-        return update.moveGroups.some((group) => isSyncedBookmarkGroup(data, group))
+    if (update.deleteFolder) {
+        return isSyncedBookmarkFolder(data, update.deleteFolder)
     }
 
-    if (update.unsyncGroup) {
-        return isSyncedBookmarkGroup(data, update.unsyncGroup)
+    if (update.moveFolders) {
+        return update.moveFolders.some((folder) => isSyncedBookmarkFolder(data, folder))
+    }
+
+    if (update.unsyncFolder) {
+        return isSyncedBookmarkFolder(data, update.unsyncFolder)
     }
 
     return false
 }
 
-function isSyncedBookmarkGroup(data: Sync, group?: string): boolean {
-    return group === FAVORITES_GROUP || !!group && data.linkgroups.synced.includes(group)
-}
-
-function isMirroredBookmarkLink(link: unknown, data: Sync): link is LinkElem {
-    if (!isLink(link) || !isElem(link)) {
-        return false
+function isSyncedBookmarkFolder(data: Sync, folder?: string): boolean {
+    if (folder === FAVORITES_FOLDER) {
+        return true
     }
 
-    const elem = link as LinkElem
-
-    return !!elem.bookmark?.id || isSyncedBookmarkGroup(data, elem.parent)
+    return !!folder && data.links.folders.some((item) => {
+        return (item.id === folder || item.title === folder) && item.source.type === 'bookmarks'
+    })
 }
 
-function ensureBookmarkFolderRefs(data: Sync): void {
-    data.linkgroups.bookmarkFolders ??= {}
-
-    for (const folder of browserBookmarkFolders) {
-        data.linkgroups.bookmarkFolders[folder.title] = folder.id
-    }
-
-    const favorites = browserBookmarkFolders.find((f) => f.title === FAVORITES_GROUP)
-    if (favorites) {
-        data.linkgroups.bookmarkFolders[FAVORITES_GROUP] = favorites.id
-    }
+function isMirroredBookmarkLink(data: Sync, id: string): boolean {
+    return allLinks(data).some((link) => link.id === id && !!link.bookmarkId)
 }
 
-function collectRestorableBookmarkGroups(data: Sync): Map<string, LinkElem[]> {
-    const groups = new Map<string, LinkElem[]>()
-    const folderGroupById = new Map(
-        Object.entries(data.linkgroups.bookmarkFolders ?? {}).map(([group, folderId]) => [folderId, group]),
-    )
+function collectRestorableBookmarkFolders(data: Sync): Map<string, LinkElem[]> {
+    const folders = new Map<string, LinkElem[]>()
 
-    for (const value of Object.values(data)) {
-        if (!isLink(value) || !isElem(value)) {
+    for (const folder of data.links.folders) {
+        if (folder.source.type !== 'bookmarks') {
             continue
         }
 
-        const group = restorableBookmarkGroup(value, data, folderGroupById)
-
-        if (!group) {
-            continue
-        }
-
-        const links = groups.get(group) ?? []
-        links.push(value)
-        groups.set(group, links)
+        folders.set(folder.title, uniqueRestorableBookmarks(flattenLinks(folder.items)))
     }
 
-    for (const [group, links] of groups) {
-        groups.set(group, uniqueRestorableBookmarks(links))
+    if (data.links.favorites.length > 0) {
+        folders.set(FAVORITES_FOLDER, uniqueRestorableBookmarks(data.links.favorites))
     }
 
-    return groups
+    return folders
 }
 
-function uniqueBookmarksByUrl(bookmarks: BookmarksFolderItem[]): BookmarksFolderItem[] {
-    const seen = new Set<string>()
-    const unique: BookmarksFolderItem[] = []
+function orderedRestorableFolders(data: Sync, folders: Map<string, LinkElem[]>): [string, LinkElem[]][] {
+    return orderedRestorableFolderNames(data, folders).map((folder) => [folder, folders.get(folder) ?? []])
+}
 
-    for (const bookmark of bookmarks) {
-        const url = normalizeBookmarkUrl(bookmark.url)
+function orderedRestorableFolderNames(data: Sync, folders: Map<string, LinkElem[]>, extras: string[] = []): string[] {
+    const configuredFolders = data.links.folders
+        .map((folder) => folder.title)
+        .filter((folder) => folders.has(folder) || extras.includes(folder))
+    const extraFolders = uniqueStrings([...folders.keys(), ...extras]).filter((folder) => {
+        return folder !== FAVORITES_FOLDER && !configuredFolders.includes(folder)
+    })
+    const favorites = folders.has(FAVORITES_FOLDER) || extras.includes(FAVORITES_FOLDER) ? [FAVORITES_FOLDER] : []
 
-        if (!url || seen.has(url)) {
+    return [...configuredFolders, ...extraFolders, ...favorites]
+}
+
+function uniqueRestorableBookmarks(links: LinkElem[]): LinkElem[] {
+    const seenUrls = new Set<string>()
+    const unique: LinkElem[] = []
+
+    for (const link of links) {
+        const url = normalizeBookmarkUrl(link.url)
+
+        if (!url || seenUrls.has(url)) {
             continue
         }
 
-        seen.add(url)
-        unique.push(bookmark)
+        seenUrls.add(url)
+        unique.push(link)
     }
 
     return unique
 }
 
-function orderedRestorableGroups(data: Sync, groups: Map<string, LinkElem[]>): [string, LinkElem[]][] {
-    return orderedRestorableGroupNames(data, groups).map((group) => [group, groups.get(group) ?? []])
-}
+function flattenLinks(items: LinkNode[]): LinkElem[] {
+    const links: LinkElem[] = []
 
-function orderedRestorableGroupNames(data: Sync, groups: Map<string, LinkElem[]>, extras: string[] = []): string[] {
-    const configuredGroups = data.linkgroups.groups.filter((group) => groups.has(group) || extras.includes(group))
-    const extraGroups = uniqueStrings([...groups.keys(), ...extras]).filter((group) => {
-        return group !== FAVORITES_GROUP && !configuredGroups.includes(group)
-    })
-    const favorites = groups.has(FAVORITES_GROUP) || extras.includes(FAVORITES_GROUP) ? [FAVORITES_GROUP] : []
+    for (const item of items) {
+        if (isElem(item)) {
+            links.push(item)
+            continue
+        }
 
-    return [...configuredGroups, ...extraGroups, ...favorites]
-}
-
-function restorableBookmarkGroup(
-    link: LinkElem,
-    data: Sync,
-    folderGroupById: Map<string, string>,
-): string | undefined {
-    const parent = typeof link.parent === 'string' ? link.parent : undefined
-
-    if (parent === FAVORITES_GROUP) {
-        return FAVORITES_GROUP
-    }
-
-    if (parent && data.linkgroups.synced.includes(parent)) {
-        return parent
-    }
-
-    if (link.bookmark?.parentId) {
-        const group = folderGroupById.get(link.bookmark.parentId)
-
-        if (group) {
-            return group
+        if (isSubfolder(item)) {
+            links.push(...item.items)
         }
     }
 
-    if (parent && !parent.startsWith('links')) {
-        return parent
+    return links
+}
+
+async function getRestorableRoot(): Promise<Treenode | undefined> {
+    let treenode = await getBookmarkTree()
+
+    if (!treenode) {
+        try {
+            await getPermissions('bookmarks')
+            treenode = await getBookmarkTree()
+        } catch (_error) {
+            settingsNotifications({ 'accept-permissions': true })
+        }
     }
+
+    return treenode?.[0]
 }
 
 function holdBookmarkRefreshes(): void {
@@ -923,24 +700,6 @@ function releaseBookmarkRefreshesSoon(): void {
     }, 300)
 }
 
-function uniqueRestorableBookmarks(links: LinkElem[]): LinkElem[] {
-    const seenUrls = new Set<string>()
-    const unique: LinkElem[] = []
-
-    for (const link of links.toSorted((a, b) => a.order - b.order)) {
-        const url = normalizeBookmarkUrl(link.url)
-
-        if (!url || seenUrls.has(url)) {
-            continue
-        }
-
-        seenUrls.add(url)
-        unique.push(link)
-    }
-
-    return unique
-}
-
 async function getOrCreateRestoreFolder(
     title: string,
     toolbarId: string,
@@ -955,14 +714,9 @@ async function getOrCreateRestoreFolder(
     }
 
     try {
-        const folder = await bookmarksApi.create({
-            parentId: toolbarId,
-            title,
-        })
-
+        const folder = await bookmarksApi.create({ parentId: toolbarId, title })
         folderIdsByTitle.set(title, folder.id)
         urlsByParentId.set(folder.id, new Set())
-
         return folder.id
     } catch (_error) {
         return
@@ -974,11 +728,9 @@ function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
     const titleCounts = new Map<string, number>()
 
     function uniqueFolderTitle(path: string[]): string {
-        const base = path.join(' / ') || 'Default group'
+        const base = path.join(' / ') || 'Default folder'
         const count = titleCounts.get(base) ?? 0
-
         titleCounts.set(base, count + 1)
-
         return count === 0 ? base : `${base} (${count + 1})`
     }
 
@@ -989,7 +741,7 @@ function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
 
         const isRootNode = !node.title
         const isToolbarNode = node.id === treenode.children?.[0]?.id
-        const currentPath = isRootNode || isToolbarNode ? path : [...path, node.title || 'Default group']
+        const currentPath = isRootNode || isToolbarNode ? path : [...path, node.title || 'Default folder']
 
         if (!isRootNode && !isToolbarNode) {
             folders.set(uniqueFolderTitle(currentPath), node.id)
@@ -1003,7 +755,6 @@ function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
     }
 
     walk(treenode)
-
     return folders
 }
 
@@ -1033,7 +784,6 @@ function directBookmarkUrlsByParentId(treenode: Treenode): Map<string, Set<strin
     }
 
     walk(treenode)
-
     return urlsByParentId
 }
 
@@ -1070,7 +820,6 @@ function directBookmarksByParentId(treenode: Treenode): Map<string, BookmarksFol
     }
 
     walk(treenode)
-
     return bookmarksByParentId
 }
 
@@ -1078,15 +827,6 @@ function normalizeBookmarkUrl(url: string): string {
     return url.trim()
 }
 
-// webext stuff
-
-/**
- * Always prefer the live bookmark tree from the API. The cached
- * `startupBookmarks` is only used as a synchronous fallback when the API call
- * itself fails or is unavailable, never as the primary source. This avoids
- * the "first call wins, subsequent calls get nothing" race that used to leave
- * the favorites bar empty on refresh.
- */
 async function getBookmarkTree(): Promise<Treenode[] | undefined> {
     try {
         const live = await EXTENSION?.bookmarks?.getTree()
@@ -1105,11 +845,9 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
     const titleCounts = new Map<string, number>()
 
     function uniqueFolderTitle(path: string[]): string {
-        const base = path.join(' / ') || 'Default group'
+        const base = path.join(' / ') || 'Default folder'
         const count = titleCounts.get(base) ?? 0
-
         titleCounts.set(base, count + 1)
-
         return count === 0 ? base : `${base} (${count + 1})`
     }
 
@@ -1150,20 +888,12 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
 
         for (const child of toolbar?.children ?? []) {
             const mapped = mapBookmark(child)
-
-            if (mapped) {
-                directBookmarks.push(mapped)
-            }
+            if (mapped) directBookmarks.push(mapped)
         }
 
-        // Always register the favorites bucket, even when empty. The favorites
-        // bar is a strict mirror of the toolbar's direct links: when the user
-        // removes the last toolbar link, the bar must clear too. Returning
-        // early here used to leave stale local data untouched and broke that
-        // contract.
-        folders[FAVORITES_GROUP] = {
-            id: toolbar?.id ?? FAVORITES_GROUP,
-            title: FAVORITES_GROUP,
+        folders[FAVORITES_FOLDER] = {
+            id: toolbar?.id ?? FAVORITES_FOLDER,
+            title: FAVORITES_FOLDER,
             displayTitle: tradThis('Bookmarks bar'),
             bookmarks: uniqueBookmarks(directBookmarks),
         }
@@ -1176,15 +906,12 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
 
         const isRootNode = !node.title
         const isToolbarNode = node.id === treenode.children?.[0]?.id
-        const currentPath = isRootNode || isToolbarNode ? path : [...path, node.title || 'Default group']
+        const currentPath = isRootNode || isToolbarNode ? path : [...path, node.title || 'Default folder']
         const directBookmarks: BookmarksFolderItem[] = []
 
         for (const child of node.children) {
             const bookmark = mapBookmark(child)
-
-            if (bookmark) {
-                directBookmarks.push(bookmark)
-            }
+            if (bookmark) directBookmarks.push(bookmark)
         }
 
         const uniqueDirectBookmarks = uniqueBookmarks(directBookmarks)
@@ -1206,6 +933,9 @@ function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
 
     addToolbarDirectLinksToFavorites(treenode)
     createMapFromTree(treenode)
-
     return Object.values(folders)
+}
+
+function uniqueStrings(values: string[]): string[] {
+    return [...new Set(values.filter(Boolean))]
 }

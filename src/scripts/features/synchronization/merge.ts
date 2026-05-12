@@ -1,164 +1,148 @@
-import { isElem, isLink } from '../links/helpers.ts'
+import { isElem, isSubfolder } from '../links/model.ts'
 import { randomString } from '../../shared/generic.ts'
 
-import type { Link, LinkFolder } from '../../../types/shared.ts'
+import type { LinkElem, LinkNode } from '../../../types/shared.ts'
 import type { Sync } from '../../../types/sync.ts'
-
-const FAVORITES_GROUP = '__favorites'
 
 export function mergeSyncAppend(current: Sync, incoming: Sync): Sync {
     const merged = structuredClone(current)
-    const sourceIdToMergedId = new Map<string, string>()
-    const usedIds = new Set<string>()
-    const usedUrlsByParent = new Map<string, Set<string>>()
-    const folderIdentityToId = new Map<string, string>()
-    const incomingGroups = incoming.linkgroups.groups.filter((group) => group !== FAVORITES_GROUP)
+    const groupIds = new Set(merged.links.folders.map((group) => group.id))
 
-    for (const [key, value] of Object.entries(merged)) {
-        if (isLink(value)) {
-            delete merged[key]
+    for (const group of incoming.links.folders) {
+        if (groupIds.has(group.id)) {
+            const target = merged.links.folders.find((item) => item.id === group.id)
+            if (target) {
+                mergeItems(target.items, group.items, true)
+            }
+        } else {
+            const clone = structuredClone(group)
+            clone.source = { type: 'local' }
+            stripBookmarkRefs(clone.items)
+            merged.links.folders.push(clone)
+            groupIds.add(clone.id)
         }
     }
 
-    merged.linkgroups = {
-        ...current.linkgroups,
-        groups: uniqueStrings([...current.linkgroups.groups, ...incomingGroups]),
-        pinned: uniqueStrings([...current.linkgroups.pinned, ...incoming.linkgroups.pinned]),
-        synced: [...current.linkgroups.synced],
-        hidden: { ...current.linkgroups.hidden },
-        bookmarkFolders: { ...current.linkgroups.bookmarkFolders },
-    }
+    mergeFavorites(merged, incoming.links.favorites)
 
-    addLinks(current, 'current')
-    addLinks(incoming, 'incoming')
-    ensureLinkGroupsContainParents(merged)
-
-    merged.linkgroups.pinned = merged.linkgroups.pinned.filter((group) => merged.linkgroups.groups.includes(group))
-    merged.linkgroups.synced = merged.linkgroups.synced.filter((group) => merged.linkgroups.groups.includes(group))
-
-    if (!merged.linkgroups.groups.includes(merged.linkgroups.selected)) {
-        merged.linkgroups.selected = current.linkgroups.groups.includes(current.linkgroups.selected)
-            ? current.linkgroups.selected
-            : merged.linkgroups.groups[0] ?? 'default'
+    if (!merged.links.folders.some((group) => group.id === merged.links.selectedFolder)) {
+        merged.links.selectedFolder = merged.links.folders[0]?.id ?? 'default'
     }
 
     return dedupeSyncLinks(merged)
-
-    function addLinks(source: Sync, origin: 'current' | 'incoming'): void {
-        for (const link of collectLinks(source)) {
-            const cloned = structuredClone(link)
-
-            if (typeof cloned.parent === 'string' && sourceIdToMergedId.has(cloned.parent)) {
-                cloned.parent = sourceIdToMergedId.get(cloned.parent)
-            }
-
-            if (isElem(cloned)) {
-                if (origin === 'incoming') {
-                    delete cloned.bookmark
-                }
-
-                const parentKey = linkParentKey(cloned.parent)
-                const usedUrls = usedUrlsByParent.get(parentKey) ?? new Set<string>()
-                const urlKey = normalizeUrl(cloned.url)
-
-                if (usedUrls.has(urlKey)) {
-                    continue
-                }
-                usedUrls.add(urlKey)
-                usedUrlsByParent.set(parentKey, usedUrls)
-            } else {
-                const folderKey = folderIdentity(cloned)
-                const existingId = folderIdentityToId.get(folderKey)
-
-                if (existingId) {
-                    sourceIdToMergedId.set(link._id, existingId)
-                    continue
-                }
-            }
-
-            if (usedIds.has(cloned._id)) {
-                cloned._id = uniqueLinkId()
-            }
-
-            usedIds.add(cloned._id)
-            sourceIdToMergedId.set(link._id, cloned._id)
-
-            if (!isElem(cloned)) {
-                folderIdentityToId.set(folderIdentity(cloned), cloned._id)
-            }
-
-            merged[cloned._id] = cloned
-        }
-    }
-
-    function uniqueLinkId(): string {
-        let id = `links${randomString(6)}`
-
-        while (usedIds.has(id)) {
-            id = `links${randomString(6)}`
-        }
-
-        return id
-    }
 }
 
 export function dedupeSyncLinks(data: Sync): Sync {
-    const usedUrlsByParent = new Map<string, Set<string>>()
-
-    for (const link of collectLinks(data)) {
-        if (!isElem(link)) {
-            continue
-        }
-
-        const parentKey = linkParentKey(link.parent)
-        const usedUrls = usedUrlsByParent.get(parentKey) ?? new Set<string>()
-        const urlKey = normalizeUrl(link.url)
-
-        if (usedUrls.has(urlKey)) {
-            delete data[link._id]
-            continue
-        }
-
-        usedUrls.add(urlKey)
-        usedUrlsByParent.set(parentKey, usedUrls)
+    for (const group of data.links.folders) {
+        dedupeItems(group.items)
     }
+
+    data.links.favorites = uniqueLinks(data.links.favorites)
 
     return data
 }
 
-function collectLinks(data: Sync): Link[] {
-    return Object.values(data)
-        .filter((value): value is Link => isLink(value))
-        .toSorted((a, b) => {
-            const folderSort = Number(isElem(a)) - Number(isElem(b))
-            return folderSort || a.order - b.order
-        })
-}
+function mergeItems(target: LinkNode[], incoming: LinkNode[], stripBookmarks: boolean): void {
+    const folderByTitle = new Map(target.filter(isSubfolder).map((folder) => [folder.title, folder]))
+    const urls = new Set(target.filter(isElem).map((link) => normalizeUrl(link.url)))
 
-function ensureLinkGroupsContainParents(data: Sync): void {
-    for (const link of collectLinks(data)) {
-        if (typeof link.parent !== 'string' || link.parent.startsWith('links')) {
+    for (const item of incoming) {
+        if (isElem(item)) {
+            const url = normalizeUrl(item.url)
+            if (urls.has(url)) continue
+
+            const clone = structuredClone(item)
+            if (stripBookmarks) delete clone.bookmarkId
+            clone.id = uniqueNodeId(target)
+            target.push(clone)
+            urls.add(url)
             continue
         }
 
-        if (link.parent !== FAVORITES_GROUP && !data.linkgroups.groups.includes(link.parent)) {
-            data.linkgroups.groups.push(link.parent)
+        const existing = folderByTitle.get(item.title)
+        if (existing) {
+            mergeItems(existing.items, item.items, stripBookmarks)
+        } else {
+            const clone = structuredClone(item)
+            if (stripBookmarks) stripBookmarkRefs(clone.items)
+            clone.id = uniqueNodeId(target)
+            target.push(clone)
+            folderByTitle.set(clone.title, clone)
         }
     }
 }
 
-function folderIdentity(folder: LinkFolder): string {
-    return `${folder.parent ?? ''}\n${folder.title}`
+function mergeFavorites(data: Sync, incoming: LinkElem[]): void {
+    const urls = new Set(data.links.favorites.map((link) => normalizeUrl(link.url)))
+
+    for (const item of incoming) {
+        const url = normalizeUrl(item.url)
+        if (urls.has(url)) continue
+
+        const clone = structuredClone(item)
+        delete clone.bookmarkId
+        clone.id = uniqueNodeId(data.links.favorites)
+        data.links.favorites.push(clone)
+        urls.add(url)
+    }
+}
+
+function dedupeItems(items: LinkNode[]): void {
+    const urls = new Set<string>()
+
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i]
+
+        if (isSubfolder(item)) {
+            dedupeItems(item.items)
+            continue
+        }
+
+        const url = normalizeUrl(item.url)
+        if (urls.has(url)) {
+            items.splice(i, 1)
+        } else {
+            urls.add(url)
+        }
+    }
+}
+
+function uniqueLinks(links: LinkElem[]): LinkElem[] {
+    const urls = new Set<string>()
+    const result: LinkElem[] = []
+
+    for (const link of links) {
+        const url = normalizeUrl(link.url)
+        if (urls.has(url)) continue
+
+        urls.add(url)
+        result.push(link)
+    }
+
+    return result
+}
+
+function stripBookmarkRefs(items: LinkNode[]): void {
+    for (const item of items) {
+        if (isElem(item)) {
+            delete item.bookmarkId
+        } else {
+            stripBookmarkRefs(item.items)
+        }
+    }
+}
+
+function uniqueNodeId(items: LinkNode[] | LinkElem[]): string {
+    const ids = new Set(items.map((item) => item.id))
+    let id = `links${randomString(6)}`
+
+    while (ids.has(id)) {
+        id = `links${randomString(6)}`
+    }
+
+    return id
 }
 
 function normalizeUrl(url: string): string {
     return url.trim()
-}
-
-function linkParentKey(parent: unknown): string {
-    return typeof parent === 'string' ? parent : ''
-}
-
-function uniqueStrings(values: string[]): string[] {
-    return [...new Set(values.filter(Boolean))]
 }

@@ -1,6 +1,7 @@
 import { removeLinkgroupDuplicates } from './filters.ts'
 import { CURRENT_VERSION, PLATFORM } from '../defaults.ts'
 import { filterByVersion } from './versions.ts'
+import { normalizeLinksState } from '../features/links/model.ts'
 import { deepmergeAll } from '@victr/deepmerge'
 import { toSemVer } from '../utils/semver.ts'
 import type { Sync } from '../../types/sync.ts'
@@ -56,7 +57,14 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
     delete newcurrent.searchbar_engine
     delete newcurrent.cssHeight
     delete newcurrent.linktabs
-    delete newcurrent.links
+    delete newcurrent.quicklinks
+    delete newcurrent.linksrow
+    delete newcurrent.linkiconradius
+    delete newcurrent.linkstyle
+    delete newcurrent.linknewtab
+    delete newcurrent.linktitles
+    delete newcurrent.linkbackgrounds
+    delete newcurrent.linkgroups
     delete newcurrent.dynamic
     delete newcurrent.unsplash
     delete newcurrent.background_blur
@@ -80,12 +88,20 @@ export function filterData(from: 'update' | 'import', current: Sync, target?: Pa
         delete (newcurrent as Record<string, unknown>)[key]
     }
 
+    for (const key of Object.keys(newcurrent)) {
+        if (key.length === 11 && key.startsWith('links')) {
+            delete (newcurrent as Record<string, unknown>)[key]
+        }
+    }
+
     if (!newcurrent.notes || !Array.isArray(newcurrent.notes.records)) {
         newcurrent.notes = {
             active: '',
             records: [],
         }
     }
+
+    normalizeLinksState(newcurrent as Sync & Record<string, unknown>)
 
     return newcurrent
 }

@@ -1,9 +1,23 @@
 import { stringMaxSize } from '../../shared/generic.ts'
 import { API_DOMAIN } from '../../defaults.ts'
 import { tradThis } from '../../utils/translations.ts'
+export {
+    getFolder,
+    getFolderByBookmarkSource,
+    getFolderByTitle,
+    getLink,
+    getLinksInFolder,
+    getLinksInSubfolder,
+    getNode,
+    getSubfolder,
+    isElem,
+    isLink,
+    isSubfolder,
+} from './model.ts'
 
-import type { Link, LinkElem, LinkIconType } from '../../../types/shared.ts'
-import type { Sync } from '../../../types/sync.ts'
+import { isElem } from './model.ts'
+
+import type { LinkIconType, LinkNode } from '../../../types/shared.ts'
 
 export function getDefaultIcon(url: string, refresh?: number): string {
     if (refresh) {
@@ -36,7 +50,7 @@ export function getTitleFromEvent(event: Event): HTMLElement | undefined {
     }
 }
 
-export function createTitle(link: Link): string {
+export function createTitle(link: LinkNode): string {
     const isInline = document.getElementById('linkblocks')?.className.includes('inline')
     const isText = document.getElementById('linkblocks')?.className.includes('text')
 
@@ -57,55 +71,6 @@ export function createTitle(link: Link): string {
     }
 
     return ''
-}
-
-// Get Links
-
-export function getLink(data: Sync, id: string): Link | undefined {
-    const val = data[id]
-
-    if (isLink(val)) {
-        return val
-    }
-}
-
-export function getLinksInGroup(data: Sync, group?: string): Link[] {
-    const groupName = group ?? data.linkgroups.selected
-    const links: Link[] = []
-
-    for (const value of Object.values(data)) {
-        if (isLink(value) && (value?.parent ?? 0) === groupName) {
-            links.push(value)
-        }
-    }
-
-    links.sort((a, b) => a.order - b.order)
-
-    return links
-}
-
-export function getLinksInFolder(data: Sync, id: string): LinkElem[] {
-    const links: LinkElem[] = []
-
-    for (const value of Object.values(data)) {
-        if (isElem(value) && value?.parent === id) {
-            links.push(value)
-        }
-    }
-
-    links.sort((a, b) => a.order - b.order)
-
-    return links
-}
-
-// Links typing validation
-
-export function isLink(link: unknown): link is Link {
-    return ((link as Link)?._id ?? '').startsWith('links')
-}
-
-export function isElem(link: unknown): link is LinkElem {
-    return (link as Link)?.folder !== true
 }
 
 export function isLinkIconType(type: string): type is LinkIconType {

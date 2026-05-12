@@ -1,7 +1,7 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
 import { customFont, fontIsAvailableInSubset, systemfont } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
-import { changeGroupTitle, initGroups } from './features/links/groups.ts'
+import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { dedupeSyncLinks, mergeSyncAppend } from './features/synchronization/merge.ts'
 import { hideElements } from './features/hide.ts'
@@ -184,7 +184,7 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_blur', data.backgrounds.blur ?? 15)
     setInput('i_bright', data.backgrounds.bright ?? 0.8)
     setInput('i_fadein', data.backgrounds.fadein ?? 400)
-    setInput('i_linkstyle', data.linkstyle || 'default')
+    setInput('i_linkstyle', data.links.style || 'default')
     setInput('i_type', data.backgrounds.type || 'images')
     setInput('i_freq', data.backgrounds?.frequency || 'hour')
     setInput('i_dark', data.dark || 'system')
@@ -212,9 +212,9 @@ function initOptionsValues(data: Sync, local: Local): void {
 
     setCheckbox('i_showall', data.showall)
     setCheckbox('i_background-mute-videos', data.backgrounds.mute ?? true)
-    setCheckbox('i_quicklinks', data.quicklinks)
-    setCheckbox('i_linkgroups', data?.linkgroups?.on)
-    setCheckbox('i_linknewtab', data.linknewtab)
+    setCheckbox('i_quicklinks', data.links.enabled)
+    setCheckbox('i_linkgroups', data.links.foldersOn)
+    setCheckbox('i_linknewtab', data.links.newTab)
     setCheckbox('i_time', data.time)
     setCheckbox('i_analog', data.clock?.analog ?? false)
     setCheckbox('i_seconds', data.clock?.seconds ?? false)
@@ -255,8 +255,8 @@ function initOptionsValues(data: Sync, local: Local): void {
     paramId('time_options')?.classList.toggle('shown', data.time)
     paramId('analog_options')?.classList.toggle('shown', data.clock.analog)
     paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
-    paramId('quicklinks_options')?.classList.toggle('shown', data.quicklinks)
-    paramId('linkgroups_options')?.classList.toggle('shown', data.linkgroups?.on ?? false)
+    paramId('quicklinks_options')?.classList.toggle('shown', data.links.enabled)
+    paramId('linkgroups_options')?.classList.toggle('shown', data.links.foldersOn)
 
     // Time hide elems
     const dateOnly = data.hide?.clock
@@ -318,7 +318,7 @@ function initOptionsEvents(): void {
         const sync = await storage.sync.get()
         const local = await storage.local.get()
         quickLinks({ sync, local })
-        setTimeout(() => initGroups(sync), 10)
+        setTimeout(() => initFolders(sync), 10)
 
         settingsNotifications({ 'accept-permissions': false })
     })
@@ -355,14 +355,16 @@ function initOptionsEvents(): void {
 
     // Quick links
 
-    onclickdown(paramId('i_quicklinks'), (_, target) => {
+    onclickdown(paramId('i_quicklinks'), async (_, target) => {
         document.getElementById('linkblocks')?.classList.toggle('hidden', !target.checked)
-        storage.sync.set({ quicklinks: target.checked })
+        const data = await storage.sync.get()
+        data.links.enabled = target.checked
+        storage.sync.set({ links: data.links })
     })
 
     onclickdown(paramId('i_linkgroups'), (_, target) => {
         paramId('linkgroups_options')?.classList.toggle('shown', target.checked)
-        quickLinks(undefined, { groups: target.checked })
+        quickLinks(undefined, { folders: target.checked })
     })
 
     onclickdown(paramId('i_linknewtab'), (_, target) => {
@@ -714,7 +716,7 @@ async function switchLangs(nextLang: Langs): Promise<void> {
 
     data.lang = nextLang
     clock(data)
-    changeGroupTitle({ old: '', new: '' }, data)
+    changeFolderTitle({ old: '', new: '' }, data)
     tabTitle(data.tabtitle)
     customFont(undefined, { lang: true })
     settingsFooter()

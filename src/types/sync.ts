@@ -1,16 +1,9 @@
-import type { BackgroundImage, BackgroundVideo, Frequency, Link } from './shared.ts'
+import type { BackgroundImage, BackgroundVideo, Frequency, LinkElem, LinkNode } from './shared.ts'
 
 export interface Sync {
     showall: boolean
-    quicklinks: boolean
     time: boolean
-    linksrow: number
-    linkiconradius: number
-    linkstyle: 'inline' | 'text'
-    linknewtab: boolean
-    linktitles: boolean
-    linkbackgrounds: boolean
-    linkgroups: LinkGroups
+    links: LinksState
     textShadow: number
     review: number
     announcements: 'major' | 'off'
@@ -30,10 +23,39 @@ export interface Sync {
         browser: string
         version: string
     }
-    [key: string]: Link | unknown
+    [key: string]: unknown
 }
 
-export interface LinkGroups {
+export interface LinksState {
+    enabled: boolean
+    foldersOn: boolean
+    selectedFolder: string
+    rows: number
+    iconRadius: number
+    style: 'inline' | 'text'
+    newTab: boolean
+    titles: boolean
+    backgrounds: boolean
+    folders: LinkFolder[]
+    favorites: LinkElem[]
+}
+
+export interface LinkFolder {
+    id: string
+    title: string
+    pinned: boolean
+    source: LinkFolderSource
+    items: LinkNode[]
+}
+
+export type LinkFolderSource =
+    | { type: 'local' }
+    | {
+        type: 'bookmarks'
+        folderId?: string
+    }
+
+export interface LegacyLinkGroups {
     on: boolean
     selected: string
     groups: string[]

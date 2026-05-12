@@ -1,6 +1,6 @@
 import { getLiFromEvent, getTitleFromEvent } from './helpers.ts'
 import { FAVORITES_GROUP, initblocks, linksUpdate } from './index.ts'
-import { setGroupFocus, updateSelectedGroupPosition } from './groups.ts'
+import { setGroupFocus, updateSelectedFolderPosition } from './groups.ts'
 import { openFolder } from './folders.ts'
 import { storage } from '../../storage.ts'
 
@@ -397,13 +397,13 @@ function handleMiniTabHover(groupName: string): void {
         const data = await storage.sync.get()
         if (token !== groupHoverToken) return
 
-        const savedSelected = data.linkgroups.selected
-        data.linkgroups.selected = groupName
+        const savedSelected = data.links.selectedFolder
+        data.links.selectedFolder = groupName
         initblocks(data)
-        // Restore the original selected group in storage (don't persist the switch)
-        data.linkgroups.selected = savedSelected
+        // Restore the original selected folder in storage (don't persist the switch)
+        data.links.selectedFolder = savedSelected
         setGroupFocus(true)
-        updateSelectedGroupPosition()
+        updateSelectedFolderPosition()
 
         // Re-collect dropzones for the new group's links
         rebuildDragState()
@@ -667,7 +667,7 @@ function endDrag(event: Event): void {
 
     setTimeout(() => {
         if (type === 'mini') {
-            linksUpdate({ moveGroups: ids })
+            linksUpdate({ moveFolders: ids })
         } else if (toFavorites) {
             linksUpdate({ moveFavorites: [draggedId] })
         } else if (toFolder) {
@@ -682,11 +682,11 @@ function endDrag(event: Event): void {
         } else if (isCrossGroup) {
             // Move to the new group at the position the user chose
             const position = ids.indexOf(draggedId)
-            linksUpdate({ moveToGroup: { ids: [draggedId], target: crossGroupTarget, source: position.toString() } })
+            linksUpdate({ moveToFolder: { ids: [draggedId], target: crossGroupTarget, source: position.toString() } })
         } else if (toTab) {
-            linksUpdate({ moveToGroup: { ids: [draggedId], target: targetId } })
+            linksUpdate({ moveToFolder: { ids: [draggedId], target: targetId } })
         } else if (outOfFolder) {
-            linksUpdate({ moveOutFolder: { ids: [draggedId], group } })
+            linksUpdate({ moveOutSubfolder: { ids: [draggedId], folder: group } })
         } else if (isFavoritesDrag) {
             linksUpdate({ moveFavorites: ids })
         } else {

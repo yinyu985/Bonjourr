@@ -4,7 +4,6 @@ import './init.test.ts'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { filterData } from '../src/scripts/compatibility/apply.ts'
 import { assert } from '@std/assert'
-import type { Link } from '../src/types/shared.ts'
 
 const defaults = structuredClone(SYNC_DEFAULT)
 
@@ -45,40 +44,11 @@ Deno.test('1.10.0', async (t) => {
     const res = filterData('import', defaults, old)
 
     await t.step('Links', async (t) => {
-        const allkeys = Object.keys(res)
-        const linkkeys = allkeys.filter(
-            (key) => key.length === 11 && key.includes('links'),
-        )
+        const defaultGroup = res.links.folders.find((group) => group.id === 'default')
 
-        await t.step('Correct fields', () => {
-            assert(res.links === undefined)
-            assert(linkkeys.length > 0)
-        })
-
-        await t.step('Correct values', () => {
-            const str = JSON.stringify(res)
-            assert(str.includes('https://www.youtube.com/'))
-            assert(str.includes('https://api.faviconkit.com/www.youtube.com/144'))
-        })
-
-        await t.step('Valid links', () => {
-            const key = linkkeys[0]
-            const link = res[key] as Link
-
-            assert(
-                typeof link._id === 'string',
-                `Link id is "${link._id}"`,
-            )
-
-            assert(
-                typeof link.order === 'number',
-                `Link order is "${link.order}"`,
-            )
-
-            assert(
-                link.parent === 'default',
-                `Link parent is "${link.parent}"`,
-            )
+        await t.step('Legacy links are ignored by runtime imports', () => {
+            assert(defaultGroup)
+            assert((defaultGroup?.items.length ?? 0) === 0)
         })
     })
 
@@ -141,10 +111,10 @@ Deno.test('20.4.2', async (t) => {
     })
 
     await t.step('Links', async (t) => {
-        await t.step('Link groups', () => {
-            for (const group of res.linkgroups.groups) {
-                assert(old.linkgroups.groups.includes(group))
-            }
+        await t.step('Legacy link groups are ignored by runtime imports', () => {
+            assert(res.links.folders.length === 1)
+            assert(res.links.folders[0].id === 'default')
+            assert(res.links.folders[0].items.length === 0)
         })
     })
 
@@ -166,7 +136,7 @@ Deno.test('20.4.2-default', async (t) => {
     const res = filterData('import', defaults, old)
 
     await t.step('Keep default link groups', () => {
-        assert(JSON.stringify(res.linkgroups.groups) === `["default"]`)
+        assert(JSON.stringify(res.links.folders.map((group) => group.id)) === `["default"]`)
     })
 
     await t.step('Removed widgets', () => {

@@ -1,11 +1,11 @@
-import { getLiFromEvent, getLinksInFolder } from './helpers.ts'
+import { getLiFromEvent, getLinksInSubfolder } from './helpers.ts'
 import { initblocks } from './index.ts'
+import { getSubfolder } from './model.ts'
 
 import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkFolder } from '../../../types/shared.ts'
 import type { Sync } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLUListElement
@@ -57,7 +57,7 @@ export function openFolder(data: Sync, li: HTMLLIElement): void {
 
     const linkgroup = li.parentNode.parentNode as HTMLElement
     const linktitle = linkgroup.querySelector<HTMLButtonElement>('.link-title')
-    const folder = data[li.id] as LinkFolder
+    const folder = getSubfolder(data, li.id)
 
     const transition = transitioner()
     transition.first(hide)
@@ -107,7 +107,7 @@ async function closeFolder(): Promise<void> {
     }
 
     function changeToTab(): void {
-        domlinkblocks.classList.toggle('with-groups', data.linkgroups.on)
+        domlinkblocks.classList.toggle('with-groups', data.links.foldersOn)
         initblocks(data)
     }
 
@@ -123,7 +123,7 @@ async function closeFolder(): Promise<void> {
 }
 
 function openAllLinks(data: Sync, li: HTMLLIElement): void {
-    const linksInFolder = getLinksInFolder(data, li.id)
+    const linksInFolder = getLinksInSubfolder(data, li.id)
 
     for (const link of linksInFolder) {
         globalThis.open(link.url, '_blank')?.focus()

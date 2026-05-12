@@ -1,4 +1,4 @@
-import { getLink, getSelectedIds } from './helpers.ts'
+import { getLink, getSelectedIds, isElem } from './helpers.ts'
 import { closeContextMenu, positionContextMenu } from '../contextmenu.ts'
 import { quickLinks } from './index.ts'
 
@@ -110,14 +110,15 @@ export async function populateDialogWithEditLink(
     const data = await storage.sync.get()
 
     if (target.title) {
-        const { groups, pinned } = data.linkgroups
-        const title = editStates.target.addgroup ? '' : editStates.group
+        const folders = data.links.folders
+        const folder = folders.find((item) => item.id === editStates.group)
+        const title = editStates.target.addgroup ? '' : folder?.title ?? editStates.group
 
-        domeditlink.dataset.group = title
+        domeditlink.dataset.group = folder?.id ?? ''
         domtitle.value = title
 
-        const onlyOneTitleUnpinned = groups.length - pinned.length < 2
-        const onlyOneTitleLeft = groups.length < 2
+        const onlyOneTitleUnpinned = folders.filter((item) => !item.pinned).length < 2
+        const onlyOneTitleLeft = folders.length < 2
 
         if (onlyOneTitleUnpinned) {
             document.getElementById('edit-pin')?.setAttribute('disabled', '')
@@ -135,7 +136,7 @@ export async function populateDialogWithEditLink(
 
         domtitle.value = link?.title ?? ''
 
-        if (link && !link.folder) {
+        if (isElem(link)) {
             domurl.value = link.url ?? ''
         }
     }
@@ -291,7 +292,7 @@ function submitChanges(event: SubmitEvent): void {
 
     if (change === 'edit-delete') {
         if (target.title) {
-            quickLinks(undefined, { deleteGroup: group })
+            quickLinks(undefined, { deleteFolder: group })
         } else {
             quickLinks(undefined, { deleteLinks: selected })
         }
@@ -301,29 +302,29 @@ function submitChanges(event: SubmitEvent): void {
         if (container.folder) { // new link inside folder
             quickLinks(undefined, {
                 addLinks: [{
-                    group: folder,
+                    folder,
                     title: domtitle.value,
                     url: domurl.value,
                 }],
             })
         } else if (target.title && domtitle.value) { // new group
             quickLinks(undefined, {
-                addGroups: [{
+                addFolders: [{
                     title: domtitle.value,
                 }],
             })
         } else if (selectall) {
             document.dispatchEvent(new Event('remove-select-all')) // new folder from multi-selection
             quickLinks(undefined, {
-                addFolder: {
+                addSubfolder: {
                     ids: selected,
-                    group: group,
+                    folder: group,
                 },
             })
         } else if (container.group) { // new link
             quickLinks(undefined, {
                 addLinks: [{
-                    group,
+                    folder: group,
                     title: domtitle.value,
                     url: domurl.value,
                 }],
@@ -334,18 +335,18 @@ function submitChanges(event: SubmitEvent): void {
     if (change === 'edit-unfolder') {
         document.dispatchEvent(new Event('remove-select-all'))
         quickLinks(undefined, {
-            moveOutFolder: {
+            moveOutSubfolder: {
                 ids: editStates.selected,
-                group: editStates.group,
+                folder: editStates.group,
             },
         })
     }
 
     if (change === 'edit-unsync') {
-        // Stop syncing the group: keep the current snapshot of links as-is and
-        // detach the group from linkgroups.synced. After this, normal editing
-        // (rename group, edit/reorder/delete links) becomes possible again.
-        quickLinks(undefined, { unsyncGroup: group })
+        // Stop syncing the folder: keep the current snapshot of links as-is and
+        // detach the folder from its bookmark source. After this, normal editing
+        // becomes possible again.
+        quickLinks(undefined, { unsyncFolder: group })
     }
 
     event.preventDefault()
@@ -358,14 +359,14 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
     const _inputs = document.querySelectorAll<HTMLInputElement>('#editlink input')
 
     if (editStates.target.addgroup) {
-        quickLinks(undefined, { addGroups: [{ title: domtitle.value }] })
+        quickLinks(undefined, { addFolders: [{ title: domtitle.value }] })
         closeContextMenu()
         return
     }
 
     if (editStates.target.title) {
         quickLinks(undefined, {
-            groupTitle: {
+            folderTitle: {
                 old: domeditlink.dataset.group ?? '',
                 new: domtitle.value,
             },
