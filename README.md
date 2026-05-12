@@ -29,49 +29,64 @@ privacy-focused new tab page built around a clean interface, browser bookmark li
 - Deno for tasks, checks, tests, and local development
 - No frontend framework
 
-## Run Locally
+## Install
 
-Install the [Deno runtime](https://docs.deno.com/runtime/), clone this repository, then run one of the platform tasks:
+Download the browser package from the [GitHub Releases page](https://github.com/yinyu985/Bonjourr/releases), then
+unzip it.
 
-```bash
-deno task chrome
-deno task edge
-deno task firefox
-deno task safari
-deno task online
-```
+Release archives are named by platform, for example:
+
+- `bonjourr-chrome.zip`
+- `bonjourr-edge.zip`
+- `bonjourr-firefox.zip`
 
 ### Chrome
 
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
-3. Click "Load unpacked" and select `release/chrome`.
+3. Click "Load unpacked".
+4. Select the unzipped `chrome` folder.
 
 ### Firefox
 
 1. Open `about:debugging#/runtime/this-firefox`.
 2. Click "Load Temporary Add-on".
-3. Select `release/firefox/manifest.json`.
+3. Select `manifest.json` inside the unzipped `firefox` folder.
 
 ### Edge
 
 1. Open `edge://extensions`.
 2. Enable Developer mode.
-3. Click "Load unpacked" and select `release/edge`.
+3. Click "Load unpacked".
+4. Select the unzipped `edge` folder.
 
 ### Safari
 
 Follow the install steps from the [upstream Safari repository](https://github.com/victrme/Bonjourr-Safari).
 
-### Web Version
+## Run Locally
 
-Run:
+Install the [Deno runtime](https://docs.deno.com/runtime/), clone this repository, then run the web version:
 
 ```bash
 deno task online
 ```
 
 Then open http://0.0.0.0:8000/.
+
+## Build Extension Packages
+
+These tasks generate browser extension builds under `release/<platform>`:
+
+```bash
+deno task chrome
+deno task edge
+deno task firefox
+deno task safari
+```
+
+After building, load the generated folder in your browser, for example `release/chrome` in Chrome or
+`release/edge` in Edge.
 
 ## Docker
 
@@ -112,15 +127,22 @@ Useful documentation:
 
 ## Publish
 
-To publish browser builds, create release archives:
+GitHub Releases are created automatically when a tag matching `v*` is pushed.
+
+```bash
+git tag v3.0.0
+git push origin v3.0.0
+```
+
+The release workflow runs `deno task build`, creates `bonjourr-*.zip` archives, and uploads them to the GitHub Release.
+
+To create local archives manually, run:
 
 ```bash
 deno task archive
 ```
 
-The archives are generated under `release/<platform>`.
-
-Docker is used by the archive task so builds stay consistent across machines.
+Docker is used by the local archive task so builds stay consistent across machines.
 
 ## License
 

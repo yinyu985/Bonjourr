@@ -1,3 +1,9 @@
+## 3.0.0
+
+- Major release for the browser-bookmark based Bonjourr fork.
+- Updated English and Simplified Chinese README files with current features, installation steps, local web usage, extension build tasks, and GitHub Release publishing instructions.
+- Updated extension and archive version numbers to 3.0.0.
+
 ## 22.1.0
 
 - TODO
