@@ -1,5 +1,6 @@
 import { initblocks, validateLink } from './index.ts'
 import { initFolders } from './groups.ts'
+import { orderBookmarkToolbarChildren } from './bookmark-order.ts'
 import { isElem, isSubfolder } from './helpers.ts'
 import { allLinks, FAVORITES_FOLDER, getFolderByBookmarkSource, getFolderByTitle, removeFolder } from './model.ts'
 
@@ -405,8 +406,10 @@ export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
         }
     }
 
+    const reordered = await normalizeBookmarkToolbarOrder(bookmarksApi)
+
     releaseBookmarkRefreshesSoon()
-    return createdAny
+    return createdAny || reordered
 }
 
 export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Promise<boolean> {
@@ -514,6 +517,8 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
             }
         }
     }
+
+    mutated = await normalizeBookmarkToolbarOrder(bookmarksApi) || mutated
 
     releaseBookmarkRefreshesSoon()
     return mutated
@@ -728,6 +733,41 @@ async function getOrCreateRestoreFolder(
     } catch (_error) {
         return
     }
+}
+
+async function normalizeBookmarkToolbarOrder(
+    bookmarksApi: NonNullable<typeof EXTENSION>['bookmarks'],
+): Promise<boolean> {
+    const root = await getRestorableRoot()
+    const toolbar = root?.children?.[0] ?? root
+
+    if (!toolbar?.children) {
+        return false
+    }
+
+    const current = [...toolbar.children].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    const ordered = orderBookmarkToolbarChildren(current)
+    let mutated = false
+
+    for (let index = 0; index < ordered.length; index++) {
+        const child = ordered[index]
+        const currentIndex = current.findIndex((item) => item.id === child.id)
+
+        if (currentIndex < 0 || currentIndex === index) {
+            continue
+        }
+
+        try {
+            await bookmarksApi.move(child.id, { parentId: toolbar.id, index })
+            current.splice(currentIndex, 1)
+            current.splice(index, 0, child)
+            mutated = true
+        } catch (_error) {
+            // Reordering is best-effort; the bookmark contents were already restored.
+        }
+    }
+
+    return mutated
 }
 
 function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {

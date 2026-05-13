@@ -2,11 +2,50 @@ import './init.test.ts'
 
 import { assert, assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
+import { orderBookmarkToolbarChildren } from '../src/scripts/features/links/bookmark-order.ts'
 import { allLinks, getSubfolder, isElem, removeNode } from '../src/scripts/features/links/model.ts'
 import { mergeSyncAppend } from '../src/scripts/features/synchronization/merge.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../src/types/shared.ts'
 import type { LinkFolder } from '../src/types/sync.ts'
+
+Deno.test({
+    name: 'bookmark toolbar ordering keeps folders before direct bookmarks',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const children = [
+            { id: 'direct-a', index: 0 },
+            { id: 'folder-a', index: 1, children: [] },
+            { id: 'direct-b', index: 2 },
+            { id: 'folder-b', index: 3, children: [] },
+        ]
+
+        const orderedIds = orderBookmarkToolbarChildren(children).map((child) => child.id)
+
+        assertEquals(orderedIds, ['folder-a', 'folder-b', 'direct-a', 'direct-b'])
+    },
+})
+
+Deno.test({
+    name: 'bookmark toolbar ordering keeps relative order within each section',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const children = [
+            { id: 'direct-a', index: 0 },
+            { id: 'folder-a', index: 1, children: [] },
+            { id: 'folder-b', index: 2, children: [] },
+            { id: 'direct-b', index: 3 },
+        ]
+
+        const orderedIds = orderBookmarkToolbarChildren(children).map((child) => child.id)
+        const originalIds = children.map((child) => child.id)
+
+        assertEquals(orderedIds, ['folder-a', 'folder-b', 'direct-a', 'direct-b'])
+        assertEquals(originalIds, ['direct-a', 'folder-a', 'folder-b', 'direct-b'])
+    },
+})
 
 Deno.test({
     name: 'merge keeps incoming browser bookmarks as a local fallback',
