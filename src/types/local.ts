@@ -27,6 +27,7 @@ export interface Local {
     syncStorage?: Sync
 
     // Links
+    linkIconResolutions?: Record<string, string>
     [key: `x-icon-${string}`]: string
 }
 

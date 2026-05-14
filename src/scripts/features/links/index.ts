@@ -359,7 +359,27 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
     return li
 }
 
+// Per-host resolved icon: data URL or DEFAULT_FAVICON. Hydrated from
+// storage.local.linkIconResolutions on page load — once a host has been
+// resolved, all future renders (including across reloads) hit this map and
+// skip every fetch / Chrome API call.
+const iconResolvedByHost = new Map<string, string>()
+
+// In-flight resolution promises, keyed by host, to dedupe concurrent
+// resolutions for the same host within a single render batch.
+const iconInflightByHost = new Map<string, Promise<string>>()
+
+let resolutionsHydrated = false
+
 function createIcons(local: Local): void {
+    if (!resolutionsHydrated) {
+        resolutionsHydrated = true
+        const stored = local.linkIconResolutions ?? {}
+        for (const [host, value] of Object.entries(stored)) {
+            iconResolvedByHost.set(host, value)
+        }
+    }
+
     const resolved = initIconList.map(([img, url]) => [img, resolveIconUrl(local, url)] as [HTMLImageElement, string])
     initIconList = []
 
@@ -368,9 +388,23 @@ function createIcons(local: Local): void {
     }
 }
 
-async function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): Promise<void> {
-    img.src = 'src/assets/interface/loading.svg'
+function persistResolution(host: string, value: string): void {
+    storage.local.get('linkIconResolutions').then((local) => {
+        const next = { ...(local.linkIconResolutions ?? {}), [host]: value }
+        storage.local.set({ linkIconResolutions: next })
+    })
+}
 
+function hostFromDdgUrl(ddgUrl: string): string | undefined {
+    try {
+        const match = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
+        return match?.[1]
+    } catch (_) {
+        return undefined
+    }
+}
+
+function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): void {
     // Non-DDG URLs (user-set custom URL, data:, local-icon blob) have no
     // "404 with body" problem. Set src directly; on error fall back once.
     if (!isDuckDuckGoUrl(primaryUrl)) {
@@ -381,41 +415,119 @@ async function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): 
         return
     }
 
-    // DDG returns 404 with a gray-arrow PNG body when it has no icon for the
-    // host, and the browser still decodes that body as a valid image. We must
-    // see the HTTP status to detect the miss, so fetch once and reuse the
-    // bytes via a blob URL — that avoids a second network round-trip.
+    const host = hostFromDdgUrl(primaryUrl)
+    if (!host) {
+        img.src = DEFAULT_FAVICON
+        return
+    }
+
+    const cached = iconResolvedByHost.get(host)
+    if (cached) {
+        img.src = cached
+        return
+    }
+
+    img.src = 'src/assets/interface/loading.svg'
+    resolveHostIcon(host, primaryUrl).then((resolved) => {
+        img.src = resolved
+    })
+}
+
+function resolveHostIcon(host: string, ddgUrl: string): Promise<string> {
+    const inflight = iconInflightByHost.get(host)
+    if (inflight) {
+        return inflight
+    }
+
+    const promise = resolveHostIconInner(host, ddgUrl).then((value) => {
+        iconResolvedByHost.set(host, value)
+        persistResolution(host, value)
+        return value
+    }).finally(() => {
+        iconInflightByHost.delete(host)
+    })
+
+    iconInflightByHost.set(host, promise)
+    return promise
+}
+
+async function resolveHostIconInner(_host: string, ddgUrl: string): Promise<string> {
     try {
-        const resp = await fetch(primaryUrl)
+        const resp = await fetch(ddgUrl)
         if (resp.ok) {
             const blob = await resp.blob()
-            const blobUrl = URL.createObjectURL(blob)
-            const revoke = () => URL.revokeObjectURL(blobUrl)
-            img.addEventListener('load', revoke, { once: true })
-            img.addEventListener('error', revoke, { once: true })
-            img.src = blobUrl
-            return
+            return await blobToDataUrl(blob)
         }
     } catch (_) {
-        // Offline / network error → fall through to the fallback chain.
+        // Offline / network error — fall through to Chrome path.
     }
 
-    // DDG miss → Chrome's _favicon for locally-visited sites (intranet,
-    // localhost, private deployments). For sites the browser has never seen,
-    // _favicon returns a generic placeholder; we accept that to keep the path
-    // simple and fast.
-    if (PLATFORM === 'chrome') {
-        const original = originalUrlFromDuckDuckGo(primaryUrl)
-        if (original) {
-            img.addEventListener('error', () => {
-                img.src = DEFAULT_FAVICON
-            }, { once: true })
-            img.src = buildChromeFaviconUrl(original)
-            return
+    return await resolveChromeFaviconAsDataUrl(ddgUrl)
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(reader.error ?? new Error('blob read failed'))
+        reader.readAsDataURL(blob)
+    })
+}
+
+async function resolveChromeFaviconAsDataUrl(ddgUrl: string): Promise<string> {
+    if (PLATFORM !== 'chrome') {
+        return DEFAULT_FAVICON
+    }
+
+    const original = originalUrlFromDuckDuckGo(ddgUrl)
+    if (!original) {
+        return DEFAULT_FAVICON
+    }
+
+    const chromeFaviconUrl = buildChromeFaviconUrl(original)
+
+    // Load through a temporary <img>, then paint onto a canvas to extract
+    // a data URL. This captures the pixels once and caches them — subsequent
+    // uses never hit the Chrome _favicon API again.
+    try {
+        const dataUrl = await imageUrlToDataUrl(chromeFaviconUrl)
+        return dataUrl
+    } catch (_) {
+        return DEFAULT_FAVICON
+    }
+}
+
+function imageUrlToDataUrl(url: string, timeoutMs = 1500): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const tmpImg = new Image()
+        tmpImg.crossOrigin = 'anonymous'
+        const timer = setTimeout(() => {
+            tmpImg.src = ''
+            reject(new Error('image load timeout'))
+        }, timeoutMs)
+        tmpImg.onload = () => {
+            clearTimeout(timer)
+            try {
+                const canvas = document.createElement('canvas')
+                canvas.width = tmpImg.naturalWidth || 32
+                canvas.height = tmpImg.naturalHeight || 32
+                const ctx = canvas.getContext('2d')
+                if (!ctx) {
+                    reject(new Error('no 2d context'))
+                    return
+                }
+                ctx.drawImage(tmpImg, 0, 0)
+                resolve(canvas.toDataURL('image/png'))
+            } catch (error) {
+                reject(error)
+            }
         }
-    }
-
-    img.src = DEFAULT_FAVICON
+        tmpImg.onerror = () => {
+            clearTimeout(timer)
+            reject(new Error('image load failed'))
+        }
+        tmpImg.src = url
+    })
 }
 
 function isDuckDuckGoUrl(url: string): boolean {
