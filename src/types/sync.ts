@@ -50,16 +50,6 @@ export interface LinkFolder {
 
 export type LinkFolderSource = 'local' | 'bookmarks'
 
-export interface LegacyLinkGroups {
-    on: boolean
-    selected: string
-    groups: string[]
-    pinned: string[]
-    synced: string[]
-    hidden: Record<string, string[]>
-    bookmarkFolders: Record<string, string>
-}
-
 export interface Hide {
     clock?: boolean
     date?: boolean

@@ -1,107 +1,25 @@
-import { removeLinkgroupDuplicates } from './filters.ts'
-import { CURRENT_VERSION, PLATFORM } from '../defaults.ts'
-import { filterByVersion } from './versions.ts'
+import { CURRENT_VERSION, PLATFORM, SYNC_DEFAULT } from '../defaults.ts'
 import { normalizeLinksState } from '../features/links/model.ts'
 import { deepmergeAll } from '@victr/deepmerge'
-import { toSemVer } from '../utils/semver.ts'
 import type { Sync } from '../../types/sync.ts'
 
 /**
- * 1. Add condition for the latest version in versions.ts
- * 2. Create needed filters for this version in filters.ts
- * 3. Export these filters in your condition
+ * Merges an imported partial Sync into the given current Sync. If the import
+ * already contains every top-level Sync key, it is treated as a full config and
+ * replaces current entirely; otherwise the two are deep-merged.
  */
+export function mergeImportedConfig(current: Sync, target: Partial<Sync>): Sync {
+    const requiredKeys = Object.keys(SYNC_DEFAULT) as (keyof Sync)[]
+    const isFullConfig = requiredKeys.every((key) => key in target)
 
-export function filterData(from: 'update', current: Sync): Sync
-export function filterData(from: 'import', current: Sync, target: Partial<Sync>): Sync
-export function filterData(from: 'update' | 'import', current: Sync, target?: Partial<Sync>): Sync {
-    let newcurrent = current
-    let newtarget = target ?? {}
+    const merged: Sync = isFullConfig ? (target as Sync) : (deepmergeAll(current, target) as Sync)
 
-    if (from === 'update') {
-        const user = toSemVer(newcurrent.about.version)
-        newcurrent = filterByVersion(newcurrent, user) as Sync
-    }
-
-    if (from === 'import') {
-        // Prepare imported data compatibility
-        newtarget = filterByVersion(newtarget, toSemVer(undefined))
-
-        // Detect if merging between settings is needed
-        const currentKeyAmount = Object.keys(newcurrent).length
-        const targetKeyAmount = Object.keys(newtarget).length
-        const needMerging = targetKeyAmount !== currentKeyAmount
-
-        if (needMerging) {
-            newcurrent = deepmergeAll(newcurrent, newtarget) as Sync
-
-            // After merge only
-            newcurrent = removeLinkgroupDuplicates(newcurrent)
-        } else {
-            newcurrent = newtarget as Sync
-        }
-    }
-
-    //
-
-    newcurrent.about = {
+    merged.about = {
         browser: PLATFORM,
         version: CURRENT_VERSION,
     }
 
-    delete newcurrent.syncbookmarks
-    delete newcurrent.settingssync
-    delete newcurrent.custom_every
-    delete newcurrent.custom_time
-    delete newcurrent.searchbar_newtab
-    delete newcurrent.searchbar_engine
-    delete newcurrent.cssHeight
-    delete newcurrent.linktabs
-    delete newcurrent.quicklinks
-    delete newcurrent.linksrow
-    delete newcurrent.linkiconradius
-    delete newcurrent.linkstyle
-    delete newcurrent.linknewtab
-    delete newcurrent.linktitles
-    delete newcurrent.linkbackgrounds
-    delete newcurrent.linkgroups
-    delete newcurrent.dynamic
-    delete newcurrent.unsplash
-    delete newcurrent.background_blur
-    delete newcurrent.background_bright
-    delete newcurrent.background_type
-    delete newcurrent.move
-    delete newcurrent.usdate
-    const obsoleteKeys = [
-        'main',
-        'greeting',
-        'greetingsize',
-        'greetingsmode',
-        'greetingscustom',
-        'weather',
-        'searchbar',
-        'quotes',
-        'pomodoro',
-    ]
+    normalizeLinksState(merged as Sync & Record<string, unknown>)
 
-    for (const key of obsoleteKeys) {
-        delete (newcurrent as Record<string, unknown>)[key]
-    }
-
-    for (const key of Object.keys(newcurrent)) {
-        if (key.length === 11 && key.startsWith('links')) {
-            delete (newcurrent as Record<string, unknown>)[key]
-        }
-    }
-
-    if (!newcurrent.notes || !Array.isArray(newcurrent.notes.records)) {
-        newcurrent.notes = {
-            active: '',
-            records: [],
-        }
-    }
-
-    normalizeLinksState(newcurrent as Sync & Record<string, unknown>)
-
-    return newcurrent
+    return merged
 }

@@ -25,7 +25,7 @@ import { getPermissions } from './utils/permissions.ts'
 import { opacityFromHex } from './shared/generic.ts'
 import { loadCallbacks } from './utils/onsettingsload.ts'
 import { onclickdown } from 'clickdown/mod'
-import { filterData } from './compatibility/apply.ts'
+import { mergeImportedConfig } from './compatibility/apply.ts'
 import { stringify } from './utils/stringify.ts'
 import { debounce } from './utils/debounce.ts'
 import { langList } from './langs.ts'
@@ -974,7 +974,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
             }
         }
 
-        const importedData = dedupeSyncLinks(filterData('import', structuredClone(SYNC_DEFAULT), imported))
+        const importedData = dedupeSyncLinks(mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported))
         let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
 
         if (mode === 'replace') {

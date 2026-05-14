@@ -392,10 +392,9 @@ function setAutocompleteSettings(isLangSwitch?: boolean): void {
         return
     }
 
-    if (isLangSwitch || selectFont.options.length <= 1) {
-        // Clear existing options except the first "System default"
-        while (selectFont.options.length > 1) {
-            selectFont.remove(1)
+    if (isLangSwitch || selectFont.options.length === 0) {
+        while (selectFont.options.length > 0) {
+            selectFont.remove(0)
         }
 
         const fontlist = getFontList()

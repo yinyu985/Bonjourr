@@ -234,7 +234,6 @@ export function deleteFolder(folderId: string, data: Sync): Sync {
         folders[0].pinned = false
     }
 
-    storage.sync.clear()
     initblocks(data)
     initFolders(data)
     return data
@@ -251,26 +250,6 @@ export function moveFolders(mini: string[], data: Sync): Sync {
     initFolders(data)
 
     return data
-}
-
-export async function togglePinFolder(folderId: string, action: 'pin' | 'unpin'): Promise<void> {
-    const data = await storage.sync.get()
-    const folder = data.links.folders.find((item) => item.id === folderId || item.title === folderId)
-
-    if (!folder) {
-        return
-    }
-
-    folder.pinned = action === 'pin'
-
-    if (folder.id === data.links.selectedFolder && action === 'pin') {
-        const unpinned = data.links.folders.filter((item) => !item.pinned)
-        data.links.selectedFolder = unpinned[0]?.id ?? folder.id
-    }
-
-    storage.sync.set(data)
-    initblocks(data)
-    initFolders(data)
 }
 
 function removeEmptyDefaultFolder(data: Sync): void {

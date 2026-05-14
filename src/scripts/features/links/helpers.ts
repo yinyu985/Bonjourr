@@ -1,12 +1,10 @@
 import { stringMaxSize } from '../../shared/generic.ts'
-import { API_DOMAIN } from '../../defaults.ts'
 import { tradThis } from '../../utils/translations.ts'
 export {
     getFolder,
     getFolderByBookmarkSource,
     getFolderByTitle,
     getLink,
-    getLinksInFolder,
     getLinksInSubfolder,
     getNode,
     getSubfolder,
@@ -17,14 +15,23 @@ export {
 
 import { isElem } from './model.ts'
 
-import type { LinkIconType, LinkNode } from '../../../types/shared.ts'
+import type { LinkNode } from '../../../types/shared.ts'
+
+export const DEFAULT_FAVICON = 'src/assets/interface/default-favicon.png'
 
 export function getDefaultIcon(url: string, refresh?: number): string {
-    if (refresh) {
-        return `${API_DOMAIN}/favicon/blob/${url}?r=${refresh}`
-    }
+    return getRemoteFaviconUrl(url, refresh) ?? DEFAULT_FAVICON
+}
 
-    return `${API_DOMAIN}/favicon/blob/${url}`
+export function getRemoteFaviconUrl(url: string, refresh?: number): string | undefined {
+    try {
+        const host = new URL(url).hostname
+        if (!host) return undefined
+        const base = `https://icons.duckduckgo.com/ip3/${host}.ico`
+        return refresh ? `${base}?r=${refresh}` : base
+    } catch (_) {
+        return undefined
+    }
 }
 
 export function getSelectedIds(): string[] {
@@ -71,13 +78,4 @@ export function createTitle(link: LinkNode): string {
     }
 
     return ''
-}
-
-export function isLinkIconType(type: string): type is LinkIconType {
-    return ['auto', 'library', 'file', 'url'].includes(type)
-}
-
-// to figure out if a string is a valid number
-export function isNumber(value: string): boolean {
-    return !isNaN(parseFloat(value))
 }

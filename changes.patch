@@ -1,0 +1,2435 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 0456ee7..5360cfe 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,14 +1,100 @@
+ # Bonjourr Development Guide
+ 
+-Bonjourr is a minimalist and customizable "new tab" browser extension.
++Bonjourr is a minimalist new tab browser extension (Chrome, Edge, Firefox, Safari) and web app. This fork is privacy-focused, built around browser-native bookmarks. No frontend framework — plain TypeScript, HTML, CSS bundled with esbuild.
+ 
+-1. Use **Deno** as its runtime and task runner. Never user `npm` or others. If **Deno** fails at something, stop and ask for help.
+-2. Do not try to add dependencies, find a native solution.
+-3. Repeat yourself instead of writing difficult or unreadable code.
+-4. Run `deno task check` after finishing changes. It runs format, lint, type check, and tests in one go. No need in-between edits.
++## Workflow rules
+ 
+-如果是一些简单的编辑任务，你可以让我的另外一个 agent 来执行
+-下面是一个样例，你可以这样调用它。
++1. **Deno only.** Never invoke `npm`, `pnpm`, `yarn`, or `node` directly. If a Deno task fails, stop and ask rather than reaching for npm. (`nodeModulesDir: "auto"` in `deno.json` lets Deno hydrate `node_modules/` itself for `npm:` imports.)
++2. **No new dependencies.** Find a native solution before adding one. Allowed external imports are pinned in `deno.json` `imports`; the `no-external-import` lint rule enforces this.
++3. **Prefer repetition over cleverness.** Repeat yourself rather than write difficult or unreadable code.
++4. **Run `deno task check` after finishing changes** (format + lint + type check + tests). No need to run it between edits.
+ 
+-~/Documents/Bonjourr master 7s ❯ claude -p "你好" --dangerously-skip-permissions
+-你好！有什么可以帮你的吗？我看到你在 Bonjourr 项目的工作目录里，这是一个浏览器新标签页扩展项目。需要我帮你做什么？
++如果是一些简单的编辑任务，你可以让我的另外一个 agent 来执行。下面是一个样例，你可以这样调用它：
++
++```bash
++claude -p "你好" --dangerously-skip-permissions
++```
++
++## Common commands
++
++```bash
++deno task online           # dev server on :8000 (web build, watches src/)
++deno task chrome           # dev build to release/chrome (also: edge, firefox, safari)
++deno task build            # production build of all platforms into release/<platform>
++deno task check            # fmt + lint + type-check + test (CI parity)
++deno task test             # run all Deno tests (--allow-read --allow-env)
++deno task types            # type-check src/ tasks/ tests/
++deno task translate        # regenerate _locales after adding translation keys
++deno task archive          # produce bonjourr-<platform>.zip via Docker (release artifacts)
++```
++
++Run a single test file: `deno test --allow-read --allow-env tests/init.test.ts`. Filter by name: add `--filter "<substring>"`.
++
++CI (`.github/workflows/ci.yml`) runs `deno task build`, `deno task test`, `deno check`, and `deno lint` independently — passing `deno task check` locally covers all four.
++
++## Architecture
++
++### Build pipeline (`tasks/build.ts`)
++
++A single esbuild-driven script builds five platforms (`chrome`, `edge`, `firefox`, `safari`, `online`) from the same source. Each output goes to `release/<platform>/`. Per-platform variation is handled by:
++
++- **HTML token replacement.** `src/index.html` contains comment markers (`<!-- default icon -->`, `<!-- webext-storage -->`, `<!-- settings -->`, `<!-- help-mode -->`); the build replaces them differently per platform. `settings.html` and `help-mode.html` are inlined into `index.html` at build time.
++- **Manifest selection.** `src/manifests/<platform>.json` → `release/<platform>/manifest.json`. The web build instead emits `manifest.webmanifest` + a `service-worker.js` with `__VERSION__` substituted from `src/scripts/version.ts`.
++- **Bundle entry points.** Scripts: `src/scripts/index.ts` → `main.js`. Styles: `src/styles/style.css` → `style.css`. The `online` platform is minified; extension builds keep readable output. `define.ENV` is set to `"DEV"` / `"PROD"` so runtime can branch.
++- **Watch mode.** `dev` builds invoke `watcher()`, which re-runs the relevant sub-task (html / styles / scripts / assets / manifests / locales) on file changes.
++
++### Runtime entry (`src/scripts/index.ts`)
++
++Boot sequence is fixed and order-sensitive:
++
++1. `restoreBackgroundCache()` paints the cached background from `localStorage` synchronously to avoid a flash.
++2. `storage.init()` resolves both `sync` (user settings) and `local` (caches/state) state. If absent, defaults from `defaults.ts` are cloned.
++3. Version migration: when `sync.about.version !== CURRENT_VERSION`, the previous sync is archived to `localStorage` (`update-archive`), `filterData('update', sync)` from `compatibility/apply.ts` rewrites the shape, then `storage.sync.clear()` + `set(sync)` is called **in that order** (comment in code: "must delete old keys before upgrading storage").
++4. Each feature's entry function is invoked once with `(sync, local?)`.
++
++### Storage abstraction (`src/scripts/storage.ts`)
++
++Two backends behind one API: `webext-local` (uses `chrome.storage.local` even for the "sync" namespace — the extension stores sync data under a `syncStorage` key inside local storage) and `localstorage` (web build, JSON-encoded under `localStorage.bonjourr`). The type is selected at startup based on `globalThis.chrome?.storage`. All feature code reads/writes through `storage.sync.*` / `storage.local.*` and never touches the platform APIs directly. `storage.init()` also handles a wait-for-`webextstorage`-event handshake when the extension's `services/webext-storage.js` content script populates `globalThis.startupStorage` before the bundle loads.
++
++### Feature module pattern
++
++Every feature in `src/scripts/features/` exports one entry function that switches on its argument shape:
++
++```ts
++export function feature(init?: FeatureSync, update?: FeatureUpdate): void {
++  if (update) { /* live update from settings */ return }
++  if (init)   { /* initial render on startup */ }
++}
++```
++
++`settings.ts` wires HTML inputs to features by calling `feature(undefined, { property: value })` — passing `undefined` as the first arg signifies a live update. Settings UI never manipulates feature DOM directly. State is persisted via `eventDebounce({ feature })` for high-frequency inputs (sliders) to limit storage writes. Full convention table is in `docs/TECHNICAL.md` § 6.
++
++### Type contracts (`src/types/`)
++
++`sync.ts` (synced user settings, the `Sync` type), `local.ts` (browser-local caches incl. backgrounds, the `Local` type), `shared.ts` (cross-cutting types like `Langs`, `Navigator`). Adding a new feature setting almost always means updating `Sync` in `sync.ts` and the corresponding default in `defaults.ts` `SYNC_DEFAULT`.
++
++### Compatibility / migrations (`src/scripts/compatibility/`)
++
++`versions.ts` lists per-version migration filters; `apply.ts` `filterData(stage, sync)` runs them. When changing the shape of stored settings, add the migration here — old user data must remain loadable.
++
++### Styles (`src/styles/`)
++
++`style.css` is the manifest; it imports `_global.css` first, feature/component files in the middle, `_responsive.css` last. Theming is done via `[data-theme='light'|'dark']` selectors on `<html>` toggling CSS custom properties. Don't introduce `!important` or deep selector chains — see `docs/TECHNICAL.md` § 7 for the full styling convention.
++
++### i18n (`_locales/`)
++
++Each locale has `translations.json` (in-app strings) and `messages.json` (extension manifest strings, web build skips this). `traduction(node, lang)` translates a DOM subtree at startup; `tradThis(string)` translates literals at runtime. After adding new keys, run `deno task translate` to propagate them across locale files.
++
++## Conventions
++
++- **Imports must include the `.ts` extension** (Deno requirement). External deps must use the `npm:` / `jsr:` prefixes already declared in `deno.json` `imports`.
++- **Filenames are `kebab-case` or lowercase**; entry-point function names are `camelCase` matching the feature.
++- **Constants are `UPPER_SNAKE_CASE`** (e.g. `SYNC_DEFAULT`, `CURRENT_VERSION`).
++- **Lint includes `explicit-function-return-type` and `verbatim-module-syntax`** — annotate return types on exported functions, and use `import type` for type-only imports.
++- **DOM state via `dataset` and CSS variables**, not stateful JS objects: e.g. `document.documentElement.dataset.theme = 'dark'`, `style.setProperty('--feature-width', ...)`.
++
++## Reference docs
++
++- `docs/TECHNICAL.md` — extended conventions for build, feature pattern, settings wiring, CSS architecture.
++- `tests/README.md` — manual QA checklist run before releases (automated tests don't cover UI flows).
++- `CHANGELOG.md` — release history; tagging `v*` triggers `.github/workflows/release.yml` to publish zip archives.
+diff --git a/src/assets/interface/default-favicon.png b/src/assets/interface/default-favicon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..a682f08d750d0982d7b5b6f4ffa31acd03002cfc
+GIT binary patch
+literal 1218
+zcmeAS@N?(olHy`uVBq!ia0vp^4j|0I3?%1nZ+yeRz*rvO6XFWw#wTYaBxeFqd`cz|
+z0J$KPk~MSY%+S!j_!J;FJsv0vB!TRdtoSq_H$5>cD<L`K|NsAqshJH84GAeA6GB5n
+z6OywMQ-R8Wy0U=gBxit3OGwE`ODjlB&IIZLaluvqwSd?K1-ZGoK=mMQN)}iU$jAVi
+z36zZkiG!V&l9Q2<k&v1RG(4%S3}PMFRUnNiDJco5K$A1Uh5+qqNJ<3?=7JSuCZ=R1
+zCl@BBWrK`L1zM4j0(5OE$XK97N$J@M83mva0681vi?p<vKsAXVH|Hj%W~HSS15E&m
+zBq!%4q~&C1X9EofsRS7U3IvF2!B#`XLF$3t2RaEDTp$IRt5&T7ngH@9C?qp@7<Oj>
+zgTAID$S;`T-_y`<f*ZeAvvNNE_jmi>xOso9elZ?qYhA<a+j+h0r_Qxql9jT@=YII`
+zNkH^Z*Y$$;XIcK7Thi+wR^-Eb^v1`($HnuvRGs8<k@<D6N66?`YQ0{>-Pe{1tCG%~
+zVExddY$X!%!c0ThZ{A;n4-c7avlq{qI5#@^pfU50i`z4jPjWIaFx7dwIEGZ*dV4*1
+zyQ(h_+k@@fb8kP}`1Pj5?QK*4+hzEMzF%jz%l3S2>e?xj9<<Cbf3(U^*wK?qZCPme
+zk#6UYsec$BvHX#g=Q}0IHMz6kL}&8}*JKre?q?hH`)BLyu-!1t=b~MZXGFwSLGM>0
+z+4gb29+xNGWE1GJ_E6U~)5<(i_j6`M-;RR66HN97$?mf6G#7D+D4nn>=EdgazxX9B
+zd^UT$`ni2p!rVoY+f>qC{=V<m{8{*{S7KYch_&#Bb$@@~cQtz0cyP~b5&MRZ-_<yG
+z6hCnFyvX+Wx)G=A!NOx#{w9CkztK0zP(4EN>z^He<tI)Rkg)suSL}e5Z`h$X|0e{#
+zkC*Sce<F(Q!cWgIrq?==pPiqF{?lK{cg=Q_*as(J#hWq~uebDbnCMM1JrKFDcE<wA
+z$!nO-#h3YZ`h+fgsTDn;?SQ4x)mAmf`y~oS`+d`dF0j0ut<-W(*uS#UF+=6oGPZ^P
+z#XG)w-7M|oKM-lL`D@vheT-*Y*<E%mJ#FgTpfGcH(O12Y>*bzXONBM0f;=XiSbO`z
+zoyyHM^_i7#6&Xr+X8-7Dk<p$pHLPf!Q?Sa$<I*z%4dYbABQ+A-4p&T7PC59E#jX2K
+z@}>Ek4+KkGQGHz8Hebi4+0pZVK*`L*IZpeJ*Ju7(uJuV~&%~3<y97G-GAxgLw!d`m
+z29CWf+INj~bvh<pObh!ewPssort>*pw#peZJG!)O*traDK0IZuzO}xgWOj(=X)$+^
+z1vfY46mEFFf#-t$lvdwq_nvh!U-7mLoUNW=l3D)tZnf!GuVg<VvsrU&>*Vcj*ww8P
+zwZ7CCefP2X?c@31`|S&4>YrHtyYRL4jdc0cjq9zq$^7=KVN?#2vRmHLRRhcs44$rj
+JF6*2UngEzaA@BeI
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/manifests/chrome.json b/src/manifests/chrome.json
+index f918828..bfd80bf 100644
+--- a/src/manifests/chrome.json
++++ b/src/manifests/chrome.json
+@@ -24,7 +24,8 @@
+     },
+     "permissions": [
+         "storage",
+-        "unlimitedStorage"
++        "unlimitedStorage",
++        "favicon"
+     ],
+     "optional_permissions": [
+         "bookmarks",
+diff --git a/src/manifests/edge.json b/src/manifests/edge.json
+index f918828..bfd80bf 100644
+--- a/src/manifests/edge.json
++++ b/src/manifests/edge.json
+@@ -24,7 +24,8 @@
+     },
+     "permissions": [
+         "storage",
+-        "unlimitedStorage"
++        "unlimitedStorage",
++        "favicon"
+     ],
+     "optional_permissions": [
+         "bookmarks",
+diff --git a/src/scripts/compatibility/apply.ts b/src/scripts/compatibility/apply.ts
+index b9c8297..f11d81f 100644
+--- a/src/scripts/compatibility/apply.ts
++++ b/src/scripts/compatibility/apply.ts
+@@ -1,107 +1,25 @@
+-import { removeLinkgroupDuplicates } from './filters.ts'
+-import { CURRENT_VERSION, PLATFORM } from '../defaults.ts'
+-import { filterByVersion } from './versions.ts'
++import { CURRENT_VERSION, PLATFORM, SYNC_DEFAULT } from '../defaults.ts'
+ import { normalizeLinksState } from '../features/links/model.ts'
+ import { deepmergeAll } from '@victr/deepmerge'
+-import { toSemVer } from '../utils/semver.ts'
+ import type { Sync } from '../../types/sync.ts'
+ 
+ /**
+- * 1. Add condition for the latest version in versions.ts
+- * 2. Create needed filters for this version in filters.ts
+- * 3. Export these filters in your condition
++ * Merges an imported partial Sync into the given current Sync. If the import
++ * already contains every top-level Sync key, it is treated as a full config and
++ * replaces current entirely; otherwise the two are deep-merged.
+  */
++export function mergeImportedConfig(current: Sync, target: Partial<Sync>): Sync {
++    const requiredKeys = Object.keys(SYNC_DEFAULT) as (keyof Sync)[]
++    const isFullConfig = requiredKeys.every((key) => key in target)
+ 
+-export function filterData(from: 'update', current: Sync): Sync
+-export function filterData(from: 'import', current: Sync, target: Partial<Sync>): Sync
+-export function filterData(from: 'update' | 'import', current: Sync, target?: Partial<Sync>): Sync {
+-    let newcurrent = current
+-    let newtarget = target ?? {}
++    const merged: Sync = isFullConfig ? (target as Sync) : (deepmergeAll(current, target) as Sync)
+ 
+-    if (from === 'update') {
+-        const user = toSemVer(newcurrent.about.version)
+-        newcurrent = filterByVersion(newcurrent, user) as Sync
+-    }
+-
+-    if (from === 'import') {
+-        // Prepare imported data compatibility
+-        newtarget = filterByVersion(newtarget, toSemVer(undefined))
+-
+-        // Detect if merging between settings is needed
+-        const currentKeyAmount = Object.keys(newcurrent).length
+-        const targetKeyAmount = Object.keys(newtarget).length
+-        const needMerging = targetKeyAmount !== currentKeyAmount
+-
+-        if (needMerging) {
+-            newcurrent = deepmergeAll(newcurrent, newtarget) as Sync
+-
+-            // After merge only
+-            newcurrent = removeLinkgroupDuplicates(newcurrent)
+-        } else {
+-            newcurrent = newtarget as Sync
+-        }
+-    }
+-
+-    //
+-
+-    newcurrent.about = {
++    merged.about = {
+         browser: PLATFORM,
+         version: CURRENT_VERSION,
+     }
+ 
+-    delete newcurrent.syncbookmarks
+-    delete newcurrent.settingssync
+-    delete newcurrent.custom_every
+-    delete newcurrent.custom_time
+-    delete newcurrent.searchbar_newtab
+-    delete newcurrent.searchbar_engine
+-    delete newcurrent.cssHeight
+-    delete newcurrent.linktabs
+-    delete newcurrent.quicklinks
+-    delete newcurrent.linksrow
+-    delete newcurrent.linkiconradius
+-    delete newcurrent.linkstyle
+-    delete newcurrent.linknewtab
+-    delete newcurrent.linktitles
+-    delete newcurrent.linkbackgrounds
+-    delete newcurrent.linkgroups
+-    delete newcurrent.dynamic
+-    delete newcurrent.unsplash
+-    delete newcurrent.background_blur
+-    delete newcurrent.background_bright
+-    delete newcurrent.background_type
+-    delete newcurrent.move
+-    delete newcurrent.usdate
+-    const obsoleteKeys = [
+-        'main',
+-        'greeting',
+-        'greetingsize',
+-        'greetingsmode',
+-        'greetingscustom',
+-        'weather',
+-        'searchbar',
+-        'quotes',
+-        'pomodoro',
+-    ]
+-
+-    for (const key of obsoleteKeys) {
+-        delete (newcurrent as Record<string, unknown>)[key]
+-    }
+-
+-    for (const key of Object.keys(newcurrent)) {
+-        if (key.length === 11 && key.startsWith('links')) {
+-            delete (newcurrent as Record<string, unknown>)[key]
+-        }
+-    }
+-
+-    if (!newcurrent.notes || !Array.isArray(newcurrent.notes.records)) {
+-        newcurrent.notes = {
+-            active: '',
+-            records: [],
+-        }
+-    }
+-
+-    normalizeLinksState(newcurrent as Sync & Record<string, unknown>)
++    normalizeLinksState(merged as Sync & Record<string, unknown>)
+ 
+-    return newcurrent
++    return merged
+ }
+diff --git a/src/scripts/compatibility/filters.ts b/src/scripts/compatibility/filters.ts
+deleted file mode 100644
+index ce00e2d..0000000
+--- a/src/scripts/compatibility/filters.ts
++++ /dev/null
+@@ -1,174 +0,0 @@
+-import { countryCodeToLanguageCode } from '../utils/translations.ts'
+-import { SYNC_DEFAULT } from '../defaults.ts'
+-
+-import type { OldSync } from '../../types/shared.ts'
+-import type { Sync } from '../../types/sync.ts'
+-
+-type Import = Record<string, unknown> & {
+-    linktabs?: OldSync['linktabs']
+-    backgrounds?: Sync['backgrounds']
+-    font?: Partial<Sync['font']> & { availWeights?: string[]; url?: string }
+-    lang?: string
+-    clock?: Partial<Sync['clock']> & {
+-        style?: 'round' | 'square' | 'transparent'
+-        face?: NonNullable<Sync['analogstyle']>['face']
+-    }
+-    analogstyle?: Partial<Sync['analogstyle']>
+-    hide?: Sync['hide'] | unknown[]
+-}
+-
+-export function fixNullBrightness(data: Import): Import {
+-    if (data.backgrounds?.bright === null) {
+-        data.backgrounds.bright = SYNC_DEFAULT.backgrounds.bright
+-    }
+-
+-    return data
+-}
+-
+-export function hideArrayToObject(data: Import): Import {
+-    const newhide: Sync['hide'] = {}
+-
+-    if (Array.isArray(data.hide)) {
+-        const hide = data.hide as unknown[][]
+-        if (hide[0]?.[0]) {
+-            newhide.clock = true
+-        }
+-        if (hide[0]?.[1]) {
+-            newhide.date = true
+-        }
+-        data.hide = newhide
+-        data.time = !(data.hide.clock && data.hide.date)
+-    }
+-
+-    return data
+-}
+-
+-export function newFontSystem(data: Import): Import {
+-    if (data.font) {
+-        data.font.weightlist = data.font?.availWeights ?? []
+-        data.font.url = undefined
+-        data.font.availWeights = undefined
+-
+-        // Always assume it is NOT a system font, unless specified
+-        if (data.font.system === undefined) {
+-            data.font.system = false
+-        }
+-    }
+-
+-    return data
+-}
+-
+-export function newReviewData(data: Import): Import {
+-    const reviewPopup = (data as { reviewPopup?: number | string }).reviewPopup
+-
+-    if (reviewPopup) {
+-        data.review = reviewPopup === 'removed' ? -1 : +reviewPopup
+-    }
+-
+-    return data
+-}
+-
+-export function toIsoLanguageCode(data: Import): Import {
+-    data.lang = countryCodeToLanguageCode(data.lang ?? 'en')
+-    return data
+-}
+-
+-export function clockDateFormat(data: Import): Import {
+-    const old = data as Partial<OldSync>
+-
+-    if (old.usdate) {
+-        data.dateformat = 'us'
+-    } else {
+-        data.dateformat = 'auto'
+-    }
+-
+-    return data
+-}
+-
+-export function manualTimezonesToIntl(data: Import): Import {
+-    const timezoneMatches: Record<string, string> = {
+-        '-10': '-10:00',
+-        '-9': '-09:00',
+-        '-8': '-08:00',
+-        '-7': '-07:00',
+-        '-6': '-06:00',
+-        '-5': '-05:00',
+-        '-4': '-04:00',
+-        '-3': '-03:00',
+-        '+0': '+00:00',
+-        '+1': '+01:00',
+-        '+2': '+02:00',
+-        '+3': '+03:00',
+-        '+5:30': '+05:30',
+-        '+7': '+07:00',
+-        '+8': '+08:00',
+-        '+9': '+09:00',
+-        '+10': '+10:00',
+-        '+12': '+12:00',
+-    }
+-
+-    const oldTimezones = Object.keys(timezoneMatches)
+-
+-    const timezone = data.clock?.timezone
+-    if (timezone && oldTimezones.includes(timezone)) {
+-        data.clock!.timezone = timezoneMatches[timezone]
+-    }
+-
+-    return data
+-}
+-
+-/** Version 21: migrate from generic fields to a single "backgrounds" object */
+-export function newBackgroundsField(data: Import): Import {
+-    const olddata = data as Partial<OldSync>
+-    const defaults = structuredClone(SYNC_DEFAULT)
+-
+-    if (!data.backgrounds) {
+-        data.backgrounds = defaults.backgrounds
+-    }
+-
+-    if (olddata.background_blur !== undefined) {
+-        data.backgrounds.blur = olddata.background_blur
+-    }
+-    if (olddata.background_bright !== undefined) {
+-        data.backgrounds.bright = olddata.background_bright
+-    }
+-    if (olddata.background_type !== undefined) {
+-        data.backgrounds.type = olddata.background_type === 'unsplash' ? 'images' : 'files'
+-    }
+-    if (olddata.unsplash) {
+-        data.backgrounds.frequency = olddata.unsplash?.every ?? 'hour'
+-    }
+-    if (olddata.unsplash?.collection) {
+-        data.backgrounds.images = 'unsplash-images-collections'
+-        data.backgrounds.queries = { 'unsplash-images-collections': olddata.unsplash.collection }
+-    }
+-
+-    return data
+-}
+-
+-export function analogClockOptions<Data extends Sync | Import>(data: Data): Data {
+-    if (data.clock?.style) {
+-        data.analogstyle = {
+-            background: '#fff2',
+-            border: '#ffff',
+-            face: data?.clock?.face || 'none',
+-            shape: 'round',
+-            hands: 'modern',
+-        }
+-
+-        if (data.clock.style === 'round' || data.clock.style === 'square') {
+-            data.analogstyle.shape = data.clock.style
+-        }
+-
+-        if (data.clock.style === 'transparent') {
+-            data.analogstyle.background = '#fff0'
+-            data.analogstyle.border = '#fff0'
+-        }
+-    }
+-
+-    return data
+-}
+-
+-export function removeLinkgroupDuplicates(current: Sync): Sync {
+-    return current
+-}
+diff --git a/src/scripts/compatibility/versions.ts b/src/scripts/compatibility/versions.ts
+deleted file mode 100644
+index 61220d3..0000000
+--- a/src/scripts/compatibility/versions.ts
++++ /dev/null
+@@ -1,34 +0,0 @@
+-import * as filter from './filters.ts'
+-import type { SemVer } from '../utils/semver.ts'
+-
+-export function filterByVersion<T extends Record<string, unknown>>(data: T, version: SemVer): T {
+-    const { major, minor } = version
+-
+-    if (major <= 21) {
+-        if (minor < 3) {
+-            data = filter.fixNullBrightness(data) as T
+-        }
+-    }
+-
+-    if (major < 21) {
+-        data = filter.newBackgroundsField(data) as T
+-        data = filter.manualTimezonesToIntl(data) as T
+-    }
+-
+-    if (major < 20) {
+-        data = filter.analogClockOptions(data) as T
+-        data = filter.toIsoLanguageCode(data) as T
+-    }
+-
+-    if (major < 19) {
+-        data = filter.newFontSystem(data) as T
+-        data = filter.newReviewData(data) as T
+-    }
+-
+-    if (major < 18) {
+-        data = filter.hideArrayToObject(data) as T
+-        data = filter.clockDateFormat(data) as T
+-    }
+-
+-    return data
+-}
+diff --git a/src/scripts/defaults.ts b/src/scripts/defaults.ts
+index 53de6ce..3dfc493 100644
+--- a/src/scripts/defaults.ts
++++ b/src/scripts/defaults.ts
+@@ -10,8 +10,6 @@ const navigator = globalThis.navigator as Navigator
+ const iosUA = 'iPad Simulator|iPhone Simulator|iPod Simulator|iPad|iPhone|iPod'.split('|')
+ const mobileUA = 'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini'.split('|')
+ 
+-export const API_DOMAIN = 'https://services.bonjourr.fr'
+-
+ export const ENVIRONNEMENT: 'PROD' | 'DEV' | 'TEST' = globalThis.ENV ?? 'TEST'
+ 
+ // attributes an ID to this tab to keep track of them
+diff --git a/src/scripts/features/fonts.ts b/src/scripts/features/fonts.ts
+index 2226e85..521f91f 100644
+--- a/src/scripts/features/fonts.ts
++++ b/src/scripts/features/fonts.ts
+@@ -392,10 +392,9 @@ function setAutocompleteSettings(isLangSwitch?: boolean): void {
+         return
+     }
+ 
+-    if (isLangSwitch || selectFont.options.length <= 1) {
+-        // Clear existing options except the first "System default"
+-        while (selectFont.options.length > 1) {
+-            selectFont.remove(1)
++    if (isLangSwitch || selectFont.options.length === 0) {
++        while (selectFont.options.length > 0) {
++            selectFont.remove(0)
+         }
+ 
+         const fontlist = getFontList()
+diff --git a/src/scripts/features/links/groups.ts b/src/scripts/features/links/groups.ts
+index 5c4b077..f4d1bf5 100644
+--- a/src/scripts/features/links/groups.ts
++++ b/src/scripts/features/links/groups.ts
+@@ -234,7 +234,6 @@ export function deleteFolder(folderId: string, data: Sync): Sync {
+         folders[0].pinned = false
+     }
+ 
+-    storage.sync.clear()
+     initblocks(data)
+     initFolders(data)
+     return data
+@@ -253,26 +252,6 @@ export function moveFolders(mini: string[], data: Sync): Sync {
+     return data
+ }
+ 
+-export async function togglePinFolder(folderId: string, action: 'pin' | 'unpin'): Promise<void> {
+-    const data = await storage.sync.get()
+-    const folder = data.links.folders.find((item) => item.id === folderId || item.title === folderId)
+-
+-    if (!folder) {
+-        return
+-    }
+-
+-    folder.pinned = action === 'pin'
+-
+-    if (folder.id === data.links.selectedFolder && action === 'pin') {
+-        const unpinned = data.links.folders.filter((item) => !item.pinned)
+-        data.links.selectedFolder = unpinned[0]?.id ?? folder.id
+-    }
+-
+-    storage.sync.set(data)
+-    initblocks(data)
+-    initFolders(data)
+-}
+-
+ function removeEmptyDefaultFolder(data: Sync): void {
+     if (data.links.folders.length < 2) {
+         return
+diff --git a/src/scripts/features/links/helpers.ts b/src/scripts/features/links/helpers.ts
+index 59c02a8..c29c0a2 100644
+--- a/src/scripts/features/links/helpers.ts
++++ b/src/scripts/features/links/helpers.ts
+@@ -1,12 +1,10 @@
+ import { stringMaxSize } from '../../shared/generic.ts'
+-import { API_DOMAIN } from '../../defaults.ts'
+ import { tradThis } from '../../utils/translations.ts'
+ export {
+     getFolder,
+     getFolderByBookmarkSource,
+     getFolderByTitle,
+     getLink,
+-    getLinksInFolder,
+     getLinksInSubfolder,
+     getNode,
+     getSubfolder,
+@@ -17,14 +15,23 @@ export {
+ 
+ import { isElem } from './model.ts'
+ 
+-import type { LinkIconType, LinkNode } from '../../../types/shared.ts'
++import type { LinkNode } from '../../../types/shared.ts'
++
++export const DEFAULT_FAVICON = 'src/assets/interface/default-favicon.png'
+ 
+ export function getDefaultIcon(url: string, refresh?: number): string {
+-    if (refresh) {
+-        return `${API_DOMAIN}/favicon/blob/${url}?r=${refresh}`
+-    }
++    return getRemoteFaviconUrl(url, refresh) ?? DEFAULT_FAVICON
++}
+ 
+-    return `${API_DOMAIN}/favicon/blob/${url}`
++export function getRemoteFaviconUrl(url: string, refresh?: number): string | undefined {
++    try {
++        const host = new URL(url).hostname
++        if (!host) return undefined
++        const base = `https://icons.duckduckgo.com/ip3/${host}.ico`
++        return refresh ? `${base}?r=${refresh}` : base
++    } catch (_) {
++        return undefined
++    }
+ }
+ 
+ export function getSelectedIds(): string[] {
+@@ -72,12 +79,3 @@ export function createTitle(link: LinkNode): string {
+ 
+     return ''
+ }
+-
+-export function isLinkIconType(type: string): type is LinkIconType {
+-    return ['auto', 'library', 'file', 'url'].includes(type)
+-}
+-
+-// to figure out if a string is a valid number
+-export function isNumber(value: string): boolean {
+-    return !isNaN(parseFloat(value))
+-}
+diff --git a/src/scripts/features/links/index.ts b/src/scripts/features/links/index.ts
+index 48212a3..5245239 100644
+--- a/src/scripts/features/links/index.ts
++++ b/src/scripts/features/links/index.ts
+@@ -14,15 +14,16 @@ import { folderClick } from './folders.ts'
+ import { startDrag } from './drag.ts'
+ import {
+     createTitle,
++    DEFAULT_FAVICON,
+     getDefaultIcon,
+     getLiFromEvent,
+-    getLinksInFolder,
+     getLinksInSubfolder,
+     isElem,
+     isSubfolder,
+ } from './helpers.ts'
+ import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
+ 
++import { PLATFORM } from '../../defaults.ts'
+ import { stringMaxSize } from '../../shared/generic.ts'
+ import { displayInterface } from '../../shared/display.ts'
+ import { getHTMLTemplate } from '../../shared/dom.ts'
+@@ -339,36 +340,82 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
+ }
+ 
+ function createIcons(local: Local): void {
+-    const resolvedIcons = initIconList.map(([img, url]) =>
+-        [img, resolveIconUrl(local, url)] as [HTMLImageElement, string]
+-    )
++    const resolved = initIconList.map(([img, url]) => [img, resolveIconUrl(local, url)] as [HTMLImageElement, string])
++    initIconList = []
+ 
+-    for (const [img, url] of resolvedIcons) {
+-        img.src = url
++    for (const [img, url] of resolved) {
++        loadIconWithFallback(img, url)
+     }
++}
+ 
+-    setTimeout(() => {
+-        const incomplete = resolvedIcons.filter(([img]) => !img.complete || img.naturalWidth === 0)
++async function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): Promise<void> {
++    img.src = 'src/assets/interface/loading.svg'
+ 
+-        for (const [img, url] of incomplete) {
+-            img.src = 'src/assets/interface/loading.svg'
+-            const newimg = document.createElement('img')
+-            newimg.addEventListener('load', () => {
+-                img.src = url
+-            })
+-            newimg.addEventListener('error', () => {
+-                img.src = 'https://services.bonjourr.fr/favicon/blob/error'
+-            })
+-            newimg.src = url
+-            setTimeout(() => {
+-                if (!newimg.complete && newimg.naturalWidth === 0) {
+-                    img.src = 'https://services.bonjourr.fr/favicon/blob/error'
+-                }
+-            }, 5000)
++    // Non-DDG URLs (user-set custom URL, data:, local-icon blob) have no
++    // "404 with body" problem. Set src directly; on error fall back once.
++    if (!isDuckDuckGoUrl(primaryUrl)) {
++        img.addEventListener('error', () => {
++            img.src = DEFAULT_FAVICON
++        }, { once: true })
++        img.src = primaryUrl
++        return
++    }
++
++    // DDG returns 404 with a gray-arrow PNG body when it has no icon for the
++    // host, and the browser still decodes that body as a valid image. We must
++    // see the HTTP status to detect the miss, so fetch once and reuse the
++    // bytes via a blob URL — that avoids a second network round-trip.
++    try {
++        const resp = await fetch(primaryUrl)
++        if (resp.ok) {
++            const blob = await resp.blob()
++            const blobUrl = URL.createObjectURL(blob)
++            const revoke = () => URL.revokeObjectURL(blobUrl)
++            img.addEventListener('load', revoke, { once: true })
++            img.addEventListener('error', revoke, { once: true })
++            img.src = blobUrl
++            return
++        }
++    } catch (_) {
++        // Offline / network error → fall through to the fallback chain.
++    }
++
++    // DDG miss → Chrome's _favicon for locally-visited sites (intranet,
++    // localhost, private deployments). For sites the browser has never seen,
++    // _favicon returns a generic placeholder; we accept that to keep the path
++    // simple and fast.
++    if (PLATFORM === 'chrome') {
++        const original = originalUrlFromDuckDuckGo(primaryUrl)
++        if (original) {
++            img.addEventListener('error', () => {
++                img.src = DEFAULT_FAVICON
++            }, { once: true })
++            img.src = buildChromeFaviconUrl(original)
++            return
+         }
++    }
++
++    img.src = DEFAULT_FAVICON
++}
+ 
+-        initIconList = []
+-    }, 400)
++function isDuckDuckGoUrl(url: string): boolean {
++    return url.startsWith('https://icons.duckduckgo.com/ip3/')
++}
++
++function originalUrlFromDuckDuckGo(ddgUrl: string): string | undefined {
++    try {
++        const m = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
++        return m ? `https://${m[1]}/` : undefined
++    } catch (_) {
++        return undefined
++    }
++}
++
++function buildChromeFaviconUrl(pageUrl: string): string {
++    const u = new URL(chrome.runtime.getURL('/_favicon/'))
++    u.searchParams.set('pageUrl', pageUrl)
++    u.searchParams.set('size', '32')
++    return u.toString()
+ }
+ 
+ function resolveIconUrl(local: Local, url: string): string {
+@@ -643,7 +690,6 @@ function deleteLinks(ids: string[], data: Sync): Sync {
+         removeNode(data, id)
+     }
+ 
+-    storage.sync.clear()
+     animateLinksRemove(ids)
+     return data
+ }
+@@ -700,11 +746,11 @@ function refreshIcons(ids: string[], data: Sync): Sync {
+         const node = getNode(data, id)
+ 
+         if (isElem(node)) {
+-            const unixDate = Date.now().toString()
++            const unixDate = Date.now()
+ 
+             if (!node.icon || node.icon.type === 'auto') {
+                 node.icon = node.icon ?? { type: 'auto', value: '' }
+-                node.icon.value = getDefaultIcon(node.url) + `?r=${unixDate}`
++                node.icon.value = getDefaultIcon(node.url, unixDate)
+             } else if (node.icon.type === 'url') {
+                 node.icon.value = `${node.icon.value}?r=${unixDate}`
+             }
+@@ -747,25 +793,30 @@ function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
+ async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrounds?: boolean }): Promise<void> {
+     const data = await storage.sync.get()
+     const style = styles.style ?? 'inline'
++    let dirty = false
+ 
+     if (styles.style && isLinkStyle(style)) {
+         domlinkblocks.classList.remove('inline', 'text')
+         domlinkblocks.classList.add(style)
+         data.links.style = style
+-        storage.sync.set({ links: data.links })
+         initRows(data.links.rows, style)
++        dirty = true
+     }
+ 
+     if (typeof styles.titles === 'boolean') {
+         data.links.titles = styles.titles
+-        storage.sync.set({ links: data.links })
+         domlinkblocks.classList.toggle('titles', styles.titles)
++        dirty = true
+     }
+ 
+     if (typeof styles.backgrounds === 'boolean') {
+         data.links.backgrounds = styles.backgrounds
+-        storage.sync.set({ links: data.links })
+         domlinkblocks.classList.toggle('backgrounds', styles.backgrounds)
++        dirty = true
++    }
++
++    if (dirty) {
++        await storage.sync.set({ links: data.links })
+     }
+ }
+ 
+@@ -805,7 +856,15 @@ function animateLinksRemove(ids: string[]): void {
+ }
+ 
+ function getIconFromLinkElem(link: LinkElem): string {
+-    if (!link.icon?.value) {
++    const stored = link.icon?.value
++    // Legacy chrome-extension://[id]/_favicon/ values were persisted by
++    // refreshIcons in earlier versions. Treat them as missing so they get
++    // recomputed via DDG → Chrome → DEFAULT_FAVICON on render.
++    const isStaleChromeFavicon = typeof stored === 'string' &&
++        stored.startsWith('chrome-extension://') &&
++        stored.includes('/_favicon/')
++
++    if (!stored || isStaleChromeFavicon) {
+         try {
+             const url = new URL(link.url)
+             if (url.protocol === 'data:') {
+@@ -817,11 +876,11 @@ function getIconFromLinkElem(link: LinkElem): string {
+         }
+     }
+ 
+-    if (link.icon.type === 'file') {
++    if (link.icon?.type === 'file') {
+         return `local-icon:${link.id}`
+     }
+ 
+-    return link.icon.value
++    return stored
+ }
+ 
+ function isLinkStyle(style: string): style is Sync['links']['style'] {
+@@ -857,5 +916,3 @@ function reorderItems<T extends { id: string }>(items: T[] | undefined, ids: str
+ 
+     items.splice(0, items.length, ...ordered, ...missing)
+ }
+-
+-export const getLinksInGroup = getLinksInFolder
+diff --git a/src/scripts/features/links/model.ts b/src/scripts/features/links/model.ts
+index a57a01f..7d019d8 100644
+--- a/src/scripts/features/links/model.ts
++++ b/src/scripts/features/links/model.ts
+@@ -66,18 +66,6 @@ export function createSubfolder(title: string, items: LinkElem[] = []): LinkSubf
+     }
+ }
+ 
+-export function getVisibleFolders(data: Sync): LinkFolder[] {
+-    const selected = getSelectedFolder(data)
+-    const pinned = data.links.folders.filter((folder) => folder.pinned)
+-    const visible = uniqueById([...(selected ? [selected] : []), ...pinned])
+-
+-    return visible.length > 0 ? visible : data.links.folders.slice(0, 1)
+-}
+-
+-export function getSelectedFolder(data: Sync): LinkFolder | undefined {
+-    return getFolder(data, data.links.selectedFolder) ?? data.links.folders[0]
+-}
+-
+ export function getFolder(data: Sync, id?: string): LinkFolder | undefined {
+     return data.links.folders.find((folder) => folder.id === id)
+ }
+@@ -122,10 +110,6 @@ export function findNode(data: Sync, id: string): LinkLocation | undefined {
+     }
+ }
+ 
+-export function getLinksInFolder(data: Sync, folderId?: string): LinkNode[] {
+-    return getFolder(data, folderId ?? data.links.selectedFolder)?.items ?? []
+-}
+-
+ export function getLinksInSubfolder(data: Sync, id: string): LinkElem[] {
+     return getSubfolder(data, id)?.items ?? []
+ }
+@@ -157,24 +141,6 @@ export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
+     return removed
+ }
+ 
+-export function ensureDefaultFolder(data: Sync): LinkFolder {
+-    let folder = data.links.folders[0]
+-
+-    if (!folder) {
+-        folder = {
+-            id: 'default',
+-            title: 'default',
+-            pinned: false,
+-            source: 'local',
+-            items: [],
+-        }
+-        data.links.folders.push(folder)
+-        data.links.selectedFolder = folder.id
+-    }
+-
+-    return folder
+-}
+-
+ export function isElem(link: unknown): link is LinkElem {
+     const value = link as LinkElem | LinkSubfolder | undefined
+     return !!value && typeof value.id === 'string' && typeof value.title === 'string' && !isSubfolder(value)
+@@ -286,16 +252,3 @@ function favoritesFolder(): LinkFolder {
+         items: [],
+     }
+ }
+-
+-function uniqueById(folders: LinkFolder[]): LinkFolder[] {
+-    const seen = new Set<string>()
+-    const unique: LinkFolder[] = []
+-
+-    for (const folder of folders) {
+-        if (seen.has(folder.id)) continue
+-        seen.add(folder.id)
+-        unique.push(folder)
+-    }
+-
+-    return unique
+-}
+diff --git a/src/scripts/features/synchronization/gist.ts b/src/scripts/features/synchronization/gist.ts
+index 3830f38..5240247 100644
+--- a/src/scripts/features/synchronization/gist.ts
++++ b/src/scripts/features/synchronization/gist.ts
+@@ -50,7 +50,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
+         return false
+     }
+ 
+-    if (resp.status !== 200) {
++    if (!resp.ok) {
+         document.querySelector('#gist-sync-status')?.remove()
+         base.textContent = tradThis('No saved data yet')
+         return false
+@@ -81,7 +81,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
+ }
+ 
+ export async function retrieveGist(token: string, id?: string): Promise<Sync> {
+-    type GistGet = { files: { content: string }[] }
++    type GistGet = { files: Record<string, { content: string } | undefined> }
+ 
+     if (!token) {
+         throw new Error(GIST_ERROR.TOKEN)
+@@ -90,33 +90,27 @@ export async function retrieveGist(token: string, id?: string): Promise<Sync> {
+         throw new Error(GIST_ERROR.ID)
+     }
+ 
+-    let req: Response
+-
+-    try {
+-        req = await fetch(`https://api.github.com/gists/${id}`, {
+-            headers: gistHeaders(token),
+-        })
+-    } catch (_) {
+-        throw new Error(GIST_ERROR.NOCONN)
+-    }
++    const req = await gistFetch(`https://api.github.com/gists/${id}`, {
++        headers: gistHeaders(token),
++    })
+ 
+-    if (req.status === 200) {
+-        const gist = (await req.json()) as GistGet
+-        const content = Object.values(gist?.files ?? {})[0]?.content ?? ''
++    const gist = (await req.json()) as GistGet
++    const content = gist?.files?.[GIST_FILENAME]?.content
+ 
+-        try {
+-            return JSON.parse(content)
+-        } catch (_) {
+-            throw new Error(GIST_ERROR.JSON)
+-        }
++    if (!content) {
++        throw new Error(GIST_ERROR.NOGIST)
+     }
+ 
+-    throw new Error(GIST_ERROR.OTHER)
++    try {
++        return JSON.parse(content)
++    } catch (_) {
++        throw new Error(GIST_ERROR.JSON)
++    }
+ }
+ 
+ export async function sendGist(token: string, id: string | undefined, data: Sync): Promise<string> {
+     const description = 'File automatically generated by Bonjourr.'
+-    const files = { 'bonjourr-export.json': { content: JSON.stringify(data, undefined, 2) } }
++    const files = { [GIST_FILENAME]: { content: JSON.stringify(data, undefined, 2) } }
+ 
+     if (isStorageDefault(data)) {
+         throw new Error(GIST_ERROR.DEFAULT)
+@@ -124,24 +118,11 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
+ 
+     // Create
+     if (!id) {
+-        let resp: Response
+-
+-        try {
+-            resp = await fetch('https://api.github.com/gists', {
+-                body: JSON.stringify({ files, description, public: false }),
+-                headers: gistHeaders(token),
+-                method: 'POST',
+-            })
+-        } catch (_) {
+-            throw new Error(GIST_ERROR.NOCONN)
+-        }
+-
+-        if (resp.status === 401) {
+-            throw new Error(GIST_ERROR.TOKEN)
+-        }
+-        if (resp.status >= 300) {
+-            throw new Error(GIST_ERROR.OTHER)
+-        }
++        const resp = await gistFetch('https://api.github.com/gists', {
++            body: JSON.stringify({ files, description, public: false }),
++            headers: gistHeaders(token),
++            method: 'POST',
++        })
+ 
+         const api = await resp.json()
+         return api.id
+@@ -152,27 +133,11 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
+     }
+ 
+     // Update
+-    let resp: Response
+-
+-    try {
+-        resp = await fetch(`https://api.github.com/gists/${id}`, {
+-            body: JSON.stringify({ files, description }),
+-            headers: gistHeaders(token),
+-            method: 'PATCH',
+-        })
+-    } catch (_) {
+-        throw new Error(GIST_ERROR.NOCONN)
+-    }
+-
+-    if (resp.status === 404) {
+-        throw new Error(GIST_ERROR.NOGIST)
+-    }
+-    if (resp.status === 401) {
+-        throw new Error(GIST_ERROR.TOKEN)
+-    }
+-    if (resp.status >= 300) {
+-        throw new Error(GIST_ERROR.OTHER)
+-    }
++    await gistFetch(`https://api.github.com/gists/${id}`, {
++        body: JSON.stringify({ files, description }),
++        headers: gistHeaders(token),
++        method: 'PATCH',
++    }, { 404: GIST_ERROR.NOGIST })
+ 
+     return id
+ }
+@@ -182,23 +147,12 @@ export async function findGistId(token?: string): Promise<string | undefined> {
+         throw new Error(GIST_ERROR.TOKEN)
+     }
+ 
+-    let resp: Response
+-
+-    try {
+-        resp = await fetch('https://api.github.com/gists?per_page=100', { headers: gistHeaders(token) })
+-    } catch (_) {
+-        throw new Error(GIST_ERROR.NOCONN)
+-    }
+-
+-    if (resp.status === 401) {
+-        throw new Error(GIST_ERROR.TOKEN)
+-    }
+-    if (resp.status >= 300) {
+-        throw new Error(GIST_ERROR.OTHER)
+-    }
++    const resp = await gistFetch('https://api.github.com/gists?per_page=100', {
++        headers: gistHeaders(token),
++    })
+ 
+     const list = (await resp.json()) as GistItem[]
+-    const file = list.filter((gist) => !gist.public && gist.files['bonjourr-export.json']?.size > 0)[0]
++    const file = list.filter((gist) => !gist.public && gist.files[GIST_FILENAME]?.size > 0)[0]
+ 
+     return file?.id
+ }
+@@ -214,7 +168,7 @@ export async function isGistTokenValid(token = ''): Promise<boolean> {
+             headers: gistHeaders(token),
+         })
+ 
+-        return resp.status === 200
++        return resp.ok
+     } catch (_) {
+         return false
+     }
+@@ -245,6 +199,34 @@ function gistHeaders(token: string): HeadersInit {
+     }
+ }
+ 
++async function gistFetch(
++    input: RequestInfo,
++    init?: RequestInit,
++    statusOverrides?: Record<number, string>,
++): Promise<Response> {
++    let resp: Response
++
++    try {
++        resp = await fetch(input, init)
++    } catch (_) {
++        throw new Error(GIST_ERROR.NOCONN)
++    }
++
++    if (statusOverrides && resp.status in statusOverrides) {
++        throw new Error(statusOverrides[resp.status])
++    }
++    if (resp.status === 401) {
++        throw new Error(GIST_ERROR.TOKEN)
++    }
++    if (!resp.ok) {
++        throw new Error(GIST_ERROR.OTHER)
++    }
++
++    return resp
++}
++
++const GIST_FILENAME = 'bonjourr-export.json'
++
+ const GIST_ERROR = {
+     ID: tradThis('Invalid Gist ID in settings.'),
+     TOKEN: tradThis('Invalid token.'),
+diff --git a/src/scripts/features/synchronization/index.ts b/src/scripts/features/synchronization/index.ts
+index 3835d3f..eb1bda4 100644
+--- a/src/scripts/features/synchronization/index.ts
++++ b/src/scripts/features/synchronization/index.ts
+@@ -3,7 +3,7 @@ import { isDistantUrlValid, receiveFromURL } from './url.ts'
+ import { dedupeSyncLinks } from './merge.ts'
+ import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
+ import { onSettingsLoad } from '../../utils/onsettingsload.ts'
+-import { filterData } from '../../compatibility/apply.ts'
++import { mergeImportedConfig } from '../../compatibility/apply.ts'
+ import { networkForm } from '../../shared/form.ts'
+ import { fadeOut } from '../../shared/dom.ts'
+ import { SYNC_DEFAULT } from '../../defaults.ts'
+@@ -119,8 +119,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
+             local.gistToken = update.gistToken
+             local.gistId = await findGistId(local.gistToken)
+ 
+-            storage.local.set({ gistId: local.gistId })
+-            storage.local.set({ gistToken: local.gistToken })
++            storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
+ 
+             gistsyncform.accept()
+             toggleSyncSettingsOption(local)
+@@ -251,10 +250,22 @@ function isSyncType(val = ''): val is SyncType {
+     return ['browser', 'gist', 'url', 'off'].includes(val)
+ }
+ 
+-async function mergeDownloadedSync(_current: Sync, incoming: Sync): Promise<Sync> {
++async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
+     incoming = normalizeExternalSync(incoming)
+     let update = dedupeSyncLinks(structuredClone(incoming))
+ 
++    // Snapshot the soon-to-be-overwritten config so a failed clear+set still leaves
++    // the user with a recoverable copy in localStorage. Web mode shares a 5 MB
++    // localStorage quota with the live config, so cap the snapshot size.
++    try {
++        const snapshot = JSON.stringify(current)
++        if (snapshot.length < 2_000_000) {
++            localStorage.setItem('bonjourr-archive-pre-sync', snapshot)
++        }
++    } catch (_) {
++        // localStorage might be full; the sync still proceeds.
++    }
++
+     await storage.sync.clear()
+     await storage.sync.set(update)
+ 
+@@ -292,7 +303,7 @@ function getSettingsTextAreaSync(): Sync | undefined {
+ }
+ 
+ function normalizeExternalSync(data: Partial<Sync>): Sync {
+-    return filterData('import', structuredClone(SYNC_DEFAULT), data)
++    return mergeImportedConfig(structuredClone(SYNC_DEFAULT), data)
+ }
+ 
+ // function isSyncFreq(val: string): val is SyncFreq {
+diff --git a/src/scripts/index.ts b/src/scripts/index.ts
+index 8206758..88e043c 100644
+--- a/src/scripts/index.ts
++++ b/src/scripts/index.ts
+@@ -18,10 +18,9 @@ import { serviceWorker } from './startup/serviceworker.ts'
+ import { tabsTracking } from './startup/tabstracking.ts'
+ import { settingsInit } from './settings.ts'
+ import { userActions } from './events.ts'
+-import { filterData } from './compatibility/apply.ts'
+ import { storage } from './storage.ts'
+ 
+-import { BROWSER, CURRENT_VERSION, LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT, SYSTEM_OS } from './defaults.ts'
++import { BROWSER, PLATFORM, SYSTEM_OS } from './defaults.ts'
+ 
+ restoreBackgroundCache()
+ 
+@@ -53,31 +52,7 @@ try {
+ }
+ 
+ async function startup(): Promise<void> {
+-    let { sync, local } = await storage.init()
+-    const oldVersion = sync?.about?.version
+-
+-    if (!sync || !local) {
+-        console.warn('Storage failed, loading Bonjourr with default settings')
+-        sync = structuredClone(SYNC_DEFAULT)
+-        local = structuredClone(LOCAL_DEFAULT)
+-    }
+-
+-    if (oldVersion !== CURRENT_VERSION) {
+-        console.info(`Updated Bonjourr, ${oldVersion} => ${CURRENT_VERSION}`)
+-
+-        localStorage.setItem('update-archive', JSON.stringify(sync))
+-
+-        sync = filterData('update', sync)
+-
+-        local.translations = undefined
+-        storage.local.remove('translations')
+-        local = { ...LOCAL_DEFAULT, ...local }
+-
+-        // <!> keep this order
+-        // <!> must delete old keys before upgrading storage
+-        await storage.sync.clear()
+-        await storage.sync.set(sync)
+-    }
++    const { sync, local } = await storage.init()
+ 
+     await setTranslationCache(sync.lang, local)
+ 
+diff --git a/src/scripts/settings.ts b/src/scripts/settings.ts
+index f000e56..a34ee37 100644
+--- a/src/scripts/settings.ts
++++ b/src/scripts/settings.ts
+@@ -25,7 +25,7 @@ import { getPermissions } from './utils/permissions.ts'
+ import { opacityFromHex } from './shared/generic.ts'
+ import { loadCallbacks } from './utils/onsettingsload.ts'
+ import { onclickdown } from 'clickdown/mod'
+-import { filterData } from './compatibility/apply.ts'
++import { mergeImportedConfig } from './compatibility/apply.ts'
+ import { stringify } from './utils/stringify.ts'
+ import { debounce } from './utils/debounce.ts'
+ import { langList } from './langs.ts'
+@@ -974,7 +974,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
+             }
+         }
+ 
+-        const importedData = dedupeSyncLinks(filterData('import', structuredClone(SYNC_DEFAULT), imported))
++        const importedData = dedupeSyncLinks(mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported))
+         let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
+ 
+         if (mode === 'replace') {
+diff --git a/src/scripts/shared/api.ts b/src/scripts/shared/api.ts
+deleted file mode 100644
+index 6efd59c..0000000
+--- a/src/scripts/shared/api.ts
++++ /dev/null
+@@ -1,24 +0,0 @@
+-export async function apiWebSocket(path: string): Promise<WebSocket | undefined> {
+-    try {
+-        const socket = new WebSocket(`wss://services.bonjourr.fr/${path}`)
+-        const isOpened = await new Promise((resolve) => {
+-            socket.onopen = () => resolve(true)
+-            socket.onerror = () => resolve(false)
+-            socket.onclose = () => resolve(false)
+-        })
+-
+-        if (isOpened) {
+-            return socket
+-        }
+-    } catch (_error) {
+-        // ...
+-    }
+-}
+-
+-export async function apiFetch(path: string): Promise<Response | undefined> {
+-    try {
+-        return await fetch(`https://services.bonjourr.fr${path}`)
+-    } catch (_error) {
+-        // ...
+-    }
+-}
+diff --git a/src/scripts/shared/dom.ts b/src/scripts/shared/dom.ts
+index 9c66490..9f0902f 100644
+--- a/src/scripts/shared/dom.ts
++++ b/src/scripts/shared/dom.ts
+@@ -11,18 +11,6 @@ export function webkitRangeTrackColor(input: HTMLInputElement): void {
+     input.setAttribute('aria-valuemax', max || '100')
+ }
+ 
+-export function toggleDisabled(element: Element | null, force?: boolean): void {
+-    if (element) {
+-        const toggle = force !== undefined ? force : typeof element.getAttribute('disabled') === 'string'
+-
+-        if (toggle) {
+-            element.setAttribute('disabled', '')
+-        } else {
+-            element.removeAttribute('disabled')
+-        }
+-    }
+-}
+-
+ export function getSplitRangeData(id: string): { range?: string; button?: string } {
+     const wrapper = document.querySelector<HTMLInputElement>(`#${id.replace('#', '')}`)
+     const range = wrapper?.querySelector<HTMLInputElement>('input')
+diff --git a/src/scripts/storage.ts b/src/scripts/storage.ts
+index 15b484a..06de144 100644
+--- a/src/scripts/storage.ts
++++ b/src/scripts/storage.ts
+@@ -13,6 +13,11 @@ interface AllStorage {
+     local?: Local
+ }
+ 
++interface InitializedStorage {
++    sync: Sync
++    local: Local
++}
++
+ interface StorageTypeReturn {
+     init: () => StorageType
+     get: () => StorageType
+@@ -37,7 +42,7 @@ interface Storage {
+         set: (type: StorageType) => void
+         init: () => StorageType
+     }
+-    init: () => Promise<AllStorage>
++    init: () => Promise<InitializedStorage>
+     clearall: () => Promise<void>
+ }
+ 
+@@ -99,9 +104,7 @@ async function syncGet(_key?: string | string[]): Promise<Sync> {
+     }
+ }
+ 
+-async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<void> {
+-    // console.log('sync set', JSON.stringify(keyval))
+-
++async function syncSet(keyval: Record<string, unknown>): Promise<void> {
+     switch (storage.type.get()) {
+         case 'webext-local': {
+             try {
+@@ -114,7 +117,6 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
+             } catch (err) {
+                 console.warn('Local storage write failed', err)
+             }
+-            fn()
+             return
+         }
+ 
+@@ -146,7 +148,6 @@ async function syncRemove(key: string): Promise<void> {
+ 
+                 if (syncStorage) {
+                     delete syncStorage[key]
+-                    await chrome.storage.local.remove('syncStorage')
+                     await chrome.storage.local.set({ syncStorage })
+                 }
+             } catch (_) { /* ignore */ }
+@@ -183,8 +184,6 @@ async function syncClear(): Promise<void> {
+ //	Local data
+ 
+ function localSet(value: Record<string, unknown>): void {
+-    // console.log('local set', JSON.stringify(value))
+-
+     switch (storage.type.get()) {
+         case 'webext-local': {
+             chrome.storage.local.set(value).catch((err) => {
+@@ -297,7 +296,7 @@ async function localClear(): Promise<void> {
+ 
+ //	Init data
+ 
+-async function init(): Promise<AllStorage> {
++async function init(): Promise<InitializedStorage> {
+     const store = globalThis.startupStorage as AllStorage ?? {}
+ 
+     if (PLATFORM !== 'online' && !webextStoreReady()) {
+@@ -338,6 +337,7 @@ async function init(): Promise<AllStorage> {
+     }
+ 
+     const sync = verifyDataAsSync(store.sync)
++    normalizeLinksState(sync)
+     const local = verifyDataAsLocal(store.local)
+ 
+     return {
+@@ -358,7 +358,8 @@ async function clearall(): Promise<void> {
+     sessionStorage.clear()
+ 
+     Object.keys(localStorage).forEach((key) => {
+-        if (key.startsWith('bonjourr-archive-') === false) {
++        const isArchive = key.startsWith('bonjourr-archive-') || key === 'update-archive'
++        if (!isArchive) {
+             localStorage.removeItem(key)
+         }
+     })
+@@ -399,7 +400,9 @@ async function clearall(): Promise<void> {
+ export async function getSyncDefaults(): Promise<Sync> {
+     try {
+         const json = await (await fetch('config.json')).json()
+-        return verifyDataAsSync(json)
++        const sync = verifyDataAsSync(json)
++        normalizeLinksState(sync)
++        return sync
+     } catch (_) {
+         // ...
+     }
+@@ -416,14 +419,10 @@ export function isStorageDefault(data: Sync): boolean {
+ }
+ 
+ function verifyDataAsSync(data: Partial<Sync> = {}): Sync {
+-    const sync = {
++    return {
+         ...SYNC_DEFAULT,
+         ...data,
+     }
+-
+-    normalizeLinksState(sync)
+-
+-    return sync
+ }
+ 
+ function verifyDataAsLocal(data: Partial<Local> = {}): Local {
+diff --git a/src/scripts/utils/bundlelinks.ts b/src/scripts/utils/bundlelinks.ts
+deleted file mode 100644
+index d3a466a..0000000
+--- a/src/scripts/utils/bundlelinks.ts
++++ /dev/null
+@@ -1,38 +0,0 @@
+-import type { LinkIcon } from '../../types/shared.ts'
+-import type { Sync } from '../../types/sync.ts'
+-
+-export type LegacyLink = LegacyLinkElem | LegacyLinkFolder
+-
+-export interface LegacyLinkElem {
+-    _id: string
+-    parent?: string | number
+-    folder?: false
+-    order: number
+-    title: string
+-    url: string
+-    icon?: LinkIcon | string
+-    bookmark?: {
+-        id: string
+-        parentId?: string
+-    }
+-}
+-
+-export interface LegacyLinkFolder {
+-    _id: string
+-    parent?: string | number
+-    folder: true
+-    order: number
+-    title: string
+-}
+-
+-export function bundleLinks(data: Partial<Sync> | Record<string, unknown>): LegacyLink[] {
+-    const res: LegacyLink[] = []
+-
+-    Object.entries(data).map(([key, val]) => {
+-        if (key.length === 11 && key.startsWith('links')) {
+-            res.push(val as LegacyLink)
+-        }
+-    })
+-
+-    return res
+-}
+diff --git a/src/scripts/utils/semver.ts b/src/scripts/utils/semver.ts
+deleted file mode 100644
+index 7aaad13..0000000
+--- a/src/scripts/utils/semver.ts
++++ /dev/null
+@@ -1,28 +0,0 @@
+-export interface SemVer {
+-    major: number
+-    minor: number
+-    patch: number
+-}
+-
+-export function toSemVer(version = '0.0.0'): SemVer {
+-    const result = {
+-        major: 0,
+-        minor: 0,
+-        patch: 0,
+-    }
+-
+-    if (typeof version === 'string') {
+-        const arr = version.split('.')
+-        const major = parseInt(arr[0] ?? '0')
+-        const minor = parseInt(arr[1] ?? '0')
+-        const patch = parseInt(arr[2] ?? '0')
+-
+-        if (!isNaN(major) && !isNaN(minor) && !isNaN(patch)) {
+-            result.major = major
+-            result.minor = minor
+-            result.patch = patch
+-        }
+-    }
+-
+-    return result
+-}
+diff --git a/src/settings.html b/src/settings.html
+index d651292..5e26989 100644
+--- a/src/settings.html
++++ b/src/settings.html
+@@ -796,9 +796,7 @@
+                 </button>
+             </span>
+ 
+-            <select id="i_customfont">
+-                <option value="" class="trn">System default</option>
+-            </select>
++            <select id="i_customfont"></select>
+         </div>
+ 
+         <p class="tooltiptext dropdown ttfontfamily">
+diff --git a/src/styles/features/links.css b/src/styles/features/links.css
+index e4efe03..108fa1b 100644
+--- a/src/styles/features/links.css
++++ b/src/styles/features/links.css
+@@ -469,7 +469,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+     height: var(--icon-size);
+     box-sizing: border-box;
+     overflow: hidden;
+-    border-radius: 22%;
++    border-radius: 50%;
+ }
+ 
+ .link a {
+@@ -483,7 +483,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+ .link img {
+     width: 100%;
+     height: 100%;
+-    border-radius: 22%;
++    border-radius: 50%;
+     object-fit: cover;
+ }
+ 
+@@ -504,13 +504,8 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+ }
+ 
+ .backgrounds .link div {
+-    background-color: white;
+-    border-color: white;
+-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+-}
+-
+-.backgrounds .link div:hover {
+-    box-shadow: unset;
++    background-color: transparent;
++    border-color: transparent;
+ }
+ 
+ .link.removed {
+@@ -546,10 +541,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+ }
+ 
+ @media only screen and (hover: hover) {
+-    #linkblocks.backgrounds .link:hover div {
+-        box-shadow: 0px 0.2em 1em #0003;
+-    }
+-
+     .link:hover:not(.selected) div {
+         transform: scale(0.95);
+     }
+@@ -658,11 +649,11 @@ dialog a {
+ }
+ 
+ .inline .link div {
+-    border-radius: 22%;
++    border-radius: 50%;
+ }
+ 
+ .inline .link img {
+-    border-radius: 22%;
++    border-radius: 50%;
+ }
+ 
+ .inline .link span {
+diff --git a/src/types/shared.ts b/src/types/shared.ts
+index db5e72b..b40e56b 100644
+--- a/src/types/shared.ts
++++ b/src/types/shared.ts
+@@ -66,60 +66,6 @@ export interface LinkSubfolder {
+     items: LinkElem[]
+ }
+ 
+-// Old
+-
+-export type UnsplashCollections = 'night' | 'noon' | 'day' | 'evening' | 'user'
+-
+-export interface OldSync {
+-    usdate: boolean
+-    searchbar: boolean
+-    background_blur: number
+-    background_bright: number
+-    background_type: string
+-    weather: {
+-        location: [number, number]
+-    }
+-    unsplash: {
+-        time?: number
+-        every: Frequency
+-        pausedImage?: UnsplashImage
+-        collection: string
+-        lastCollec: UnsplashCollections
+-    }
+-    linktabs: {
+-        active: boolean
+-        selected: number
+-        titles: string[]
+-        pinned: number[]
+-    }
+-    hide: [[number, number], [number, number, number], [number], [number]]
+-}
+-
+-export interface OldLocal {
+-    unsplashCache: Record<UnsplashCollections, UnsplashImage[]>
+-    selected?: boolean
+-    idsList: string[]
+-}
+-
+-export interface UnsplashImage {
+-    url: string
+-    link: string
+-    download_link: string
+-    username: string
+-    name: string
+-    city: string | null
+-    country: string | null
+-    color: string
+-    exif?: {
+-        make: string
+-        model: string
+-        exposure_time: string
+-        aperture: string
+-        focal_length: string
+-        iso: number
+-    }
+-}
+-
+ // Globals
+ 
+ declare global {
+diff --git a/src/types/sync.ts b/src/types/sync.ts
+index 17c7791..946336f 100644
+--- a/src/types/sync.ts
++++ b/src/types/sync.ts
+@@ -50,16 +50,6 @@ export interface LinkFolder {
+ 
+ export type LinkFolderSource = 'local' | 'bookmarks'
+ 
+-export interface LegacyLinkGroups {
+-    on: boolean
+-    selected: string
+-    groups: string[]
+-    pinned: string[]
+-    synced: string[]
+-    hidden: Record<string, string[]>
+-    bookmarkFolders: Record<string, string>
+-}
+-
+ export interface Hide {
+     clock?: boolean
+     date?: boolean
+diff --git a/tests/configs/10.0.0.json b/tests/configs/10.0.0.json
+deleted file mode 100644
+index f361563..0000000
+--- a/tests/configs/10.0.0.json
++++ /dev/null
+@@ -1,126 +0,0 @@
+-{
+-    "background_blur": 0,
+-    "clock": {
+-        "ampm": false,
+-        "analog": true,
+-        "seconds": true,
+-        "timezone": "auto"
+-    },
+-    "dark": "system",
+-    "dynamic": {
+-        "current": {
+-            "city": "Kinbidhoo",
+-            "country": "Maldives",
+-            "link": "https://unsplash.com/photos/nXhT7-3it0Y",
+-            "name": "Saud Edum",
+-            "url": "https://images.unsplash.com/photo-1619873068038-b25550eeff69?ixid=Mnw4ODczOHwwfDF8cmFuZG9tfHx8fHx8fHx8MTYyMzQyMTg3Ng&ixlib=rb-1.2.1&w=2560&fm=jpg&q=70",
+-            "username": "saudedum"
+-        },
+-        "every": "hour",
+-        "next": {
+-            "city": null,
+-            "country": "México",
+-            "link": "https://unsplash.com/photos/jOV7yVid2wM",
+-            "name": "Eduardo Cano Photo Co.",
+-            "url": "https://images.unsplash.com/photo-1579230757892-bfb5af370290?ixid=Mnw4ODczOHwwfDF8cmFuZG9tfHx8fHx8fHx8MTYyMzQyMTg4Nw&ixlib=rb-1.2.1&w=2560&fm=jpg&q=70",
+-            "username": "eduardocanophotoco"
+-        },
+-        "time": 0
+-    },
+-    "font": {
+-        "family": "Roboto",
+-        "size": "15",
+-        "supportedWeights": [
+-            "100",
+-            "300",
+-            "regular",
+-            "500",
+-            "700",
+-            "900"
+-        ],
+-        "weight": "200"
+-    },
+-    "greeting": "Victor",
+-    "hide": [],
+-    "lang": "fr",
+-    "linknewtab": false,
+-    "links": [
+-        {
+-            "icon": "https://api.faviconkit.com/www.youtube.com/144",
+-            "title": "Youtube",
+-            "url": "https://www.youtube.com/"
+-        },
+-        {
+-            "icon": "https://api.faviconkit.com/vault.bitwarden.com/144",
+-            "title": "Bitwarden",
+-            "url": "https://vault.bitwarden.com/#/vault"
+-        },
+-        {
+-            "icon": "https://api.faviconkit.com/github.com/144",
+-            "title": "Github",
+-            "url": "https://github.com/yinyu985/"
+-        }
+-    ],
+-    "linksrow": 5,
+-    "reviewPopup": "removed",
+-    "searchbar": false,
+-    "searchbar_engine": "ddg",
+-    "searchbar_newtab": false,
+-    "showall": true,
+-    "usdate": true,
+-    "weather": {
+-        "ccode": "FR",
+-        "city": "Paris",
+-        "fcDay": 2,
+-        "fcHigh": 21,
+-        "lastCall": 1623767816,
+-        "lastState": {
+-            "base": "stations",
+-            "clouds": {
+-                "all": 0
+-            },
+-            "cod": 200,
+-            "coord": {
+-                "lat": 47.8625,
+-                "lon": -4.2382
+-            },
+-            "dt": 1623767817,
+-            "id": 2986712,
+-            "main": {
+-                "feels_like": 26.22,
+-                "humidity": 57,
+-                "pressure": 1019,
+-                "temp": 26.22,
+-                "temp_max": 26.45,
+-                "temp_min": 22.5
+-            },
+-            "name": "Plomeur",
+-            "sys": {
+-                "country": "FR",
+-                "id": 6568,
+-                "sunrise": 1623730652,
+-                "sunset": 1623788250,
+-                "type": 1
+-            },
+-            "timezone": 7200,
+-            "visibility": 10000,
+-            "weather": [
+-                {
+-                    "description": "ciel dégagé",
+-                    "icon": "01d",
+-                    "id": 800,
+-                    "main": "Clear"
+-                }
+-            ],
+-            "wind": {
+-                "deg": 230,
+-                "speed": 3.09
+-            }
+-        },
+-        "location": [
+-            47.8625183,
+-            -4.2382070999999994
+-        ],
+-        "unit": "metric"
+-    }
+-}
+diff --git a/tests/configs/12.1.0.json b/tests/configs/12.1.0.json
+deleted file mode 100644
+index b0a1725..0000000
+--- a/tests/configs/12.1.0.json
++++ /dev/null
+@@ -1,46 +0,0 @@
+-{
+-    "usdate": false,
+-    "showall": true,
+-    "dynamic": { "collection": "", "every": "day", "lastCollec": "day", "time": 1647587966842 },
+-    "background_blur": 15,
+-    "css": "",
+-    "weather": {
+-        "ccode": "FR",
+-        "city": "Mozac",
+-        "fcHigh": 9,
+-        "lastState": {
+-            "temp": 5.66,
+-            "feels_like": 2.6,
+-            "temp_max": 5.66,
+-            "sunrise": 1647582902,
+-            "sunset": 1647626193,
+-            "description": "couvert",
+-            "icon_id": 804
+-        },
+-        "location": [45.7801728, 3.0769152],
+-        "unit": "metric",
+-        "forecast": "auto",
+-        "temperature": "feelslike"
+-    },
+-    "favicon": "",
+-    "greeting": "",
+-    "custom_every": "pause",
+-    "background_type": "dynamic",
+-    "about": { "browser": "firefox", "version": "1.12.1" },
+-    "clock": { "ampm": false, "analog": false, "face": "none", "seconds": false, "timezone": "auto" },
+-    "font": {
+-        "availWeights": ["400", "500", "600", "700", "800", "900"],
+-        "family": "Playfair Display",
+-        "size": "14",
+-        "url": "https://fonts.googleapis.com/css?family=Playfair Display:800",
+-        "weight": "800"
+-    },
+-    "searchbar": { "on": false, "opacity": 0.1, "newtab": false, "engine": "google", "request": "" },
+-    "links": [],
+-    "hide": [[0, 0], [0, 0, 0], [0], [0]],
+-    "lang": "fr",
+-    "linksrow": 4,
+-    "reviewPopup": "removed",
+-    "background_bright": 0.63,
+-    "cssHeight": 100
+-}
+diff --git a/tests/configs/14.2.0.json b/tests/configs/14.2.0.json
+deleted file mode 100644
+index f97ecf0..0000000
+--- a/tests/configs/14.2.0.json
++++ /dev/null
+@@ -1,135 +0,0 @@
+-{
+-    "usdate": true,
+-    "dynamic": {
+-        "collection": "",
+-        "every": "hour",
+-        "lastCollec": "day",
+-        "time": 1662800669419
+-    },
+-    "linksrow": 7,
+-    "linkstyle": "large",
+-    "cssHeight": 211,
+-    "about": { "browser": "firefox", "version": "1.14.2" },
+-    "background_blur": 0,
+-    "background_bright": 0.48,
+-    "css": "",
+-    "lang": "fr",
+-    "favicon": "",
+-    "tabtitle": "",
+-    "greeting": "",
+-    "dark": "disable",
+-    "custom_every": "pause",
+-    "background_type": "custom",
+-    "clock": {
+-        "ampm": true,
+-        "analog": false,
+-        "face": "none",
+-        "seconds": false,
+-        "timezone": "auto"
+-    },
+-    "reviewPopup": "removed",
+-    "searchbar": {
+-        "on": false,
+-        "opacity": 0,
+-        "newtab": true,
+-        "engine": "brave",
+-        "request": ""
+-    },
+-    "quotes": {
+-        "author": true,
+-        "frequency": "tabs",
+-        "last": 1662800806621,
+-        "on": false,
+-        "type": "classic"
+-    },
+-    "font": {
+-        "availWeights": [
+-            "100",
+-            "200",
+-            "300",
+-            "400",
+-            "500",
+-            "600",
+-            "700",
+-            "800",
+-            "900"
+-        ],
+-        "family": "Fira Sans",
+-        "size": "13.15",
+-        "url": "https://fonts.googleapis.com/css?family=Fira%20Sans:400",
+-        "weight": 400
+-    },
+-    "textShadow": 0.025,
+-    "hide": [[0, 0], [0, 0, 0], [0], [0]],
+-    "showall": true,
+-    "linknewtab": false,
+-    "linksrdekbm": {
+-        "_id": "linksrdekbm",
+-        "icon": "data:image/png;base64,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",
+-        "order": 3,
+-        "title": "gmail",
+-        "url": "https://mail.google.com/mail/u/0/#inbox"
+-    },
+-    "linksqkrncn": {
+-        "_id": "linksqkrncn",
+-        "order": 4,
+-        "title": "maps",
+-        "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCmFyaWEtbGFiZWw9Ikdvb2dsZSBNYXBzIiByb2xlPSJpbWciCnZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdAp3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIKcng9IjE1JSIKZmlsbD0iI2ZmZiIvPjxjbGlwUGF0aCBpZD0iYSI+PHBhdGggZD0iTTM3NSAxMzZhMTMzIDEzMyAwIDAwLTc5LTY2IDEzNiAxMzYgMCAwMC00MC02IDEzMyAxMzMgMCAwMC0xMDMgNDggMTMzIDEzMyAwIDAwLTMxIDg2YzAgMzggMTMgNjQgMTMgNjQgMTUgMzIgNDIgNjEgNjEgODZhMzk5IDM5OSAwIDAxMzAgNDUgMjIyIDIyMiAwIDAxMTcgNDJjMyAxMCA2IDEzIDEzIDEzczExLTUgMTMtMTNhMjI4IDIyOCAwIDAxMTYtNDEgNDcyIDQ3MiAwIDAxNDUtNjNjNS02IDMyLTM5IDQ1LTY0IDAgMCAxNS0yOSAxNS02OCAwLTM3LTE1LTYzLTE1LTYzeiIvPjwvY2xpcFBhdGg+PGcgc3Ryb2tlLXdpZHRoPSIxMzAiIGNsaXAtcGF0aD0idXJsKCNhKSI+PHBhdGggc3Ryb2tlPSIjZmJiYzA0IiBkPSJNMTA0IDM3OWwxNTItMTgxIi8+PHBhdGggc3Ryb2tlPSIjNDI4NWY0IiBkPSJNMjU2IDE5OEwzNzggNTMiLz48cGF0aCBzdHJva2U9IiMzNGE4NTMiIGQ9Ik0xODkgNDU5bDI0My0yOTAiLz48cGF0aCBzdHJva2U9IiMxYTczZTgiIGQ9Ik0yNTUgMTIwbC03OS02NyIvPjxwYXRoIHN0cm9rZT0iI2VhNDMzNSIgZD0iTTc2IDIzMmw5MS0xMDkiLz48L2c+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMTk4IiByPSI1MSIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==",
+-        "url": "https://google.com/maps"
+-    },
+-    "linksepoqol": {
+-        "_id": "linksepoqol",
+-        "icon": "https://www.google.com/s2/favicons?sz=64&domain=discord.com",
+-        "order": 7,
+-        "title": "discord",
+-        "url": "https://discord.com/channels/@me"
+-    },
+-    "linksmmijfe": {
+-        "_id": "linksmmijfe",
+-        "icon": "data:image/png;base64,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",
+-        "order": 0,
+-        "title": "youtube",
+-        "url": "https://youtube.com"
+-    },
+-    "linksmjjrkg": {
+-        "_id": "linksmjjrkg",
+-        "icon": "data:image/png;base64,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",
+-        "order": 2,
+-        "title": "figma",
+-        "url": "https://www.figma.com/"
+-    },
+-
+-    "linksqeqkbq": {
+-        "_id": "linksqeqkbq",
+-        "icon": "data:image/png;base64,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",
+-        "order": 1,
+-        "title": "mtype",
+-        "url": "https://monkeytype.com"
+-    },
+-    "linkshlpkah": {
+-        "_id": "linkshlpkah",
+-        "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMGMtNi42MjYgMC0xMiA1LjM3My0xMiAxMiAwIDUuMzAyIDMuNDM4IDkuOCA4LjIwNyAxMS4zODcuNTk5LjExMS43OTMtLjI2MS43OTMtLjU3N3YtMi4yMzRjLTMuMzM4LjcyNi00LjAzMy0xLjQxNi00LjAzMy0xLjQxNi0uNTQ2LTEuMzg3LTEuMzMzLTEuNzU2LTEuMzMzLTEuNzU2LTEuMDg5LS43NDUuMDgzLS43MjkuMDgzLS43MjkgMS4yMDUuMDg0IDEuODM5IDEuMjM3IDEuODM5IDEuMjM3IDEuMDcgMS44MzQgMi44MDcgMS4zMDQgMy40OTIuOTk3LjEwNy0uNzc1LjQxOC0xLjMwNS43NjItMS42MDQtMi42NjUtLjMwNS01LjQ2Ny0xLjMzNC01LjQ2Ny01LjkzMSAwLTEuMzExLjQ2OS0yLjM4MSAxLjIzNi0zLjIyMS0uMTI0LS4zMDMtLjUzNS0xLjUyNC4xMTctMy4xNzYgMCAwIDEuMDA4LS4zMjIgMy4zMDEgMS4yMy45NTctLjI2NiAxLjk4My0uMzk5IDMuMDAzLS40MDQgMS4wMi4wMDUgMi4wNDcuMTM4IDMuMDA2LjQwNCAyLjI5MS0xLjU1MiAzLjI5Ny0xLjIzIDMuMjk3LTEuMjMuNjUzIDEuNjUzLjI0MiAyLjg3NC4xMTggMy4xNzYuNzcuODQgMS4yMzUgMS45MTEgMS4yMzUgMy4yMjEgMCA0LjYwOS0yLjgwNyA1LjYyNC01LjQ3OSA1LjkyMS40My4zNzIuODIzIDEuMTAyLjgyMyAyLjIyMnYzLjI5M2MwIC4zMTkuMTkyLjY5NC44MDEuNTc2IDQuNzY1LTEuNTg5IDguMTk5LTYuMDg2IDguMTk5LTExLjM4NiAwLTYuNjI3LTUuMzczLTEyLTEyLTEyeiIvPjwvc3ZnPg==",
+-        "order": 10,
+-        "title": "github",
+-        "url": "https://github.com/yinyu985"
+-    },
+-    "custom_time": 1652777554053,
+-    "weather": {
+-        "ccode": "FR",
+-        "city": "Lyon",
+-        "fcHigh": 21,
+-        "forecast": "auto",
+-        "lastState": {
+-            "temp": 17.66,
+-            "feels_like": 17.13,
+-            "temp_max": 17.66,
+-            "sunrise": 1662787177,
+-            "sunset": 1662833411,
+-            "description": "couvert",
+-            "icon_id": 804
+-        },
+-        "location": [45.7801728, 3.080192],
+-        "temperature": "actual",
+-        "unit": "metric"
+-    }
+-}
+diff --git a/tests/configs/20.4.2-default.json b/tests/configs/20.4.2-default.json
+deleted file mode 100644
+index 466ad6c..0000000
+--- a/tests/configs/20.4.2-default.json
++++ /dev/null
+@@ -1,108 +0,0 @@
+-{
+-    "about": {
+-        "browser": "firefox",
+-        "version": "20.4.2"
+-    },
+-    "showall": false,
+-    "lang": "en",
+-    "dark": "system",
+-    "favicon": "",
+-    "tabtitle": "",
+-    "greeting": "",
+-    "pagegap": 1,
+-    "pagewidth": 1600,
+-    "time": true,
+-    "main": true,
+-    "dateformat": "auto",
+-    "background_blur": 15,
+-    "background_bright": 0.8,
+-    "background_type": "unsplash",
+-    "quicklinks": true,
+-    "syncbookmarks": null,
+-    "textShadow": 0.2,
+-    "announcements": "major",
+-    "review": 31,
+-    "css": "",
+-    "hide": {},
+-    "linkstyle": "medium",
+-    "linktitles": true,
+-    "linkbackgrounds": true,
+-    "linkicons": true,
+-    "linknewtab": false,
+-    "linksrow": 6,
+-    "linkgroups": {
+-        "on": false,
+-        "selected": "default",
+-        "groups": [
+-            "default"
+-        ],
+-        "pinned": [],
+-        "synced": []
+-    },
+-    "clock": {
+-        "size": 1,
+-        "ampm": false,
+-        "analog": false,
+-        "seconds": false,
+-        "ampmlabel": false,
+-        "timezone": "auto",
+-        "worldclocks": false
+-    },
+-    "analogstyle": {
+-        "face": "none",
+-        "hands": "modern",
+-        "shape": "round",
+-        "border": "#ffff",
+-        "background": "#fff2"
+-    },
+-    "worldclocks": [],
+-    "unsplash": {
+-        "every": "hour",
+-        "collection": "",
+-        "lastCollec": "day",
+-        "time": 1747677308677
+-    },
+-    "weather": {
+-        "unit": "metric",
+-        "provider": "",
+-        "moreinfo": "none",
+-        "forecast": "auto",
+-        "temperature": "actual",
+-        "geolocation": "approximate",
+-        "city": "romagnat"
+-    },
+-    "notes": {
+-        "on": false,
+-        "width": 40,
+-        "opacity": 0.1,
+-        "align": "left"
+-    },
+-    "searchbar": {
+-        "on": false,
+-        "opacity": 0.1,
+-        "newtab": false,
+-        "suggestions": true,
+-        "engine": "default",
+-        "request": "",
+-        "placeholder": ""
+-    },
+-    "quotes": {
+-        "on": false,
+-        "author": false,
+-        "type": "classic",
+-        "frequency": "day",
+-        "last": 1747726990397
+-    },
+-    "font": {
+-        "size": "14",
+-        "family": "",
+-        "system": true,
+-        "weightlist": [],
+-        "weight": "300"
+-    },
+-    "supporters": {
+-        "enabled": true,
+-        "closed": true,
+-        "month": 5
+-    }
+-}
+diff --git a/tests/configs/20.4.2.json b/tests/configs/20.4.2.json
+deleted file mode 100644
+index 9bcd716..0000000
+--- a/tests/configs/20.4.2.json
++++ /dev/null
+@@ -1,150 +0,0 @@
+-{
+-    "about": {
+-        "browser": "firefox",
+-        "version": "20.4.2"
+-    },
+-    "showall": true,
+-    "lang": "en",
+-    "dark": "system",
+-    "favicon": "",
+-    "tabtitle": "",
+-    "greeting": "",
+-    "pagegap": 1,
+-    "pagewidth": 1600,
+-    "time": true,
+-    "main": true,
+-    "dateformat": "auto",
+-    "background_blur": 0,
+-    "background_bright": 0.35,
+-    "background_type": "local",
+-    "quicklinks": true,
+-    "syncbookmarks": null,
+-    "textShadow": 0.2,
+-    "announcements": "major",
+-    "review": -1,
+-    "css": "",
+-    "hide": {},
+-    "linkstyle": "medium",
+-    "linktitles": true,
+-    "linkbackgrounds": true,
+-    "linkicons": true,
+-    "linknewtab": false,
+-    "linksrow": 6,
+-    "linkgroups": {
+-        "on": true,
+-        "selected": "Socials",
+-        "groups": ["Dev", "Socials"],
+-        "pinned": ["Dev"],
+-        "synced": []
+-    },
+-    "clock": {
+-        "size": 1,
+-        "ampm": false,
+-        "analog": false,
+-        "seconds": false,
+-        "timezone": "Asia/Irkutsk",
+-        "ampmlabel": false,
+-        "worldclocks": true
+-    },
+-    "analogstyle": {
+-        "face": "none",
+-        "hands": "modern",
+-        "shape": "round",
+-        "border": "#ffff",
+-        "background": "#fff2"
+-    },
+-    "worldclocks": [
+-        {
+-            "timezone": "Europe/Paris",
+-            "region": "Clermont-Ferrand"
+-        },
+-        {
+-            "timezone": "America/Sao_Paulo",
+-            "region": "Sao Paulo"
+-        }
+-    ],
+-    "unsplash": {
+-        "every": "tabs",
+-        "collection": "KWcmZT9FkSo",
+-        "lastCollec": "user",
+-        "time": 1746606433306
+-    },
+-    "weather": {
+-        "unit": "metric",
+-        "provider": "",
+-        "moreinfo": "none",
+-        "forecast": "auto",
+-        "temperature": "actual",
+-        "geolocation": "approximate",
+-        "city": "romagnat"
+-    },
+-    "notes": {
+-        "on": false,
+-        "opacity": 0.1,
+-        "width": 40,
+-        "align": "left"
+-    },
+-    "searchbar": {
+-        "on": false,
+-        "opacity": 0.1,
+-        "newtab": true,
+-        "suggestions": true,
+-        "engine": "default",
+-        "request": "",
+-        "placeholder": ""
+-    },
+-    "quotes": {
+-        "on": false,
+-        "author": false,
+-        "type": "classic",
+-        "frequency": "day",
+-        "last": 1746589872934
+-    },
+-    "font": {
+-        "size": "14",
+-        "family": "",
+-        "system": true,
+-        "weightlist": [],
+-        "weight": "300"
+-    },
+-    "supporters": {
+-        "enabled": true,
+-        "closed": true,
+-        "month": 5
+-    },
+-    "linkscgnoff": {
+-        "_id": "linkscgnoff",
+-        "order": 0,
+-        "parent": "Socials",
+-        "title": "",
+-        "url": "https://x.com"
+-    },
+-    "linksepjerj": {
+-        "_id": "linksepjerj",
+-        "order": 1,
+-        "parent": "linksijngll",
+-        "title": "",
+-        "url": "https://github.com/yinyu985"
+-    },
+-    "linksijngll": {
+-        "_id": "linksijngll",
+-        "order": 0,
+-        "parent": "Dev",
+-        "title": "",
+-        "folder": true
+-    },
+-    "linkskodlen": {
+-        "_id": "linkskodlen",
+-        "order": 0,
+-        "parent": "linksijngll",
+-        "title": "",
+-        "url": "https://github.com/yinyu985"
+-    },
+-    "linkskqfoda": {
+-        "_id": "linkskqfoda",
+-        "order": 1,
+-        "parent": "Socials",
+-        "title": "",
+-        "url": "https://ddg.gg"
+-    }
+-}
+diff --git a/tests/imports.test.ts b/tests/imports.test.ts
+index ec903d6..8e8e9e3 100644
+--- a/tests/imports.test.ts
++++ b/tests/imports.test.ts
+@@ -2,7 +2,7 @@ import './init.test.ts'
+ 
+ // Import script after test init, document needs to be loaded first
+ import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
+-import { filterData } from '../src/scripts/compatibility/apply.ts'
++import { mergeImportedConfig } from '../src/scripts/compatibility/apply.ts'
+ import { assert } from '@std/assert'
+ 
+ const defaults = structuredClone(SYNC_DEFAULT)
+@@ -21,132 +21,25 @@ Deno.test({
+     sanitizeOps: false,
+     sanitizeResources: false,
+     fn: () => {
+-        filterData('import', defaults, {})
++        mergeImportedConfig(defaults, {})
+     },
+ })
+ 
+-Deno.test('Current version small import', () => {
++Deno.test('Partial import keeps defaults for missing keys', () => {
+     const imported = {
+         time: false,
+-        main: true,
+         lang: 'en',
+     } as Record<string, unknown>
+-    const config = filterData('import', defaults, imported)
++    const config = mergeImportedConfig(defaults, imported)
+ 
+     assert(defaults.time !== config.time)
+     assert(defaults.lang === config.lang)
+-    assert('main' in config === false)
+ })
+ 
+-Deno.test('1.10.0', async (t) => {
+-    const text = Deno.readTextFileSync('./tests/configs/10.0.0.json')
+-    const old = JSON.parse(text)
+-    const res = filterData('import', defaults, old)
++Deno.test('Full import replaces current entirely', () => {
++    const incoming = structuredClone(SYNC_DEFAULT)
++    incoming.tabtitle = 'replaced'
++    const config = mergeImportedConfig(defaults, incoming)
+ 
+-    await t.step('Links', async (t) => {
+-        const defaultGroup = res.links.folders.find((group) => group.id === 'default')
+-
+-        await t.step('Legacy links are ignored by runtime imports', () => {
+-            assert(defaultGroup)
+-            assert((defaultGroup?.items.length ?? 0) === 0)
+-        })
+-    })
+-
+-    await t.step('Clock', () => {
+-        assert(res.dateformat === 'us')
+-    })
+-
+-    await t.step('Backgrounds', () => {
+-        assert(old.background_blur === res.backgrounds.blur)
+-    })
+-
+-    await t.step('Removed widgets', async (t) => {
+-        await t.step('Searchbar removed', () => {
+-            assert('searchbar' in res === false)
+-        })
+-
+-        await t.step('Weather removed', () => {
+-            assert('weather' in res === false)
+-        })
+-
+-        await t.step('Greeting removed', () => {
+-            assert('greeting' in res === false)
+-        })
+-    })
+-
+-    await t.step('Hide', () => {
+-        assert(Array.isArray(res.hide) === false)
+-    })
+-
+-    await t.step('Review', () => {
+-        assert(res.review === -1)
+-    })
+-})
+-
+-Deno.test('20.4.2', async (t) => {
+-    const text = Deno.readTextFileSync('./tests/configs/20.4.2.json')
+-    const old = JSON.parse(text)
+-    const res = filterData('import', defaults, old)
+-
+-    await t.step('Backgrounds', async (t) => {
+-        await t.step('Local type', () => {
+-            assert(res.backgrounds.type === 'files')
+-        })
+-
+-        await t.step('Blur', () => {
+-            assert(old.background_blur === res.backgrounds.blur)
+-        })
+-
+-        await t.step('Bright', () => {
+-            assert(old.background_bright === res.backgrounds.bright)
+-        })
+-
+-        await t.step('Unsplash collection', () => {
+-            assert(old.unsplash.collection === res.backgrounds.queries['unsplash-images-collections'])
+-        })
+-
+-        await t.step('Frequency', () => {
+-            assert(old.unsplash.every === res.backgrounds.frequency)
+-        })
+-    })
+-
+-    await t.step('Links', async (t) => {
+-        await t.step('Legacy link groups are ignored by runtime imports', () => {
+-            assert(res.links.folders.length === 1)
+-            assert(res.links.folders[0].id === 'default')
+-            assert(res.links.folders[0].items.length === 0)
+-        })
+-    })
+-
+-    await t.step('Removed widgets', () => {
+-        assert('main' in res === false)
+-        assert('weather' in res === false)
+-        assert('searchbar' in res === false)
+-        assert('quotes' in res === false)
+-    })
+-
+-    await t.step('Notes kept', () => {
+-        assert('notes' in res)
+-    })
+-})
+-
+-Deno.test('20.4.2-default', async (t) => {
+-    const text = Deno.readTextFileSync('./tests/configs/20.4.2-default.json')
+-    const old = JSON.parse(text)
+-    const res = filterData('import', defaults, old)
+-
+-    await t.step('Keep default link groups', () => {
+-        assert(JSON.stringify(res.links.folders.map((group) => group.id)) === `["default"]`)
+-    })
+-
+-    await t.step('Removed widgets', () => {
+-        assert('main' in res === false)
+-        assert('weather' in res === false)
+-        assert('searchbar' in res === false)
+-        assert('quotes' in res === false)
+-    })
+-
+-    await t.step('Notes kept', () => {
+-        assert('notes' in res)
+-    })
++    assert(config.tabtitle === 'replaced')
+ })
+

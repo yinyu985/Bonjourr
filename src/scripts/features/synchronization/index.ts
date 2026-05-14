@@ -3,7 +3,7 @@ import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { dedupeSyncLinks } from './merge.ts'
 import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
-import { filterData } from '../../compatibility/apply.ts'
+import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { networkForm } from '../../shared/form.ts'
 import { fadeOut } from '../../shared/dom.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
@@ -119,8 +119,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             local.gistToken = update.gistToken
             local.gistId = await findGistId(local.gistToken)
 
-            storage.local.set({ gistId: local.gistId })
-            storage.local.set({ gistToken: local.gistToken })
+            storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
 
             gistsyncform.accept()
             toggleSyncSettingsOption(local)
@@ -251,9 +250,21 @@ function isSyncType(val = ''): val is SyncType {
     return ['browser', 'gist', 'url', 'off'].includes(val)
 }
 
-async function mergeDownloadedSync(_current: Sync, incoming: Sync): Promise<Sync> {
+async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
     incoming = normalizeExternalSync(incoming)
     let update = dedupeSyncLinks(structuredClone(incoming))
+
+    // Snapshot the soon-to-be-overwritten config so a failed clear+set still leaves
+    // the user with a recoverable copy in localStorage. Web mode shares a 5 MB
+    // localStorage quota with the live config, so cap the snapshot size.
+    try {
+        const snapshot = JSON.stringify(current)
+        if (snapshot.length < 2_000_000) {
+            localStorage.setItem('bonjourr-archive-pre-sync', snapshot)
+        }
+    } catch (_) {
+        // localStorage might be full; the sync still proceeds.
+    }
 
     await storage.sync.clear()
     await storage.sync.set(update)
@@ -292,7 +303,7 @@ function getSettingsTextAreaSync(): Sync | undefined {
 }
 
 function normalizeExternalSync(data: Partial<Sync>): Sync {
-    return filterData('import', structuredClone(SYNC_DEFAULT), data)
+    return mergeImportedConfig(structuredClone(SYNC_DEFAULT), data)
 }
 
 // function isSyncFreq(val: string): val is SyncFreq {

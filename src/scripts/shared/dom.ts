@@ -11,18 +11,6 @@ export function webkitRangeTrackColor(input: HTMLInputElement): void {
     input.setAttribute('aria-valuemax', max || '100')
 }
 
-export function toggleDisabled(element: Element | null, force?: boolean): void {
-    if (element) {
-        const toggle = force !== undefined ? force : typeof element.getAttribute('disabled') === 'string'
-
-        if (toggle) {
-            element.setAttribute('disabled', '')
-        } else {
-            element.removeAttribute('disabled')
-        }
-    }
-}
-
 export function getSplitRangeData(id: string): { range?: string; button?: string } {
     const wrapper = document.querySelector<HTMLInputElement>(`#${id.replace('#', '')}`)
     const range = wrapper?.querySelector<HTMLInputElement>('input')

@@ -66,18 +66,6 @@ export function createSubfolder(title: string, items: LinkElem[] = []): LinkSubf
     }
 }
 
-export function getVisibleFolders(data: Sync): LinkFolder[] {
-    const selected = getSelectedFolder(data)
-    const pinned = data.links.folders.filter((folder) => folder.pinned)
-    const visible = uniqueById([...(selected ? [selected] : []), ...pinned])
-
-    return visible.length > 0 ? visible : data.links.folders.slice(0, 1)
-}
-
-export function getSelectedFolder(data: Sync): LinkFolder | undefined {
-    return getFolder(data, data.links.selectedFolder) ?? data.links.folders[0]
-}
-
 export function getFolder(data: Sync, id?: string): LinkFolder | undefined {
     return data.links.folders.find((folder) => folder.id === id)
 }
@@ -122,10 +110,6 @@ export function findNode(data: Sync, id: string): LinkLocation | undefined {
     }
 }
 
-export function getLinksInFolder(data: Sync, folderId?: string): LinkNode[] {
-    return getFolder(data, folderId ?? data.links.selectedFolder)?.items ?? []
-}
-
 export function getLinksInSubfolder(data: Sync, id: string): LinkElem[] {
     return getSubfolder(data, id)?.items ?? []
 }
@@ -155,24 +139,6 @@ export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
         data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
     }
     return removed
-}
-
-export function ensureDefaultFolder(data: Sync): LinkFolder {
-    let folder = data.links.folders[0]
-
-    if (!folder) {
-        folder = {
-            id: 'default',
-            title: 'default',
-            pinned: false,
-            source: 'local',
-            items: [],
-        }
-        data.links.folders.push(folder)
-        data.links.selectedFolder = folder.id
-    }
-
-    return folder
 }
 
 export function isElem(link: unknown): link is LinkElem {
@@ -285,17 +251,4 @@ function favoritesFolder(): LinkFolder {
         source: 'bookmarks',
         items: [],
     }
-}
-
-function uniqueById(folders: LinkFolder[]): LinkFolder[] {
-    const seen = new Set<string>()
-    const unique: LinkFolder[] = []
-
-    for (const folder of folders) {
-        if (seen.has(folder.id)) continue
-        seen.add(folder.id)
-        unique.push(folder)
-    }
-
-    return unique
 }

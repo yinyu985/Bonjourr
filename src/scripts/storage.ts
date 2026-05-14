@@ -13,6 +13,11 @@ interface AllStorage {
     local?: Local
 }
 
+interface InitializedStorage {
+    sync: Sync
+    local: Local
+}
+
 interface StorageTypeReturn {
     init: () => StorageType
     get: () => StorageType
@@ -37,7 +42,7 @@ interface Storage {
         set: (type: StorageType) => void
         init: () => StorageType
     }
-    init: () => Promise<AllStorage>
+    init: () => Promise<InitializedStorage>
     clearall: () => Promise<void>
 }
 
@@ -99,9 +104,7 @@ async function syncGet(_key?: string | string[]): Promise<Sync> {
     }
 }
 
-async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<void> {
-    // console.log('sync set', JSON.stringify(keyval))
-
+async function syncSet(keyval: Record<string, unknown>): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
             try {
@@ -114,7 +117,6 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
             } catch (err) {
                 console.warn('Local storage write failed', err)
             }
-            fn()
             return
         }
 
@@ -146,7 +148,6 @@ async function syncRemove(key: string): Promise<void> {
 
                 if (syncStorage) {
                     delete syncStorage[key]
-                    await chrome.storage.local.remove('syncStorage')
                     await chrome.storage.local.set({ syncStorage })
                 }
             } catch (_) { /* ignore */ }
@@ -183,8 +184,6 @@ async function syncClear(): Promise<void> {
 //	Local data
 
 function localSet(value: Record<string, unknown>): void {
-    // console.log('local set', JSON.stringify(value))
-
     switch (storage.type.get()) {
         case 'webext-local': {
             chrome.storage.local.set(value).catch((err) => {
@@ -297,7 +296,7 @@ async function localClear(): Promise<void> {
 
 //	Init data
 
-async function init(): Promise<AllStorage> {
+async function init(): Promise<InitializedStorage> {
     const store = globalThis.startupStorage as AllStorage ?? {}
 
     if (PLATFORM !== 'online' && !webextStoreReady()) {
@@ -338,6 +337,7 @@ async function init(): Promise<AllStorage> {
     }
 
     const sync = verifyDataAsSync(store.sync)
+    normalizeLinksState(sync)
     const local = verifyDataAsLocal(store.local)
 
     return {
@@ -358,7 +358,8 @@ async function clearall(): Promise<void> {
     sessionStorage.clear()
 
     Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('bonjourr-archive-') === false) {
+        const isArchive = key.startsWith('bonjourr-archive-') || key === 'update-archive'
+        if (!isArchive) {
             localStorage.removeItem(key)
         }
     })
@@ -399,7 +400,9 @@ async function clearall(): Promise<void> {
 export async function getSyncDefaults(): Promise<Sync> {
     try {
         const json = await (await fetch('config.json')).json()
-        return verifyDataAsSync(json)
+        const sync = verifyDataAsSync(json)
+        normalizeLinksState(sync)
+        return sync
     } catch (_) {
         // ...
     }
@@ -416,14 +419,10 @@ export function isStorageDefault(data: Sync): boolean {
 }
 
 function verifyDataAsSync(data: Partial<Sync> = {}): Sync {
-    const sync = {
+    return {
         ...SYNC_DEFAULT,
         ...data,
     }
-
-    normalizeLinksState(sync)
-
-    return sync
 }
 
 function verifyDataAsLocal(data: Partial<Local> = {}): Local {

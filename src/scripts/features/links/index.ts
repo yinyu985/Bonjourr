@@ -14,15 +14,16 @@ import { folderClick } from './folders.ts'
 import { startDrag } from './drag.ts'
 import {
     createTitle,
+    DEFAULT_FAVICON,
     getDefaultIcon,
     getLiFromEvent,
-    getLinksInFolder,
     getLinksInSubfolder,
     isElem,
     isSubfolder,
 } from './helpers.ts'
 import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
 
+import { PLATFORM } from '../../defaults.ts'
 import { stringMaxSize } from '../../shared/generic.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { getHTMLTemplate } from '../../shared/dom.ts'
@@ -339,36 +340,82 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
 }
 
 function createIcons(local: Local): void {
-    const resolvedIcons = initIconList.map(([img, url]) =>
-        [img, resolveIconUrl(local, url)] as [HTMLImageElement, string]
-    )
+    const resolved = initIconList.map(([img, url]) => [img, resolveIconUrl(local, url)] as [HTMLImageElement, string])
+    initIconList = []
 
-    for (const [img, url] of resolvedIcons) {
-        img.src = url
+    for (const [img, url] of resolved) {
+        loadIconWithFallback(img, url)
+    }
+}
+
+async function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): Promise<void> {
+    img.src = 'src/assets/interface/loading.svg'
+
+    // Non-DDG URLs (user-set custom URL, data:, local-icon blob) have no
+    // "404 with body" problem. Set src directly; on error fall back once.
+    if (!isDuckDuckGoUrl(primaryUrl)) {
+        img.addEventListener('error', () => {
+            img.src = DEFAULT_FAVICON
+        }, { once: true })
+        img.src = primaryUrl
+        return
     }
 
-    setTimeout(() => {
-        const incomplete = resolvedIcons.filter(([img]) => !img.complete || img.naturalWidth === 0)
-
-        for (const [img, url] of incomplete) {
-            img.src = 'src/assets/interface/loading.svg'
-            const newimg = document.createElement('img')
-            newimg.addEventListener('load', () => {
-                img.src = url
-            })
-            newimg.addEventListener('error', () => {
-                img.src = 'https://services.bonjourr.fr/favicon/blob/error'
-            })
-            newimg.src = url
-            setTimeout(() => {
-                if (!newimg.complete && newimg.naturalWidth === 0) {
-                    img.src = 'https://services.bonjourr.fr/favicon/blob/error'
-                }
-            }, 5000)
+    // DDG returns 404 with a gray-arrow PNG body when it has no icon for the
+    // host, and the browser still decodes that body as a valid image. We must
+    // see the HTTP status to detect the miss, so fetch once and reuse the
+    // bytes via a blob URL — that avoids a second network round-trip.
+    try {
+        const resp = await fetch(primaryUrl)
+        if (resp.ok) {
+            const blob = await resp.blob()
+            const blobUrl = URL.createObjectURL(blob)
+            const revoke = () => URL.revokeObjectURL(blobUrl)
+            img.addEventListener('load', revoke, { once: true })
+            img.addEventListener('error', revoke, { once: true })
+            img.src = blobUrl
+            return
         }
+    } catch (_) {
+        // Offline / network error → fall through to the fallback chain.
+    }
 
-        initIconList = []
-    }, 400)
+    // DDG miss → Chrome's _favicon for locally-visited sites (intranet,
+    // localhost, private deployments). For sites the browser has never seen,
+    // _favicon returns a generic placeholder; we accept that to keep the path
+    // simple and fast.
+    if (PLATFORM === 'chrome') {
+        const original = originalUrlFromDuckDuckGo(primaryUrl)
+        if (original) {
+            img.addEventListener('error', () => {
+                img.src = DEFAULT_FAVICON
+            }, { once: true })
+            img.src = buildChromeFaviconUrl(original)
+            return
+        }
+    }
+
+    img.src = DEFAULT_FAVICON
+}
+
+function isDuckDuckGoUrl(url: string): boolean {
+    return url.startsWith('https://icons.duckduckgo.com/ip3/')
+}
+
+function originalUrlFromDuckDuckGo(ddgUrl: string): string | undefined {
+    try {
+        const m = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
+        return m ? `https://${m[1]}/` : undefined
+    } catch (_) {
+        return undefined
+    }
+}
+
+function buildChromeFaviconUrl(pageUrl: string): string {
+    const u = new URL(chrome.runtime.getURL('/_favicon/'))
+    u.searchParams.set('pageUrl', pageUrl)
+    u.searchParams.set('size', '32')
+    return u.toString()
 }
 
 function resolveIconUrl(local: Local, url: string): string {
@@ -643,7 +690,6 @@ function deleteLinks(ids: string[], data: Sync): Sync {
         removeNode(data, id)
     }
 
-    storage.sync.clear()
     animateLinksRemove(ids)
     return data
 }
@@ -700,11 +746,11 @@ function refreshIcons(ids: string[], data: Sync): Sync {
         const node = getNode(data, id)
 
         if (isElem(node)) {
-            const unixDate = Date.now().toString()
+            const unixDate = Date.now()
 
             if (!node.icon || node.icon.type === 'auto') {
                 node.icon = node.icon ?? { type: 'auto', value: '' }
-                node.icon.value = getDefaultIcon(node.url) + `?r=${unixDate}`
+                node.icon.value = getDefaultIcon(node.url, unixDate)
             } else if (node.icon.type === 'url') {
                 node.icon.value = `${node.icon.value}?r=${unixDate}`
             }
@@ -747,25 +793,30 @@ function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
 async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrounds?: boolean }): Promise<void> {
     const data = await storage.sync.get()
     const style = styles.style ?? 'inline'
+    let dirty = false
 
     if (styles.style && isLinkStyle(style)) {
         domlinkblocks.classList.remove('inline', 'text')
         domlinkblocks.classList.add(style)
         data.links.style = style
-        storage.sync.set({ links: data.links })
         initRows(data.links.rows, style)
+        dirty = true
     }
 
     if (typeof styles.titles === 'boolean') {
         data.links.titles = styles.titles
-        storage.sync.set({ links: data.links })
         domlinkblocks.classList.toggle('titles', styles.titles)
+        dirty = true
     }
 
     if (typeof styles.backgrounds === 'boolean') {
         data.links.backgrounds = styles.backgrounds
-        storage.sync.set({ links: data.links })
         domlinkblocks.classList.toggle('backgrounds', styles.backgrounds)
+        dirty = true
+    }
+
+    if (dirty) {
+        await storage.sync.set({ links: data.links })
     }
 }
 
@@ -805,7 +856,15 @@ function animateLinksRemove(ids: string[]): void {
 }
 
 function getIconFromLinkElem(link: LinkElem): string {
-    if (!link.icon?.value) {
+    const stored = link.icon?.value
+    // Legacy chrome-extension://[id]/_favicon/ values were persisted by
+    // refreshIcons in earlier versions. Treat them as missing so they get
+    // recomputed via DDG → Chrome → DEFAULT_FAVICON on render.
+    const isStaleChromeFavicon = typeof stored === 'string' &&
+        stored.startsWith('chrome-extension://') &&
+        stored.includes('/_favicon/')
+
+    if (!stored || isStaleChromeFavicon) {
         try {
             const url = new URL(link.url)
             if (url.protocol === 'data:') {
@@ -817,11 +876,11 @@ function getIconFromLinkElem(link: LinkElem): string {
         }
     }
 
-    if (link.icon.type === 'file') {
+    if (link.icon?.type === 'file') {
         return `local-icon:${link.id}`
     }
 
-    return link.icon.value
+    return stored
 }
 
 function isLinkStyle(style: string): style is Sync['links']['style'] {
@@ -857,5 +916,3 @@ function reorderItems<T extends { id: string }>(items: T[] | undefined, ids: str
 
     items.splice(0, items.length, ...ordered, ...missing)
 }
-
-export const getLinksInGroup = getLinksInFolder

@@ -18,10 +18,9 @@ import { serviceWorker } from './startup/serviceworker.ts'
 import { tabsTracking } from './startup/tabstracking.ts'
 import { settingsInit } from './settings.ts'
 import { userActions } from './events.ts'
-import { filterData } from './compatibility/apply.ts'
 import { storage } from './storage.ts'
 
-import { BROWSER, CURRENT_VERSION, LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT, SYSTEM_OS } from './defaults.ts'
+import { BROWSER, PLATFORM, SYSTEM_OS } from './defaults.ts'
 
 restoreBackgroundCache()
 
@@ -53,31 +52,7 @@ try {
 }
 
 async function startup(): Promise<void> {
-    let { sync, local } = await storage.init()
-    const oldVersion = sync?.about?.version
-
-    if (!sync || !local) {
-        console.warn('Storage failed, loading Bonjourr with default settings')
-        sync = structuredClone(SYNC_DEFAULT)
-        local = structuredClone(LOCAL_DEFAULT)
-    }
-
-    if (oldVersion !== CURRENT_VERSION) {
-        console.info(`Updated Bonjourr, ${oldVersion} => ${CURRENT_VERSION}`)
-
-        localStorage.setItem('update-archive', JSON.stringify(sync))
-
-        sync = filterData('update', sync)
-
-        local.translations = undefined
-        storage.local.remove('translations')
-        local = { ...LOCAL_DEFAULT, ...local }
-
-        // <!> keep this order
-        // <!> must delete old keys before upgrading storage
-        await storage.sync.clear()
-        await storage.sync.set(sync)
-    }
+    const { sync, local } = await storage.init()
 
     await setTranslationCache(sync.lang, local)
 
