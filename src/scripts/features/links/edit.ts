@@ -11,7 +11,6 @@ interface EditStates {
     folder: string
     selected: string[]
     selectall: boolean
-    dragging: boolean
     container: {
         mini: boolean
         group: boolean
@@ -22,7 +21,6 @@ interface EditStates {
         folder: boolean
         title: boolean
         synced: boolean
-        addgroup: boolean
     }
 }
 
@@ -69,11 +67,9 @@ export async function populateDialogWithEditLink(
         folder: classNames.some((cl) => cl.includes('link-folder')),
         title: classNames.some((cl) => cl.includes('link-title')),
         synced: isFavorite || classNames.some((cl) => cl.includes('synced')),
-        addgroup: classNames.some((cl) => cl.includes('add-group')),
     }
 
     const selectall = classNames.some((cl) => cl.includes('select-all'))
-    const dragging = classNames.some((cl) => cl.includes('dragging') || cl.includes('dropping'))
     const group = (container.mini ? linktitle : linkgroup)?.dataset.group ?? ''
 
     const domfolder = document.querySelector<HTMLElement>('.link-group.in-folder')
@@ -84,7 +80,6 @@ export async function populateDialogWithEditLink(
         folder,
         selectall,
         container,
-        dragging,
         target,
         selected: getSelectedIds(),
     }
@@ -94,7 +89,7 @@ export async function populateDialogWithEditLink(
     const noSelection = selectall && editStates.selected.length === 0
     const noInputs = inputs.length === 0
 
-    if (noInputs || folderTitle || noSelection || dragging) {
+    if (noInputs || folderTitle || noSelection) {
         closeContextMenu()
         return
     }
@@ -112,17 +107,13 @@ export async function populateDialogWithEditLink(
     if (target.title) {
         const folders = data.links.folders
         const folder = folders.find((item) => item.id === editStates.group)
-        const title = editStates.target.addgroup ? '' : folder?.title ?? editStates.group
+        const title = folder?.title ?? editStates.group
 
         domeditlink.dataset.group = folder?.id ?? ''
         domtitle.value = title
 
-        const onlyOneTitleUnpinned = folders.filter((item) => !item.pinned).length < 2
         const onlyOneTitleLeft = folders.length < 2
 
-        if (onlyOneTitleUnpinned) {
-            document.getElementById('edit-pin')?.setAttribute('disabled', '')
-        }
         if (onlyOneTitleLeft) {
             document.getElementById('edit-delete')?.setAttribute('disabled', '')
         }
@@ -166,18 +157,12 @@ function toggleEditInputs(): string[] {
     inputToFocus = domtitle
     setSubmitOnEnter('edit-apply')
 
-    document.querySelector('#edit-delete')?.removeAttribute('disabled')
-    document.querySelector('#edit-pin')?.removeAttribute('disabled')
-
     domurl.value = ''
     domtitle.value = ''
 
     if (container.mini) {
         if (target.synced && target.title) {
             inputs = []
-        } else if (target.addgroup) {
-            inputs = ['title*', 'add'] // * for required inputs
-            setSubmitOnEnter('edit-add')
         } else if (target.title) {
             inputs = ['title', 'delete', 'apply']
         }
@@ -216,7 +201,6 @@ function toggleEditInputs(): string[] {
         }
     }
 
-    // shows/enables every input, button and label needed
     for (const id of inputs) {
         const required = id.endsWith('*')
         const cleanId = required ? id.slice(0, -1) : id
@@ -244,13 +228,7 @@ function toggleEditInputs(): string[] {
     }
 
     if (addButtonTxt) {
-        if (selectall) {
-            addButtonTxt.textContent = tradThis('Create new folder')
-        } else if (target.title) {
-            addButtonTxt.textContent = tradThis('Add new group')
-        } else {
-            addButtonTxt.textContent = tradThis('Add new link')
-        }
+        addButtonTxt.textContent = tradThis(selectall ? 'Create new folder' : 'Add new link')
     }
 
     return inputs
@@ -299,7 +277,7 @@ function submitChanges(event: SubmitEvent): void {
     }
 
     if (change === 'edit-add') {
-        if (container.folder) { // new link inside folder
+        if (container.folder) {
             quickLinks(undefined, {
                 addLinks: [{
                     folder,
@@ -307,24 +285,18 @@ function submitChanges(event: SubmitEvent): void {
                     url: domurl.value,
                 }],
             })
-        } else if (target.title && domtitle.value) { // new group
-            quickLinks(undefined, {
-                addFolders: [{
-                    title: domtitle.value,
-                }],
-            })
         } else if (selectall) {
-            document.dispatchEvent(new Event('remove-select-all')) // new folder from multi-selection
+            document.dispatchEvent(new Event('remove-select-all'))
             quickLinks(undefined, {
                 addSubfolder: {
                     ids: selected,
                     folder: group,
                 },
             })
-        } else if (container.group) { // new link
+        } else {
             quickLinks(undefined, {
                 addLinks: [{
-                    folder: group,
+                    group,
                     title: domtitle.value,
                     url: domurl.value,
                 }],
@@ -357,13 +329,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
     const id = editStates.selected[0]
     const li = document.querySelector<HTMLLIElement>(`#${id}`)
     const _inputs = document.querySelectorAll<HTMLInputElement>('#editlink input')
-
-    if (editStates.target.addgroup) {
-        quickLinks(undefined, { addFolders: [{ title: domtitle.value }] })
-        closeContextMenu()
-        return
-    }
-
     if (editStates.target.title) {
         quickLinks(undefined, {
             folderTitle: {
@@ -379,18 +344,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
         quickLinks(undefined, {
             addLinks: [{
                 group: editStates.folder,
-                title: domtitle.value,
-                url: domurl.value,
-            }],
-        })
-        closeContextMenu()
-        return
-    }
-
-    if (editStates.container.group && !editStates.target.link && !editStates.target.folder) {
-        quickLinks(undefined, {
-            addLinks: [{
-                group: editStates.group,
                 title: domtitle.value,
                 url: domurl.value,
             }],

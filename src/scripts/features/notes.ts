@@ -90,7 +90,7 @@ function toggleNotes(force?: boolean): void {
 
     panel?.classList.toggle('hidden', !shouldOpen)
     panel?.classList.toggle('shown', shouldOpen)
-    panel?.setAttribute('aria-hidden', String(!shouldOpen))
+    panel?.toggleAttribute('inert', !shouldOpen)
     trigger?.classList.toggle('shown', shouldOpen)
 
     if (shouldOpen && noteState.records.length === 0) {

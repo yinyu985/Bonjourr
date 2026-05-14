@@ -59,7 +59,6 @@ type BookmarkLinksUpdate = {
     deleteLinks?: string[]
     deleteFolder?: string
     folderTitle?: { old: string; new: string }
-    moveFolders?: string[]
     unsyncFolder?: string
 }
 
@@ -134,7 +133,6 @@ function applySyncedFolders(data: Sync): boolean {
             folder = {
                 id: browserFolder.id,
                 title: browserFolder.title,
-                pinned: false,
                 source: 'bookmarks',
                 items: [],
             }
@@ -570,11 +568,6 @@ function shouldBlockLocalBookmarkUpdate(update: BookmarkLinksUpdate, data: Sync)
     if (update.deleteFolder) {
         return isSyncedBookmarkFolder(data, update.deleteFolder)
     }
-
-    if (update.moveFolders) {
-        return update.moveFolders.some((folder) => isSyncedBookmarkFolder(data, folder))
-    }
-
     if (update.unsyncFolder) {
         return isSyncedBookmarkFolder(data, update.unsyncFolder)
     }

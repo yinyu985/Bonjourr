@@ -911,6 +911,8 @@ function handleTextureOptions(backgrounds: Backgrounds): void {
     }
 }
 
+let lastShownCollectionName = ''
+
 function handleProviderOptions(backgrounds: Backgrounds): void {
     switch (backgrounds.type) {
         case 'files':
@@ -938,8 +940,12 @@ function handleProviderOptions(backgrounds: Backgrounds): void {
     if (optionsExist) {
         domusercolloption.classList.toggle('shown', hasCollections)
         domusersearchoption.classList.toggle('shown', hasSearch)
-        domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
-        domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
+
+        if (collectionName !== lastShownCollectionName) {
+            domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
+            domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
+            lastShownCollectionName = collectionName
+        }
     }
 }
 

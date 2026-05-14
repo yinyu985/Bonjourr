@@ -131,7 +131,7 @@ function getContextTarget(event: Event): HTMLElement {
     }
 
     if (document.body.classList.contains('group-focus') && event.type === 'contextmenu') {
-        const activeGroup = document.querySelector<HTMLElement>('#linkblocks > .link-group:not(.pinned)')
+        const activeGroup = document.querySelector<HTMLElement>('#linkblocks > .link-group')
         const pointer = event as PointerEvent
 
         if (activeGroup) {

@@ -1,2435 +1,2478 @@
-diff --git a/AGENTS.md b/AGENTS.md
-index 0456ee7..5360cfe 100644
---- a/AGENTS.md
-+++ b/AGENTS.md
-@@ -1,14 +1,100 @@
- # Bonjourr Development Guide
+diff --git a/_locales/de/translations.json b/_locales/de/translations.json
+index 33c2a15..d47df81 100644
+--- a/_locales/de/translations.json
++++ b/_locales/de/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "Lokale Datei",
+     "URL": "URL",
+     "Add new link": "Neuen Link hinzufügen",
+-    "Add new group": "Neue Gruppe hinzufügen",
+     "Create new folder": "Neuen Ordner erstellen",
+     "Delete link": "Link löschen",
+     "Delete group": "Gruppe löschen",
+@@ -43,8 +42,6 @@
+     "Delete selected": "Ausgewählte löschen",
+     "Remove from folder": "Aus Ordner entfernen",
+     "Refresh icon": "Symbol aktualisieren",
+-    "Pin group": "Diese Gruppe anpinnen",
+-    "Unpin group": "Gruppe lösen",
+     "Apply changes": "Änderungen übernehmen",
+     "Edit quotes settings": "Anführungszeichen-Einstellungen bearbeiten",
+     "Edit weather & greetings": "Wetter & Grüße bearbeiten",
+diff --git a/_locales/en/translations.json b/_locales/en/translations.json
+index 3df86d7..d3467a6 100644
+--- a/_locales/en/translations.json
++++ b/_locales/en/translations.json
+@@ -40,7 +40,6 @@
+     "URL": "URL",
  
--Bonjourr is a minimalist and customizable "new tab" browser extension.
-+Bonjourr is a minimalist new tab browser extension (Chrome, Edge, Firefox, Safari) and web app. This fork is privacy-focused, built around browser-native bookmarks. No frontend framework — plain TypeScript, HTML, CSS bundled with esbuild.
+     "Add new link": "Add new link",
+-    "Add new group": "Add new group",
+     "Create new folder": "Create new folder",
+     "Delete link": "Delete link",
+     "Delete group": "Delete group",
+@@ -48,8 +47,6 @@
+     "Delete selected": "Delete selected",
+     "Remove from folder": "Remove from folder",
+     "Refresh icon": "Refresh icon",
+-    "Pin group": "Pin group",
+-    "Unpin group": "Unpin group",
+     "Apply changes": "Apply changes",
+     "Edit quotes settings": "Edit quotes settings",
+     "Edit weather & greetings": "Edit weather & greetings",
+diff --git a/_locales/es/translations.json b/_locales/es/translations.json
+index ceff1ca..cd47171 100644
+--- a/_locales/es/translations.json
++++ b/_locales/es/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "Archivo local",
+     "URL": "URL",
+     "Add new link": "Añadir nuevo enlace",
+-    "Add new group": "Añadir nuevo grupo",
+     "Create new folder": "Crear nueva carpeta",
+     "Delete link": "Eliminar enlace",
+     "Delete group": "Borrar grupo",
+@@ -43,8 +42,6 @@
+     "Delete selected": "Borrar seleccionados",
+     "Remove from folder": "Eliminar de carpeta",
+     "Refresh icon": "Icono de actualización",
+-    "Pin group": "Fijar este grupo",
+-    "Unpin group": "Desanclar grupo",
+     "Apply changes": "Aplicar cambios",
+     "Edit quotes settings": "Editar configuración de citas",
+     "Edit weather & greetings": "Editar clima y saludos",
+diff --git a/_locales/fr/translations.json b/_locales/fr/translations.json
+index 5c6f102..119e387 100644
+--- a/_locales/fr/translations.json
++++ b/_locales/fr/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "Fichier local",
+     "URL": "URL",
+     "Add new link": "Ajouter un lien",
+-    "Add new group": "Ajouter un groupe",
+     "Create new folder": "Nouveau dossier",
+     "Delete link": "Supprimer",
+     "Delete group": "Supprimer le groupe",
+@@ -43,8 +42,6 @@
+     "Delete selected": "Supprimer la sélection",
+     "Remove from folder": "Retirer du dossier",
+     "Refresh icon": "Actualiser l'icône",
+-    "Pin group": "Épingler le groupe",
+-    "Unpin group": "Détacher le groupe",
+     "Apply changes": "Enregistrer",
+     "Edit quotes settings": "Réglages des citations",
+     "Edit weather & greetings": "Réglages météo",
+diff --git a/_locales/ja/translations.json b/_locales/ja/translations.json
+index 862a473..3a8059c 100644
+--- a/_locales/ja/translations.json
++++ b/_locales/ja/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "ローカルファイル",
+     "URL": "URL",
+     "Add new link": "新しいリンクを追加",
+-    "Add new group": "新しいグループを追加する",
+     "Create new folder": "新しいフォルダーを作成",
+     "Delete link": "リンクを削除",
+     "Delete group": "グループ削除",
+@@ -43,8 +42,6 @@
+     "Delete selected": "選択削除",
+     "Remove from folder": "フォルダーから除外する",
+     "Refresh icon": "リフレッシュアイコン",
+-    "Pin group": "このグループをピン留めする",
+-    "Unpin group": "グループのピンを外す",
+     "Apply changes": "適用する",
+     "Edit quotes settings": "引用設定を編集",
+     "Edit weather & greetings": "天気と挨拶を編集",
+diff --git a/_locales/ko/translations.json b/_locales/ko/translations.json
+index 2852524..8dc7828 100644
+--- a/_locales/ko/translations.json
++++ b/_locales/ko/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "로컬 파일",
+     "URL": "URL",
+     "Add new link": "새 링크 추가",
+-    "Add new group": "새 그룹 추가",
+     "Create new folder": "새 폴더 생성",
+     "Delete link": "링크 삭제",
+     "Delete group": "그룹 삭제",
+@@ -43,8 +42,6 @@
+     "Delete selected": "선택한 항목 삭제",
+     "Remove from folder": "폴더에서 제거",
+     "Refresh icon": "아이콘 새로고침",
+-    "Pin group": "그룹 고정",
+-    "Unpin group": "그룹 고정 해제",
+     "Apply changes": "변경 사항 적용",
+     "Edit quotes settings": "인용문 설정 편집",
+     "Edit weather & greetings": "날씨 및 인사말 수정",
+diff --git a/_locales/pt-BR/translations.json b/_locales/pt-BR/translations.json
+index c8a2bbc..f90b05b 100644
+--- a/_locales/pt-BR/translations.json
++++ b/_locales/pt-BR/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "Arquivo local",
+     "URL": "URL",
+     "Add new link": "Adicionar novo link",
+-    "Add new group": "Adicionar novo grupo",
+     "Create new folder": "Criar nova pasta",
+     "Delete link": "Excluir link",
+     "Delete group": "Apagar grupo",
+@@ -43,8 +42,6 @@
+     "Delete selected": "Apagar selecionado",
+     "Remove from folder": "Remover da pasta",
+     "Refresh icon": "Atualizar o ícone",
+-    "Pin group": "Fixar grupo",
+-    "Unpin group": "Desafixar grupo",
+     "Apply changes": "Aplicar mudanças",
+     "Edit quotes settings": "Editar configurações de citações",
+     "Edit weather & greetings": "Editar clima e saudações",
+diff --git a/_locales/ru/translations.json b/_locales/ru/translations.json
+index e09e731..1365190 100644
+--- a/_locales/ru/translations.json
++++ b/_locales/ru/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "Локальный файл",
+     "URL": "URL",
+     "Add new link": "Добавить новую ссылку",
+-    "Add new group": "Добавить новую группу",
+     "Create new folder": "Создать новую папку",
+     "Delete link": "Удалить ссылку",
+     "Delete group": "Удалить группу",
+@@ -43,8 +42,6 @@
+     "Delete selected": "Удалить выбранное",
+     "Remove from folder": "Удалить из папки",
+     "Refresh icon": "Обновить значок",
+-    "Pin group": "Закрепить группу",
+-    "Unpin group": "Открепить группу",
+     "Apply changes": "Применить изменения",
+     "Edit quotes settings": "Редактировать настройки цитат",
+     "Edit weather & greetings": "Изменить погоду и приветствия",
+diff --git a/_locales/zh-CN/translations.json b/_locales/zh-CN/translations.json
+index be15d59..0f49b1d 100644
+--- a/_locales/zh-CN/translations.json
++++ b/_locales/zh-CN/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "本地文件",
+     "URL": "网址",
+     "Add new link": "添加新链接",
+-    "Add new group": "添加新组",
+     "Create new folder": "创建新文件夹",
+     "Delete link": "删除链接",
+     "Delete group": "删除组",
+@@ -43,8 +42,6 @@
+     "Delete selected": "删除所选",
+     "Remove from folder": "从文件夹中删除",
+     "Refresh icon": "刷新图标",
+-    "Pin group": "置顶此群组",
+-    "Unpin group": "取消固定组",
+     "Apply changes": "保存更改",
+     "Edit quotes settings": "编辑引言设置",
+     "Edit weather & greetings": "编辑天气和问候语",
+diff --git a/_locales/zh-TW/translations.json b/_locales/zh-TW/translations.json
+index 96dfd85..2fd2718 100644
+--- a/_locales/zh-TW/translations.json
++++ b/_locales/zh-TW/translations.json
+@@ -35,7 +35,6 @@
+     "Local file": "本機檔案",
+     "URL": "網址",
+     "Add new link": "新增連結",
+-    "Add new group": "新增群組",
+     "Create new folder": "建立新資料夾",
+     "Delete link": "刪除連結",
+     "Delete group": "刪除群組",
+@@ -43,8 +42,6 @@
+     "Delete selected": "刪除所選",
+     "Remove from folder": "從資料夾中移除",
+     "Refresh icon": "重新整理圖示",
+-    "Pin group": "固定群組",
+-    "Unpin group": "取消固定群組",
+     "Apply changes": "套用變更",
+     "Edit quotes settings": "編輯引言設定",
+     "Edit weather & greetings": "編輯天氣與問候語",
+diff --git a/src/index.html b/src/index.html
+index fbfec87..2828692 100644
+--- a/src/index.html
++++ b/src/index.html
+@@ -92,44 +92,6 @@
  
--1. Use **Deno** as its runtime and task runner. Never user `npm` or others. If **Deno** fails at something, stop and ask for help.
--2. Do not try to add dependencies, find a native solution.
--3. Repeat yourself instead of writing difficult or unreadable code.
--4. Run `deno task check` after finishing changes. It runs format, lint, type check, and tests in one go. No need in-between edits.
-+## Workflow rules
+                     <span class="trn">Add something</span>
+                 </button>
+-
+-                <button type="submit" id="edit-pin">
+-                    <svg
+-                        xmlns="http://www.w3.org/2000/svg"
+-                        fill="none"
+-                        viewBox="0 0 24 24"
+-                        stroke-width="1.5"
+-                        stroke="currentColor"
+-                    >
+-                        <path
+-                            stroke-linecap="round"
+-                            stroke-linejoin="round"
+-                            d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+-                        />
+-                    </svg>
+-
+-                    <span class="trn">Pin group</span>
+-                </button>
+-
+-                <button type="submit" id="edit-unpin">
+-                    <svg
+-                        xmlns="http://www.w3.org/2000/svg"
+-                        fill="none"
+-                        viewBox="0 0 24 24"
+-                        stroke-width="1.5"
+-                        stroke="currentColor"
+-                        class="size-6"
+-                    >
+-                        <path
+-                            stroke-linecap="round"
+-                            stroke-linejoin="round"
+-                            d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+-                        />
+-                    </svg>
+-
+-                    <span class="trn">Unpin group</span>
+-                </button>
+-
+                 <button type="submit" id="edit-unfolder">
+                     <svg
+                         xmlns="http://www.w3.org/2000/svg"
+@@ -441,7 +403,7 @@
+             <!-- settings -->
+         </aside>
  
--如果是一些简单的编辑任务，你可以让我的另外一个 agent 来执行
--下面是一个样例，你可以这样调用它。
-+1. **Deno only.** Never invoke `npm`, `pnpm`, `yarn`, or `node` directly. If a Deno task fails, stop and ask rather than reaching for npm. (`nodeModulesDir: "auto"` in `deno.json` lets Deno hydrate `node_modules/` itself for `npm:` imports.)
-+2. **No new dependencies.** Find a native solution before adding one. Allowed external imports are pinned in `deno.json` `imports`; the `no-external-import` lint rule enforces this.
-+3. **Prefer repetition over cleverness.** Repeat yourself rather than write difficult or unreadable code.
-+4. **Run `deno task check` after finishing changes** (format + lint + type check + tests). No need to run it between edits.
- 
--~/Documents/Bonjourr master 7s ❯ claude -p "你好" --dangerously-skip-permissions
--你好！有什么可以帮你的吗？我看到你在 Bonjourr 项目的工作目录里，这是一个浏览器新标签页扩展项目。需要我帮你做什么？
-+如果是一些简单的编辑任务，你可以让我的另外一个 agent 来执行。下面是一个样例，你可以这样调用它：
-+
-+```bash
-+claude -p "你好" --dangerously-skip-permissions
-+```
-+
-+## Common commands
-+
-+```bash
-+deno task online           # dev server on :8000 (web build, watches src/)
-+deno task chrome           # dev build to release/chrome (also: edge, firefox, safari)
-+deno task build            # production build of all platforms into release/<platform>
-+deno task check            # fmt + lint + type-check + test (CI parity)
-+deno task test             # run all Deno tests (--allow-read --allow-env)
-+deno task types            # type-check src/ tasks/ tests/
-+deno task translate        # regenerate _locales after adding translation keys
-+deno task archive          # produce bonjourr-<platform>.zip via Docker (release artifacts)
-+```
-+
-+Run a single test file: `deno test --allow-read --allow-env tests/init.test.ts`. Filter by name: add `--filter "<substring>"`.
-+
-+CI (`.github/workflows/ci.yml`) runs `deno task build`, `deno task test`, `deno check`, and `deno lint` independently — passing `deno task check` locally covers all four.
-+
-+## Architecture
-+
-+### Build pipeline (`tasks/build.ts`)
-+
-+A single esbuild-driven script builds five platforms (`chrome`, `edge`, `firefox`, `safari`, `online`) from the same source. Each output goes to `release/<platform>/`. Per-platform variation is handled by:
-+
-+- **HTML token replacement.** `src/index.html` contains comment markers (`<!-- default icon -->`, `<!-- webext-storage -->`, `<!-- settings -->`, `<!-- help-mode -->`); the build replaces them differently per platform. `settings.html` and `help-mode.html` are inlined into `index.html` at build time.
-+- **Manifest selection.** `src/manifests/<platform>.json` → `release/<platform>/manifest.json`. The web build instead emits `manifest.webmanifest` + a `service-worker.js` with `__VERSION__` substituted from `src/scripts/version.ts`.
-+- **Bundle entry points.** Scripts: `src/scripts/index.ts` → `main.js`. Styles: `src/styles/style.css` → `style.css`. The `online` platform is minified; extension builds keep readable output. `define.ENV` is set to `"DEV"` / `"PROD"` so runtime can branch.
-+- **Watch mode.** `dev` builds invoke `watcher()`, which re-runs the relevant sub-task (html / styles / scripts / assets / manifests / locales) on file changes.
-+
-+### Runtime entry (`src/scripts/index.ts`)
-+
-+Boot sequence is fixed and order-sensitive:
-+
-+1. `restoreBackgroundCache()` paints the cached background from `localStorage` synchronously to avoid a flash.
-+2. `storage.init()` resolves both `sync` (user settings) and `local` (caches/state) state. If absent, defaults from `defaults.ts` are cloned.
-+3. Version migration: when `sync.about.version !== CURRENT_VERSION`, the previous sync is archived to `localStorage` (`update-archive`), `filterData('update', sync)` from `compatibility/apply.ts` rewrites the shape, then `storage.sync.clear()` + `set(sync)` is called **in that order** (comment in code: "must delete old keys before upgrading storage").
-+4. Each feature's entry function is invoked once with `(sync, local?)`.
-+
-+### Storage abstraction (`src/scripts/storage.ts`)
-+
-+Two backends behind one API: `webext-local` (uses `chrome.storage.local` even for the "sync" namespace — the extension stores sync data under a `syncStorage` key inside local storage) and `localstorage` (web build, JSON-encoded under `localStorage.bonjourr`). The type is selected at startup based on `globalThis.chrome?.storage`. All feature code reads/writes through `storage.sync.*` / `storage.local.*` and never touches the platform APIs directly. `storage.init()` also handles a wait-for-`webextstorage`-event handshake when the extension's `services/webext-storage.js` content script populates `globalThis.startupStorage` before the bundle loads.
-+
-+### Feature module pattern
-+
-+Every feature in `src/scripts/features/` exports one entry function that switches on its argument shape:
-+
-+```ts
-+export function feature(init?: FeatureSync, update?: FeatureUpdate): void {
-+  if (update) { /* live update from settings */ return }
-+  if (init)   { /* initial render on startup */ }
-+}
-+```
-+
-+`settings.ts` wires HTML inputs to features by calling `feature(undefined, { property: value })` — passing `undefined` as the first arg signifies a live update. Settings UI never manipulates feature DOM directly. State is persisted via `eventDebounce({ feature })` for high-frequency inputs (sliders) to limit storage writes. Full convention table is in `docs/TECHNICAL.md` § 6.
-+
-+### Type contracts (`src/types/`)
-+
-+`sync.ts` (synced user settings, the `Sync` type), `local.ts` (browser-local caches incl. backgrounds, the `Local` type), `shared.ts` (cross-cutting types like `Langs`, `Navigator`). Adding a new feature setting almost always means updating `Sync` in `sync.ts` and the corresponding default in `defaults.ts` `SYNC_DEFAULT`.
-+
-+### Compatibility / migrations (`src/scripts/compatibility/`)
-+
-+`versions.ts` lists per-version migration filters; `apply.ts` `filterData(stage, sync)` runs them. When changing the shape of stored settings, add the migration here — old user data must remain loadable.
-+
-+### Styles (`src/styles/`)
-+
-+`style.css` is the manifest; it imports `_global.css` first, feature/component files in the middle, `_responsive.css` last. Theming is done via `[data-theme='light'|'dark']` selectors on `<html>` toggling CSS custom properties. Don't introduce `!important` or deep selector chains — see `docs/TECHNICAL.md` § 7 for the full styling convention.
-+
-+### i18n (`_locales/`)
-+
-+Each locale has `translations.json` (in-app strings) and `messages.json` (extension manifest strings, web build skips this). `traduction(node, lang)` translates a DOM subtree at startup; `tradThis(string)` translates literals at runtime. After adding new keys, run `deno task translate` to propagate them across locale files.
-+
-+## Conventions
-+
-+- **Imports must include the `.ts` extension** (Deno requirement). External deps must use the `npm:` / `jsr:` prefixes already declared in `deno.json` `imports`.
-+- **Filenames are `kebab-case` or lowercase**; entry-point function names are `camelCase` matching the feature.
-+- **Constants are `UPPER_SNAKE_CASE`** (e.g. `SYNC_DEFAULT`, `CURRENT_VERSION`).
-+- **Lint includes `explicit-function-return-type` and `verbatim-module-syntax`** — annotate return types on exported functions, and use `import type` for type-only imports.
-+- **DOM state via `dataset` and CSS variables**, not stateful JS objects: e.g. `document.documentElement.dataset.theme = 'dark'`, `style.setProperty('--feature-width', ...)`.
-+
-+## Reference docs
-+
-+- `docs/TECHNICAL.md` — extended conventions for build, feature pattern, settings wiring, CSS architecture.
-+- `tests/README.md` — manual QA checklist run before releases (automated tests don't cover UI flows).
-+- `CHANGELOG.md` — release history; tagging `v*` triggers `.github/workflows/release.yml` to publish zip archives.
-diff --git a/src/assets/interface/default-favicon.png b/src/assets/interface/default-favicon.png
-new file mode 100644
-index 0000000000000000000000000000000000000000..a682f08d750d0982d7b5b6f4ffa31acd03002cfc
-GIT binary patch
-literal 1218
-zcmeAS@N?(olHy`uVBq!ia0vp^4j|0I3?%1nZ+yeRz*rvO6XFWw#wTYaBxeFqd`cz|
-z0J$KPk~MSY%+S!j_!J;FJsv0vB!TRdtoSq_H$5>cD<L`K|NsAqshJH84GAeA6GB5n
-z6OywMQ-R8Wy0U=gBxit3OGwE`ODjlB&IIZLaluvqwSd?K1-ZGoK=mMQN)}iU$jAVi
-z36zZkiG!V&l9Q2<k&v1RG(4%S3}PMFRUnNiDJco5K$A1Uh5+qqNJ<3?=7JSuCZ=R1
-zCl@BBWrK`L1zM4j0(5OE$XK97N$J@M83mva0681vi?p<vKsAXVH|Hj%W~HSS15E&m
-zBq!%4q~&C1X9EofsRS7U3IvF2!B#`XLF$3t2RaEDTp$IRt5&T7ngH@9C?qp@7<Oj>
-zgTAID$S;`T-_y`<f*ZeAvvNNE_jmi>xOso9elZ?qYhA<a+j+h0r_Qxql9jT@=YII`
-zNkH^Z*Y$$;XIcK7Thi+wR^-Eb^v1`($HnuvRGs8<k@<D6N66?`YQ0{>-Pe{1tCG%~
-zVExddY$X!%!c0ThZ{A;n4-c7avlq{qI5#@^pfU50i`z4jPjWIaFx7dwIEGZ*dV4*1
-zyQ(h_+k@@fb8kP}`1Pj5?QK*4+hzEMzF%jz%l3S2>e?xj9<<Cbf3(U^*wK?qZCPme
-zk#6UYsec$BvHX#g=Q}0IHMz6kL}&8}*JKre?q?hH`)BLyu-!1t=b~MZXGFwSLGM>0
-z+4gb29+xNGWE1GJ_E6U~)5<(i_j6`M-;RR66HN97$?mf6G#7D+D4nn>=EdgazxX9B
-zd^UT$`ni2p!rVoY+f>qC{=V<m{8{*{S7KYch_&#Bb$@@~cQtz0cyP~b5&MRZ-_<yG
-z6hCnFyvX+Wx)G=A!NOx#{w9CkztK0zP(4EN>z^He<tI)Rkg)suSL}e5Z`h$X|0e{#
-zkC*Sce<F(Q!cWgIrq?==pPiqF{?lK{cg=Q_*as(J#hWq~uebDbnCMM1JrKFDcE<wA
-z$!nO-#h3YZ`h+fgsTDn;?SQ4x)mAmf`y~oS`+d`dF0j0ut<-W(*uS#UF+=6oGPZ^P
-z#XG)w-7M|oKM-lL`D@vheT-*Y*<E%mJ#FgTpfGcH(O12Y>*bzXONBM0f;=XiSbO`z
-zoyyHM^_i7#6&Xr+X8-7Dk<p$pHLPf!Q?Sa$<I*z%4dYbABQ+A-4p&T7PC59E#jX2K
-z@}>Ek4+KkGQGHz8Hebi4+0pZVK*`L*IZpeJ*Ju7(uJuV~&%~3<y97G-GAxgLw!d`m
-z29CWf+INj~bvh<pObh!ewPssort>*pw#peZJG!)O*traDK0IZuzO}xgWOj(=X)$+^
-z1vfY46mEFFf#-t$lvdwq_nvh!U-7mLoUNW=l3D)tZnf!GuVg<VvsrU&>*Vcj*ww8P
-zwZ7CCefP2X?c@31`|S&4>YrHtyYRL4jdc0cjq9zq$^7=KVN?#2vRmHLRRhcs44$rj
-JF6*2UngEzaA@BeI
-
-literal 0
-HcmV?d00001
-
-diff --git a/src/manifests/chrome.json b/src/manifests/chrome.json
-index f918828..bfd80bf 100644
---- a/src/manifests/chrome.json
-+++ b/src/manifests/chrome.json
-@@ -24,7 +24,8 @@
-     },
-     "permissions": [
-         "storage",
--        "unlimitedStorage"
-+        "unlimitedStorage",
-+        "favicon"
-     ],
-     "optional_permissions": [
-         "bookmarks",
-diff --git a/src/manifests/edge.json b/src/manifests/edge.json
-index f918828..bfd80bf 100644
---- a/src/manifests/edge.json
-+++ b/src/manifests/edge.json
-@@ -24,7 +24,8 @@
-     },
-     "permissions": [
-         "storage",
--        "unlimitedStorage"
-+        "unlimitedStorage",
-+        "favicon"
-     ],
-     "optional_permissions": [
-         "bookmarks",
-diff --git a/src/scripts/compatibility/apply.ts b/src/scripts/compatibility/apply.ts
-index b9c8297..f11d81f 100644
---- a/src/scripts/compatibility/apply.ts
-+++ b/src/scripts/compatibility/apply.ts
-@@ -1,107 +1,25 @@
--import { removeLinkgroupDuplicates } from './filters.ts'
--import { CURRENT_VERSION, PLATFORM } from '../defaults.ts'
--import { filterByVersion } from './versions.ts'
-+import { CURRENT_VERSION, PLATFORM, SYNC_DEFAULT } from '../defaults.ts'
- import { normalizeLinksState } from '../features/links/model.ts'
- import { deepmergeAll } from '@victr/deepmerge'
--import { toSemVer } from '../utils/semver.ts'
- import type { Sync } from '../../types/sync.ts'
- 
- /**
-- * 1. Add condition for the latest version in versions.ts
-- * 2. Create needed filters for this version in filters.ts
-- * 3. Export these filters in your condition
-+ * Merges an imported partial Sync into the given current Sync. If the import
-+ * already contains every top-level Sync key, it is treated as a full config and
-+ * replaces current entirely; otherwise the two are deep-merged.
-  */
-+export function mergeImportedConfig(current: Sync, target: Partial<Sync>): Sync {
-+    const requiredKeys = Object.keys(SYNC_DEFAULT) as (keyof Sync)[]
-+    const isFullConfig = requiredKeys.every((key) => key in target)
- 
--export function filterData(from: 'update', current: Sync): Sync
--export function filterData(from: 'import', current: Sync, target: Partial<Sync>): Sync
--export function filterData(from: 'update' | 'import', current: Sync, target?: Partial<Sync>): Sync {
--    let newcurrent = current
--    let newtarget = target ?? {}
-+    const merged: Sync = isFullConfig ? (target as Sync) : (deepmergeAll(current, target) as Sync)
- 
--    if (from === 'update') {
--        const user = toSemVer(newcurrent.about.version)
--        newcurrent = filterByVersion(newcurrent, user) as Sync
--    }
--
--    if (from === 'import') {
--        // Prepare imported data compatibility
--        newtarget = filterByVersion(newtarget, toSemVer(undefined))
--
--        // Detect if merging between settings is needed
--        const currentKeyAmount = Object.keys(newcurrent).length
--        const targetKeyAmount = Object.keys(newtarget).length
--        const needMerging = targetKeyAmount !== currentKeyAmount
--
--        if (needMerging) {
--            newcurrent = deepmergeAll(newcurrent, newtarget) as Sync
--
--            // After merge only
--            newcurrent = removeLinkgroupDuplicates(newcurrent)
--        } else {
--            newcurrent = newtarget as Sync
--        }
--    }
--
--    //
--
--    newcurrent.about = {
-+    merged.about = {
-         browser: PLATFORM,
-         version: CURRENT_VERSION,
-     }
- 
--    delete newcurrent.syncbookmarks
--    delete newcurrent.settingssync
--    delete newcurrent.custom_every
--    delete newcurrent.custom_time
--    delete newcurrent.searchbar_newtab
--    delete newcurrent.searchbar_engine
--    delete newcurrent.cssHeight
--    delete newcurrent.linktabs
--    delete newcurrent.quicklinks
--    delete newcurrent.linksrow
--    delete newcurrent.linkiconradius
--    delete newcurrent.linkstyle
--    delete newcurrent.linknewtab
--    delete newcurrent.linktitles
--    delete newcurrent.linkbackgrounds
--    delete newcurrent.linkgroups
--    delete newcurrent.dynamic
--    delete newcurrent.unsplash
--    delete newcurrent.background_blur
--    delete newcurrent.background_bright
--    delete newcurrent.background_type
--    delete newcurrent.move
--    delete newcurrent.usdate
--    const obsoleteKeys = [
--        'main',
--        'greeting',
--        'greetingsize',
--        'greetingsmode',
--        'greetingscustom',
--        'weather',
--        'searchbar',
--        'quotes',
--        'pomodoro',
--    ]
--
--    for (const key of obsoleteKeys) {
--        delete (newcurrent as Record<string, unknown>)[key]
--    }
--
--    for (const key of Object.keys(newcurrent)) {
--        if (key.length === 11 && key.startsWith('links')) {
--            delete (newcurrent as Record<string, unknown>)[key]
--        }
--    }
--
--    if (!newcurrent.notes || !Array.isArray(newcurrent.notes.records)) {
--        newcurrent.notes = {
--            active: '',
--            records: [],
--        }
--    }
--
--    normalizeLinksState(newcurrent as Sync & Record<string, unknown>)
-+    normalizeLinksState(merged as Sync & Record<string, unknown>)
- 
--    return newcurrent
-+    return merged
- }
-diff --git a/src/scripts/compatibility/filters.ts b/src/scripts/compatibility/filters.ts
-deleted file mode 100644
-index ce00e2d..0000000
---- a/src/scripts/compatibility/filters.ts
-+++ /dev/null
-@@ -1,174 +0,0 @@
--import { countryCodeToLanguageCode } from '../utils/translations.ts'
--import { SYNC_DEFAULT } from '../defaults.ts'
--
--import type { OldSync } from '../../types/shared.ts'
--import type { Sync } from '../../types/sync.ts'
--
--type Import = Record<string, unknown> & {
--    linktabs?: OldSync['linktabs']
--    backgrounds?: Sync['backgrounds']
--    font?: Partial<Sync['font']> & { availWeights?: string[]; url?: string }
--    lang?: string
--    clock?: Partial<Sync['clock']> & {
--        style?: 'round' | 'square' | 'transparent'
--        face?: NonNullable<Sync['analogstyle']>['face']
--    }
--    analogstyle?: Partial<Sync['analogstyle']>
--    hide?: Sync['hide'] | unknown[]
--}
--
--export function fixNullBrightness(data: Import): Import {
--    if (data.backgrounds?.bright === null) {
--        data.backgrounds.bright = SYNC_DEFAULT.backgrounds.bright
--    }
--
--    return data
--}
--
--export function hideArrayToObject(data: Import): Import {
--    const newhide: Sync['hide'] = {}
--
--    if (Array.isArray(data.hide)) {
--        const hide = data.hide as unknown[][]
--        if (hide[0]?.[0]) {
--            newhide.clock = true
--        }
--        if (hide[0]?.[1]) {
--            newhide.date = true
--        }
--        data.hide = newhide
--        data.time = !(data.hide.clock && data.hide.date)
--    }
--
--    return data
--}
--
--export function newFontSystem(data: Import): Import {
--    if (data.font) {
--        data.font.weightlist = data.font?.availWeights ?? []
--        data.font.url = undefined
--        data.font.availWeights = undefined
--
--        // Always assume it is NOT a system font, unless specified
--        if (data.font.system === undefined) {
--            data.font.system = false
--        }
--    }
--
--    return data
--}
--
--export function newReviewData(data: Import): Import {
--    const reviewPopup = (data as { reviewPopup?: number | string }).reviewPopup
--
--    if (reviewPopup) {
--        data.review = reviewPopup === 'removed' ? -1 : +reviewPopup
--    }
--
--    return data
--}
--
--export function toIsoLanguageCode(data: Import): Import {
--    data.lang = countryCodeToLanguageCode(data.lang ?? 'en')
--    return data
--}
--
--export function clockDateFormat(data: Import): Import {
--    const old = data as Partial<OldSync>
--
--    if (old.usdate) {
--        data.dateformat = 'us'
--    } else {
--        data.dateformat = 'auto'
--    }
--
--    return data
--}
--
--export function manualTimezonesToIntl(data: Import): Import {
--    const timezoneMatches: Record<string, string> = {
--        '-10': '-10:00',
--        '-9': '-09:00',
--        '-8': '-08:00',
--        '-7': '-07:00',
--        '-6': '-06:00',
--        '-5': '-05:00',
--        '-4': '-04:00',
--        '-3': '-03:00',
--        '+0': '+00:00',
--        '+1': '+01:00',
--        '+2': '+02:00',
--        '+3': '+03:00',
--        '+5:30': '+05:30',
--        '+7': '+07:00',
--        '+8': '+08:00',
--        '+9': '+09:00',
--        '+10': '+10:00',
--        '+12': '+12:00',
--    }
--
--    const oldTimezones = Object.keys(timezoneMatches)
--
--    const timezone = data.clock?.timezone
--    if (timezone && oldTimezones.includes(timezone)) {
--        data.clock!.timezone = timezoneMatches[timezone]
--    }
--
--    return data
--}
--
--/** Version 21: migrate from generic fields to a single "backgrounds" object */
--export function newBackgroundsField(data: Import): Import {
--    const olddata = data as Partial<OldSync>
--    const defaults = structuredClone(SYNC_DEFAULT)
--
--    if (!data.backgrounds) {
--        data.backgrounds = defaults.backgrounds
--    }
--
--    if (olddata.background_blur !== undefined) {
--        data.backgrounds.blur = olddata.background_blur
--    }
--    if (olddata.background_bright !== undefined) {
--        data.backgrounds.bright = olddata.background_bright
--    }
--    if (olddata.background_type !== undefined) {
--        data.backgrounds.type = olddata.background_type === 'unsplash' ? 'images' : 'files'
--    }
--    if (olddata.unsplash) {
--        data.backgrounds.frequency = olddata.unsplash?.every ?? 'hour'
--    }
--    if (olddata.unsplash?.collection) {
--        data.backgrounds.images = 'unsplash-images-collections'
--        data.backgrounds.queries = { 'unsplash-images-collections': olddata.unsplash.collection }
--    }
--
--    return data
--}
--
--export function analogClockOptions<Data extends Sync | Import>(data: Data): Data {
--    if (data.clock?.style) {
--        data.analogstyle = {
--            background: '#fff2',
--            border: '#ffff',
--            face: data?.clock?.face || 'none',
--            shape: 'round',
--            hands: 'modern',
--        }
--
--        if (data.clock.style === 'round' || data.clock.style === 'square') {
--            data.analogstyle.shape = data.clock.style
--        }
--
--        if (data.clock.style === 'transparent') {
--            data.analogstyle.background = '#fff0'
--            data.analogstyle.border = '#fff0'
--        }
--    }
--
--    return data
--}
--
--export function removeLinkgroupDuplicates(current: Sync): Sync {
--    return current
--}
-diff --git a/src/scripts/compatibility/versions.ts b/src/scripts/compatibility/versions.ts
-deleted file mode 100644
-index 61220d3..0000000
---- a/src/scripts/compatibility/versions.ts
-+++ /dev/null
-@@ -1,34 +0,0 @@
--import * as filter from './filters.ts'
--import type { SemVer } from '../utils/semver.ts'
--
--export function filterByVersion<T extends Record<string, unknown>>(data: T, version: SemVer): T {
--    const { major, minor } = version
--
--    if (major <= 21) {
--        if (minor < 3) {
--            data = filter.fixNullBrightness(data) as T
--        }
--    }
--
--    if (major < 21) {
--        data = filter.newBackgroundsField(data) as T
--        data = filter.manualTimezonesToIntl(data) as T
--    }
--
--    if (major < 20) {
--        data = filter.analogClockOptions(data) as T
--        data = filter.toIsoLanguageCode(data) as T
--    }
--
--    if (major < 19) {
--        data = filter.newFontSystem(data) as T
--        data = filter.newReviewData(data) as T
--    }
--
--    if (major < 18) {
--        data = filter.hideArrayToObject(data) as T
--        data = filter.clockDateFormat(data) as T
--    }
--
--    return data
--}
+-        <section id="notes-panel" class="hidden" aria-label="Notes" aria-hidden="true">
++        <section id="notes-panel" class="hidden" aria-label="Notes" inert>
+             <div id="notes-window">
+                 <div id="notes-layout">
+                     <aside id="notes-list">
 diff --git a/src/scripts/defaults.ts b/src/scripts/defaults.ts
-index 53de6ce..3dfc493 100644
+index 3dfc493..26806aa 100644
 --- a/src/scripts/defaults.ts
 +++ b/src/scripts/defaults.ts
-@@ -10,8 +10,6 @@ const navigator = globalThis.navigator as Navigator
- const iosUA = 'iPad Simulator|iPhone Simulator|iPod Simulator|iPad|iPhone|iPod'.split('|')
- const mobileUA = 'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini'.split('|')
- 
--export const API_DOMAIN = 'https://services.bonjourr.fr'
--
- export const ENVIRONNEMENT: 'PROD' | 'DEV' | 'TEST' = globalThis.ENV ?? 'TEST'
- 
- // attributes an ID to this tab to keep track of them
-diff --git a/src/scripts/features/fonts.ts b/src/scripts/features/fonts.ts
-index 2226e85..521f91f 100644
---- a/src/scripts/features/fonts.ts
-+++ b/src/scripts/features/fonts.ts
-@@ -392,10 +392,9 @@ function setAutocompleteSettings(isLangSwitch?: boolean): void {
-         return
-     }
- 
--    if (isLangSwitch || selectFont.options.length <= 1) {
--        // Clear existing options except the first "System default"
--        while (selectFont.options.length > 1) {
--            selectFont.remove(1)
-+    if (isLangSwitch || selectFont.options.length === 0) {
-+        while (selectFont.options.length > 0) {
-+            selectFont.remove(0)
-         }
- 
-         const fontlist = getFontList()
-diff --git a/src/scripts/features/links/groups.ts b/src/scripts/features/links/groups.ts
-index 5c4b077..f4d1bf5 100644
---- a/src/scripts/features/links/groups.ts
-+++ b/src/scripts/features/links/groups.ts
-@@ -234,7 +234,6 @@ export function deleteFolder(folderId: string, data: Sync): Sync {
-         folders[0].pinned = false
-     }
- 
--    storage.sync.clear()
-     initblocks(data)
-     initFolders(data)
-     return data
-@@ -253,26 +252,6 @@ export function moveFolders(mini: string[], data: Sync): Sync {
-     return data
- }
- 
--export async function togglePinFolder(folderId: string, action: 'pin' | 'unpin'): Promise<void> {
--    const data = await storage.sync.get()
--    const folder = data.links.folders.find((item) => item.id === folderId || item.title === folderId)
--
--    if (!folder) {
--        return
--    }
--
--    folder.pinned = action === 'pin'
--
--    if (folder.id === data.links.selectedFolder && action === 'pin') {
--        const unpinned = data.links.folders.filter((item) => !item.pinned)
--        data.links.selectedFolder = unpinned[0]?.id ?? folder.id
--    }
--
--    storage.sync.set(data)
--    initblocks(data)
--    initFolders(data)
--}
--
- function removeEmptyDefaultFolder(data: Sync): void {
-     if (data.links.folders.length < 2) {
-         return
-diff --git a/src/scripts/features/links/helpers.ts b/src/scripts/features/links/helpers.ts
-index 59c02a8..c29c0a2 100644
---- a/src/scripts/features/links/helpers.ts
-+++ b/src/scripts/features/links/helpers.ts
-@@ -1,12 +1,10 @@
- import { stringMaxSize } from '../../shared/generic.ts'
--import { API_DOMAIN } from '../../defaults.ts'
- import { tradThis } from '../../utils/translations.ts'
- export {
-     getFolder,
-     getFolderByBookmarkSource,
-     getFolderByTitle,
-     getLink,
--    getLinksInFolder,
-     getLinksInSubfolder,
-     getNode,
-     getSubfolder,
-@@ -17,14 +15,23 @@ export {
- 
- import { isElem } from './model.ts'
- 
--import type { LinkIconType, LinkNode } from '../../../types/shared.ts'
-+import type { LinkNode } from '../../../types/shared.ts'
-+
-+export const DEFAULT_FAVICON = 'src/assets/interface/default-favicon.png'
- 
- export function getDefaultIcon(url: string, refresh?: number): string {
--    if (refresh) {
--        return `${API_DOMAIN}/favicon/blob/${url}?r=${refresh}`
--    }
-+    return getRemoteFaviconUrl(url, refresh) ?? DEFAULT_FAVICON
-+}
- 
--    return `${API_DOMAIN}/favicon/blob/${url}`
-+export function getRemoteFaviconUrl(url: string, refresh?: number): string | undefined {
-+    try {
-+        const host = new URL(url).hostname
-+        if (!host) return undefined
-+        const base = `https://icons.duckduckgo.com/ip3/${host}.ico`
-+        return refresh ? `${base}?r=${refresh}` : base
-+    } catch (_) {
-+        return undefined
-+    }
- }
- 
- export function getSelectedIds(): string[] {
-@@ -72,12 +79,3 @@ export function createTitle(link: LinkNode): string {
- 
-     return ''
- }
--
--export function isLinkIconType(type: string): type is LinkIconType {
--    return ['auto', 'library', 'file', 'url'].includes(type)
--}
--
--// to figure out if a string is a valid number
--export function isNumber(value: string): boolean {
--    return !isNaN(parseFloat(value))
--}
-diff --git a/src/scripts/features/links/index.ts b/src/scripts/features/links/index.ts
-index 48212a3..5245239 100644
---- a/src/scripts/features/links/index.ts
-+++ b/src/scripts/features/links/index.ts
-@@ -14,15 +14,16 @@ import { folderClick } from './folders.ts'
- import { startDrag } from './drag.ts'
- import {
-     createTitle,
-+    DEFAULT_FAVICON,
-     getDefaultIcon,
-     getLiFromEvent,
--    getLinksInFolder,
-     getLinksInSubfolder,
-     isElem,
-     isSubfolder,
- } from './helpers.ts'
- import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
- 
-+import { PLATFORM } from '../../defaults.ts'
- import { stringMaxSize } from '../../shared/generic.ts'
- import { displayInterface } from '../../shared/display.ts'
- import { getHTMLTemplate } from '../../shared/dom.ts'
-@@ -339,36 +340,82 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
- }
- 
- function createIcons(local: Local): void {
--    const resolvedIcons = initIconList.map(([img, url]) =>
--        [img, resolveIconUrl(local, url)] as [HTMLImageElement, string]
--    )
-+    const resolved = initIconList.map(([img, url]) => [img, resolveIconUrl(local, url)] as [HTMLImageElement, string])
-+    initIconList = []
- 
--    for (const [img, url] of resolvedIcons) {
--        img.src = url
-+    for (const [img, url] of resolved) {
-+        loadIconWithFallback(img, url)
-     }
-+}
- 
--    setTimeout(() => {
--        const incomplete = resolvedIcons.filter(([img]) => !img.complete || img.naturalWidth === 0)
-+async function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): Promise<void> {
-+    img.src = 'src/assets/interface/loading.svg'
- 
--        for (const [img, url] of incomplete) {
--            img.src = 'src/assets/interface/loading.svg'
--            const newimg = document.createElement('img')
--            newimg.addEventListener('load', () => {
--                img.src = url
--            })
--            newimg.addEventListener('error', () => {
--                img.src = 'https://services.bonjourr.fr/favicon/blob/error'
--            })
--            newimg.src = url
--            setTimeout(() => {
--                if (!newimg.complete && newimg.naturalWidth === 0) {
--                    img.src = 'https://services.bonjourr.fr/favicon/blob/error'
--                }
--            }, 5000)
-+    // Non-DDG URLs (user-set custom URL, data:, local-icon blob) have no
-+    // "404 with body" problem. Set src directly; on error fall back once.
-+    if (!isDuckDuckGoUrl(primaryUrl)) {
-+        img.addEventListener('error', () => {
-+            img.src = DEFAULT_FAVICON
-+        }, { once: true })
-+        img.src = primaryUrl
-+        return
-+    }
-+
-+    // DDG returns 404 with a gray-arrow PNG body when it has no icon for the
-+    // host, and the browser still decodes that body as a valid image. We must
-+    // see the HTTP status to detect the miss, so fetch once and reuse the
-+    // bytes via a blob URL — that avoids a second network round-trip.
-+    try {
-+        const resp = await fetch(primaryUrl)
-+        if (resp.ok) {
-+            const blob = await resp.blob()
-+            const blobUrl = URL.createObjectURL(blob)
-+            const revoke = () => URL.revokeObjectURL(blobUrl)
-+            img.addEventListener('load', revoke, { once: true })
-+            img.addEventListener('error', revoke, { once: true })
-+            img.src = blobUrl
-+            return
-+        }
-+    } catch (_) {
-+        // Offline / network error → fall through to the fallback chain.
-+    }
-+
-+    // DDG miss → Chrome's _favicon for locally-visited sites (intranet,
-+    // localhost, private deployments). For sites the browser has never seen,
-+    // _favicon returns a generic placeholder; we accept that to keep the path
-+    // simple and fast.
-+    if (PLATFORM === 'chrome') {
-+        const original = originalUrlFromDuckDuckGo(primaryUrl)
-+        if (original) {
-+            img.addEventListener('error', () => {
-+                img.src = DEFAULT_FAVICON
-+            }, { once: true })
-+            img.src = buildChromeFaviconUrl(original)
-+            return
-         }
-+    }
-+
-+    img.src = DEFAULT_FAVICON
-+}
- 
--        initIconList = []
--    }, 400)
-+function isDuckDuckGoUrl(url: string): boolean {
-+    return url.startsWith('https://icons.duckduckgo.com/ip3/')
-+}
-+
-+function originalUrlFromDuckDuckGo(ddgUrl: string): string | undefined {
-+    try {
-+        const m = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
-+        return m ? `https://${m[1]}/` : undefined
-+    } catch (_) {
-+        return undefined
-+    }
-+}
-+
-+function buildChromeFaviconUrl(pageUrl: string): string {
-+    const u = new URL(chrome.runtime.getURL('/_favicon/'))
-+    u.searchParams.set('pageUrl', pageUrl)
-+    u.searchParams.set('size', '32')
-+    return u.toString()
- }
- 
- function resolveIconUrl(local: Local, url: string): string {
-@@ -643,7 +690,6 @@ function deleteLinks(ids: string[], data: Sync): Sync {
-         removeNode(data, id)
-     }
- 
--    storage.sync.clear()
-     animateLinksRemove(ids)
-     return data
- }
-@@ -700,11 +746,11 @@ function refreshIcons(ids: string[], data: Sync): Sync {
-         const node = getNode(data, id)
- 
-         if (isElem(node)) {
--            const unixDate = Date.now().toString()
-+            const unixDate = Date.now()
- 
-             if (!node.icon || node.icon.type === 'auto') {
-                 node.icon = node.icon ?? { type: 'auto', value: '' }
--                node.icon.value = getDefaultIcon(node.url) + `?r=${unixDate}`
-+                node.icon.value = getDefaultIcon(node.url, unixDate)
-             } else if (node.icon.type === 'url') {
-                 node.icon.value = `${node.icon.value}?r=${unixDate}`
-             }
-@@ -747,25 +793,30 @@ function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
- async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrounds?: boolean }): Promise<void> {
-     const data = await storage.sync.get()
-     const style = styles.style ?? 'inline'
-+    let dirty = false
- 
-     if (styles.style && isLinkStyle(style)) {
-         domlinkblocks.classList.remove('inline', 'text')
-         domlinkblocks.classList.add(style)
-         data.links.style = style
--        storage.sync.set({ links: data.links })
-         initRows(data.links.rows, style)
-+        dirty = true
-     }
- 
-     if (typeof styles.titles === 'boolean') {
-         data.links.titles = styles.titles
--        storage.sync.set({ links: data.links })
-         domlinkblocks.classList.toggle('titles', styles.titles)
-+        dirty = true
-     }
- 
-     if (typeof styles.backgrounds === 'boolean') {
-         data.links.backgrounds = styles.backgrounds
--        storage.sync.set({ links: data.links })
-         domlinkblocks.classList.toggle('backgrounds', styles.backgrounds)
-+        dirty = true
-+    }
-+
-+    if (dirty) {
-+        await storage.sync.set({ links: data.links })
-     }
- }
- 
-@@ -805,7 +856,15 @@ function animateLinksRemove(ids: string[]): void {
- }
- 
- function getIconFromLinkElem(link: LinkElem): string {
--    if (!link.icon?.value) {
-+    const stored = link.icon?.value
-+    // Legacy chrome-extension://[id]/_favicon/ values were persisted by
-+    // refreshIcons in earlier versions. Treat them as missing so they get
-+    // recomputed via DDG → Chrome → DEFAULT_FAVICON on render.
-+    const isStaleChromeFavicon = typeof stored === 'string' &&
-+        stored.startsWith('chrome-extension://') &&
-+        stored.includes('/_favicon/')
-+
-+    if (!stored || isStaleChromeFavicon) {
-         try {
-             const url = new URL(link.url)
-             if (url.protocol === 'data:') {
-@@ -817,11 +876,11 @@ function getIconFromLinkElem(link: LinkElem): string {
-         }
-     }
- 
--    if (link.icon.type === 'file') {
-+    if (link.icon?.type === 'file') {
-         return `local-icon:${link.id}`
-     }
- 
--    return link.icon.value
-+    return stored
- }
- 
- function isLinkStyle(style: string): style is Sync['links']['style'] {
-@@ -857,5 +916,3 @@ function reorderItems<T extends { id: string }>(items: T[] | undefined, ids: str
- 
-     items.splice(0, items.length, ...ordered, ...missing)
- }
--
--export const getLinksInGroup = getLinksInFolder
-diff --git a/src/scripts/features/links/model.ts b/src/scripts/features/links/model.ts
-index a57a01f..7d019d8 100644
---- a/src/scripts/features/links/model.ts
-+++ b/src/scripts/features/links/model.ts
-@@ -66,18 +66,6 @@ export function createSubfolder(title: string, items: LinkElem[] = []): LinkSubf
-     }
- }
- 
--export function getVisibleFolders(data: Sync): LinkFolder[] {
--    const selected = getSelectedFolder(data)
--    const pinned = data.links.folders.filter((folder) => folder.pinned)
--    const visible = uniqueById([...(selected ? [selected] : []), ...pinned])
--
--    return visible.length > 0 ? visible : data.links.folders.slice(0, 1)
--}
--
--export function getSelectedFolder(data: Sync): LinkFolder | undefined {
--    return getFolder(data, data.links.selectedFolder) ?? data.links.folders[0]
--}
--
- export function getFolder(data: Sync, id?: string): LinkFolder | undefined {
-     return data.links.folders.find((folder) => folder.id === id)
- }
-@@ -122,10 +110,6 @@ export function findNode(data: Sync, id: string): LinkLocation | undefined {
-     }
- }
- 
--export function getLinksInFolder(data: Sync, folderId?: string): LinkNode[] {
--    return getFolder(data, folderId ?? data.links.selectedFolder)?.items ?? []
--}
--
- export function getLinksInSubfolder(data: Sync, id: string): LinkElem[] {
-     return getSubfolder(data, id)?.items ?? []
- }
-@@ -157,24 +141,6 @@ export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
-     return removed
- }
- 
--export function ensureDefaultFolder(data: Sync): LinkFolder {
--    let folder = data.links.folders[0]
--
--    if (!folder) {
--        folder = {
+@@ -83,41 +83,6 @@ export const SYNC_DEFAULT: Sync = {
+     review: 0,
+     css: '',
+     hide: {},
+-    links: {
+-        enabled: true,
+-        foldersOn: false,
+-        selectedFolder: 'default',
+-        rows: 16,
+-        iconRadius: 0,
+-        style: 'text',
+-        newTab: true,
+-        titles: false,
+-        backgrounds: true,
+-        folders: [{
 -            id: 'default',
 -            title: 'default',
 -            pinned: false,
 -            source: 'local',
 -            items: [],
+-        }],
+-        favorites: [],
+-    },
+-    backgrounds: {
+-        type: 'color',
+-        fadein: 0,
+-        blur: 0,
+-        bright: 0.78,
+-        frequency: 'pause',
+-        color: '#1c4026',
+-        urls: '',
+-        images: '',
+-        videos: '',
+-        mute: true,
+-        queries: {},
+-        texture: {
+-            type: 'none',
+-        },
+-    },
+     clock: {
+         size: 1.3,
+         ampm: false,
+@@ -140,10 +105,44 @@ export const SYNC_DEFAULT: Sync = {
+         weight: '400',
+         id: 'nunito',
+     },
++    backgrounds: {
++        type: 'color',
++        fadein: 0,
++        blur: 0,
++        bright: 0.78,
++        frequency: 'pause',
++        color: '#1c4026',
++        urls: '',
++        images: '',
++        videos: '',
++        mute: true,
++        queries: {},
++        texture: {
++            type: 'none',
++        },
++    },
+     notes: {
+         active: '',
+         records: [],
+     },
++    links: {
++        enabled: true,
++        foldersOn: false,
++        selectedFolder: 'default',
++        rows: 16,
++        iconRadius: 0,
++        style: 'text',
++        newTab: true,
++        titles: false,
++        backgrounds: true,
++        folders: [{
++            id: 'default',
++            title: 'default',
++            source: 'local',
++            items: [],
++        }],
++        favorites: [],
++    },
+ }
+ 
+ export const LOCAL_DEFAULT: Local = {
+diff --git a/src/scripts/events.ts b/src/scripts/events.ts
+index 7928c28..38493b6 100644
+--- a/src/scripts/events.ts
++++ b/src/scripts/events.ts
+@@ -59,11 +59,6 @@ function clickUserActions(event: MouseEvent): void {
+     if (isMousingDownOnInput) {
+         return
+     }
+-
+-    if (isLinkDragActive()) {
+-        return
+-    }
+-
+     const open = isOpen()
+     const composedPath = (event.composedPath() as Element[]) ?? [document.body]
+     const path = composedPath.filter((node) => node?.className?.includes)
+@@ -73,7 +68,6 @@ function clickUserActions(event: MouseEvent): void {
+         body: (path[0] as HTMLElement).tagName === 'BODY',
+         link: path.some((el) => el.classList.contains('link')),
+         linkfolder: path.some((el) => el.className.includes('folder')),
+-        addgroup: path.some((el) => el.className.includes('add-group')),
+         folder: path.some((el) => el.className.includes('in-folder')),
+         linkblocks: pathIds.includes('linkblocks'),
+         button: path.some((el) => el.className.includes('param-btn')),
+@@ -107,11 +101,6 @@ function clickUserActions(event: MouseEvent): void {
+     }
+ 
+     if (open.contextmenu && !on.contextmenu) {
+-        // if (on.addgroup && document.querySelector('.link-title.add-group.selected')) {
+-        if (on.addgroup) {
+-            return
 -        }
+-
+         document.dispatchEvent(new Event('close-edit'))
+         return
+     }
+@@ -140,12 +129,6 @@ function clickUserActions(event: MouseEvent): void {
+ 
+ // Handlers
+ 
+-function isLinkDragActive(): boolean {
+-    return !!document.querySelector(
+-        '#linkblocks .in-drag, #linkblocks .dragging, #linkblocks .dropping, #link-mini.in-drag, #link-mini.dragging, #link-mini.dropping',
+-    )
+-}
+-
+ function isOpen(): {
+     settings: boolean
+     folder: boolean
+diff --git a/src/scripts/features/backgrounds/index.ts b/src/scripts/features/backgrounds/index.ts
+index 213d3b4..95b71b7 100644
+--- a/src/scripts/features/backgrounds/index.ts
++++ b/src/scripts/features/backgrounds/index.ts
+@@ -911,6 +911,8 @@ function handleTextureOptions(backgrounds: Backgrounds): void {
+     }
+ }
+ 
++let lastShownCollectionName = ''
++
+ function handleProviderOptions(backgrounds: Backgrounds): void {
+     switch (backgrounds.type) {
+         case 'files':
+@@ -938,8 +940,12 @@ function handleProviderOptions(backgrounds: Backgrounds): void {
+     if (optionsExist) {
+         domusercolloption.classList.toggle('shown', hasCollections)
+         domusersearchoption.classList.toggle('shown', hasSearch)
+-        domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
+-        domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
++
++        if (collectionName !== lastShownCollectionName) {
++            domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
++            domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
++            lastShownCollectionName = collectionName
++        }
+     }
+ }
+ 
+diff --git a/src/scripts/features/contextmenu.ts b/src/scripts/features/contextmenu.ts
+index af4acf3..71c6e63 100644
+--- a/src/scripts/features/contextmenu.ts
++++ b/src/scripts/features/contextmenu.ts
+@@ -131,7 +131,7 @@ function getContextTarget(event: Event): HTMLElement {
+     }
+ 
+     if (document.body.classList.contains('group-focus') && event.type === 'contextmenu') {
+-        const activeGroup = document.querySelector<HTMLElement>('#linkblocks > .link-group:not(.pinned)')
++        const activeGroup = document.querySelector<HTMLElement>('#linkblocks > .link-group')
+         const pointer = event as PointerEvent
+ 
+         if (activeGroup) {
+diff --git a/src/scripts/features/links/bookmarks.ts b/src/scripts/features/links/bookmarks.ts
+index f915925..21357ec 100644
+--- a/src/scripts/features/links/bookmarks.ts
++++ b/src/scripts/features/links/bookmarks.ts
+@@ -59,7 +59,6 @@ type BookmarkLinksUpdate = {
+     deleteLinks?: string[]
+     deleteFolder?: string
+     folderTitle?: { old: string; new: string }
+-    moveFolders?: string[]
+     unsyncFolder?: string
+ }
+ 
+@@ -134,7 +133,6 @@ function applySyncedFolders(data: Sync): boolean {
+             folder = {
+                 id: browserFolder.id,
+                 title: browserFolder.title,
+-                pinned: false,
+                 source: 'bookmarks',
+                 items: [],
+             }
+@@ -570,11 +568,6 @@ function shouldBlockLocalBookmarkUpdate(update: BookmarkLinksUpdate, data: Sync)
+     if (update.deleteFolder) {
+         return isSyncedBookmarkFolder(data, update.deleteFolder)
+     }
+-
+-    if (update.moveFolders) {
+-        return update.moveFolders.some((folder) => isSyncedBookmarkFolder(data, folder))
+-    }
+-
+     if (update.unsyncFolder) {
+         return isSyncedBookmarkFolder(data, update.unsyncFolder)
+     }
+diff --git a/src/scripts/features/links/drag.ts b/src/scripts/features/links/drag.ts
+deleted file mode 100644
+index 78056c8..0000000
+--- a/src/scripts/features/links/drag.ts
++++ /dev/null
+@@ -1,878 +0,0 @@
+-import { getLiFromEvent, getTitleFromEvent } from './helpers.ts'
+-import { FAVORITES_GROUP, initblocks, linksUpdate } from './index.ts'
+-import { setGroupFocus, updateSelectedFolderPosition } from './groups.ts'
+-import { openFolder } from './folders.ts'
+-import { storage } from '../../storage.ts'
+-
+-type Coords = { x: number; y: number; w: number; h: number }
+-type DropType = 'mini' | 'link' | 'group'
+-type DropArea = 'left' | 'right' | 'center' | ''
+-type Dropzones = Map<string, Coords>
+-type LinkDropDirection = 'horizontal' | 'vertical'
+-type DropzoneHit = { area: DropArea; id: string }
+-type PendingDragAnchor = {
+-    id: string
+-    x: number
+-    y: number
+-    target: HTMLElement
+-    type: 'mini' | 'link'
+-}
+-
+-const GROUP_HOVER_DELAY = 300
+-const MINI_HOVER_PADDING_Y = 0
+-const FAVORITES_DROP_HEIGHT = 32
+-const SLOT_CROSS_AXIS_PADDING = 24
+-const SLOT_MAIN_AXIS_PADDING = 32
+-const DROP_EDGE_RATIO = 0.3
+-
+-const blocks: Map<string, HTMLElement> = new Map()
+-const originRects: Map<string, Coords> = new Map()
+-const groups: Map<string, HTMLElement> = new Map()
+-const dropzones: Record<DropType, Dropzones> = { group: new Map(), link: new Map(), mini: new Map() }
+-
+-let [dx, dy, cox, coy, lastIndex] = [0, 0, 0, 0, 0, 0]
+-let lastdropAreas: DropArea[] = ['']
+-let draggedId = ''
+-let draggedType: 'link' | 'mini' = 'link'
+-let targetId = ''
+-let targetGroup = ''
+-let crossGroupTarget = ''
+-let pendingGroupTarget = ''
+-let originalGroup = ''
+-let ids: string[] = []
+-let coords: Coords[] = []
+-let dragContainers: NodeListOf<HTMLElement>
+-let dragChangeParentTimeout = 0
+-let dragAnimationFrame = 0
+-let groupHoverToken = 0
+-let dragLayer: HTMLDivElement | undefined
+-let layeredIds: Set<string> = new Set()
+-let isDragging = false
+-let overFavorites = false
+-let isFavoritesDrag = false
+-let linkDropDirection: LinkDropDirection = 'vertical'
+-let pendingDragAnchor: PendingDragAnchor | undefined
+-let shouldPreventNextClick = false
+-
+-const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
+-const domlinkfavorites = document.getElementById('link-favorites') as HTMLDivElement
+-let domlinklinks: NodeListOf<HTMLLIElement>
+-let domlinktitles: NodeListOf<HTMLButtonElement>
+-let domlinkgroups: NodeListOf<HTMLDivElement>
+-let domlinkgroup: HTMLDivElement
+-
+-queueMicrotask(() => {
+-    document.getElementById('link-mini')?.addEventListener('pointerdown', (event) => {
+-        const target = getTitleFromEvent(event)
+-        if (!target || target.classList.contains('add-group') || target.classList.contains('synced')) return
+-        startDrag(event)
+-    })
+-})
+-
+-export function startDrag(event: PointerEvent): void {
+-    const path = event.composedPath() as HTMLElement[]
+-    const type = path.some((el) => el?.classList?.contains('link-title')) ? 'mini' : 'link'
+-    const dragType = event.type === 'pointerdown' ? type : pendingDragAnchor?.type ?? type
+-    const isMini = dragType === 'mini'
+-    const tagName = isMini ? 'BUTTON' : 'LI'
+-    const eventTarget = path.find((n) => {
+-        if (n.tagName !== tagName) return false
+-        return isMini ? n.classList.contains('link-title') : n.classList.contains('link')
+-    })
+-    const target = event.type === 'pointerdown' ? eventTarget : pendingDragAnchor?.target ?? eventTarget
+-    const nextDraggedId = target ? findIdFromElement(target, isMini ? 'mini' : 'link') : ''
+-
+-    if (event.button > 0) return
+-    if (event.type === 'pointerdown') {
+-        beforeStartDrag(event, dragType)
+-        return
+-    }
+-    if (!(target && nextDraggedId)) {
+-        pendingDragAnchor = undefined
+-        return
+-    }
+-
+-    ids = []
+-    coords = []
+-    lastdropAreas = []
+-    lastIndex = 0
+-    targetId = ''
+-    isDragging = true
+-    overFavorites = false
+-    crossGroupTarget = ''
+-    pendingGroupTarget = ''
+-    groupHoverToken = 0
+-    isFavoritesDrag = !!path.find((n) => n?.id === 'link-favorites')
+-    linkDropDirection = isFavoritesDrag ? 'horizontal' : 'vertical'
+-    blocks.clear()
+-    originRects.clear()
+-    groups.clear()
+-    dropzones.group.clear()
+-    dropzones.link.clear()
+-    dropzones.mini.clear()
+-    layeredIds = new Set()
+-    dragLayer?.remove()
+-    dragLayer = document.createElement('div')
+-    dragLayer.className = 'links-drag-layer'
+-    domlinkblocks.appendChild(dragLayer)
+-
+-    if (isMini) {
+-        setGroupFocus(false)
+-    }
+-
+-    domlinkgroup = path.find((n) => n?.classList?.contains('link-group')) as HTMLDivElement
+-    domlinkgroups = document.querySelectorAll('#linkblocks .link-group')
+-    domlinklinks = document.querySelectorAll(isFavoritesDrag ? '#link-favorites li' : '#linkblocks .link-group li')
+-    domlinktitles = document.querySelectorAll('#link-mini button:not(.add-group)')
+-
+-    const selector = isFavoritesDrag ? '#link-favorites' : isMini ? '#link-mini' : '.link-group'
+-    dragContainers = document.querySelectorAll(selector)
+-
+-    const pos = getPosFromEvent(event)
+-    draggedId = nextDraggedId
+-    draggedType = isMini ? 'mini' : 'link'
+-    originalGroup = isFavoritesDrag
+-        ? FAVORITES_GROUP
+-        : isMini
+-        ? findIdFromElement(target, 'mini')
+-        : domlinkgroup?.dataset.group ?? ''
+-    targetGroup = originalGroup
+-
+-    collectDropzones(isMini)
+-    initContainerElements(isMini, tagName, pos)
+-    if (isMini) placeMiniTabsInSingleRow()
+-    lastIndex = ids.indexOf(draggedId)
+-
+-    if (!isMini && !isFavoritesDrag) {
+-        domlinkblocks.classList.add('favorites-drop-active')
+-        domlinkfavorites?.classList.add('drop-target')
+-    }
+-
+-    requestAnimationFrame(() => {
+-        for (const [id, block] of blocks) {
+-            if (id !== draggedId) {
+-                block.style.transition = ''
+-                const orig = document.getElementById(id)
+-                if (orig && orig !== block) orig.style.transition = ''
+-            }
+-        }
+-    })
+-
+-    document.dispatchEvent(new Event('remove-select-all'))
+-    preventNextClick()
+-    dragAnimationFrame = globalThis.requestAnimationFrame(deplaceDraggedElem)
+-
+-    document.documentElement.addEventListener('pointermove', moveDrag)
+-    document.documentElement.addEventListener('pointerup', endDrag)
+-    document.documentElement.addEventListener('pointercancel', endDrag)
+-    document.documentElement.addEventListener('pointerleave', endDrag)
+-    globalThis.addEventListener('pointerup', endDrag)
+-    globalThis.addEventListener('pointercancel', endDrag)
+-    globalThis.addEventListener('blur', endDrag)
+-
+-    if (event.pointerType === 'touch') {
+-        document.documentElement.addEventListener('touchmove', moveDrag, { passive: false })
+-        document.documentElement.addEventListener('touchend', endDrag, { passive: false })
+-        document.documentElement.addEventListener('touchcancel', endDrag, { passive: false })
+-    }
+-}
+-
+-function collectDropzones(isMini: boolean): void {
+-    const elements = isMini ? [...domlinktitles] : [...domlinkgroups, ...domlinktitles, ...domlinklinks]
+-
+-    for (const el of elements) {
+-        const t = findTypeFromElement(el)
+-        const r = el.getBoundingClientRect()
+-        const id = findIdFromElement(el)
+-        if (t !== 'group') blocks.set(id, el)
+-        else groups.set(id, el)
+-        dropzones[t].set(id, { x: r.x, y: r.y, h: r.height, w: r.width })
+-    }
+-}
+-
+-function initContainerElements(isMini: boolean, tagName: string, pos: { x: number; y: number }): void {
+-    for (const container of Object.values(dragContainers)) {
+-        const elements = isMini
+-            ? container.querySelectorAll<HTMLElement>('button:not(.add-group)')
+-            : container.querySelectorAll<HTMLElement>(tagName)
+-        const wrapper = isMini
+-            ? container
+-            : isFavoritesDrag
+-            ? container
+-            : container.querySelector<HTMLElement>('.link-list')
+-        const rect = wrapper?.getBoundingClientRect()
+-        if (!(wrapper && rect)) continue
+-
+-        for (const element of elements) {
+-            const t = findTypeFromElement(element)
+-            const id = findIdFromElement(element, t)
+-            const c = dropzones[t].get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+-            ids.push(id)
+-            coords.push({ ...c })
+-            const useDragLayer = isMini || id === draggedId
+-            const block = useDragLayer ? createDragClone(element, c) : element
+-            if (useDragLayer) {
+-                layeredIds.add(id)
+-                dragLayer?.appendChild(block)
+-            }
+-            blocks.set(id, block)
+-            originRects.set(id, { ...c })
+-            element.style.transition = 'none'
+-            block.style.transition = 'none'
+-            if (useDragLayer) {
+-                element.style.visibility = 'hidden'
+-                deplaceElem(block, c.x, c.y)
+-            }
+-            if (id === draggedId) {
+-                const anchor = pendingDragAnchor?.id === draggedId ? pendingDragAnchor : undefined
+-
+-                cox = anchor?.x ?? pos.x - c.x
+-                coy = anchor?.y ?? pos.y - c.y
+-                dx = pos.x - cox
+-                dy = pos.y - coy
+-                block.classList.add('on')
+-            }
+-        }
+-        container.style.setProperty('--drag-width', `${rect.width}px`)
+-        container.style.setProperty('--drag-height', `${rect.height}px`)
+-        container.classList.add('in-drag', 'dragging')
+-    }
+-}
+-
+-function beforeStartDrag(event: PointerEvent, type: 'mini' | 'link'): void {
+-    const target = type === 'mini' ? getTitleFromEvent(event) : getLiFromEvent(event)
+-    if (!target) return
+-
+-    const rect = target.getBoundingClientRect()
+-    const pointerX = event.clientX
+-    const pointerY = event.clientY
+-
+-    pendingDragAnchor = {
+-        id: findIdFromElement(target, type),
+-        x: Math.max(0, Math.min(pointerX - rect.left, rect.width)),
+-        y: Math.max(0, Math.min(pointerY - rect.top, rect.height)),
+-        target,
+-        type,
+-    }
+-
+-    document.documentElement.addEventListener('pointermove', dz)
+-    document.documentElement.addEventListener('pointerup', dz)
+-    document.documentElement.addEventListener('pointercancel', dz)
+-    function dz(ev: PointerEvent): void {
+-        const p = ev.pointerType === 'touch' ? 7 : 14
+-        const ox = Math.abs(pointerX - ev.clientX)
+-        const oy = Math.abs(pointerY - ev.clientY)
+-        if (ox > p / 2 || oy > p / 2) document.dispatchEvent(new Event('stop-select-all'))
+-        if (ox > p || oy > p) startDrag(ev)
+-        if (ox > p || oy > p || ev.type.includes('pointerup') || ev.type.includes('pointercancel')) {
+-            if (ev.type.includes('pointerup') || ev.type.includes('pointercancel')) {
+-                pendingDragAnchor = undefined
+-            }
+-            document.documentElement.removeEventListener('pointermove', dz)
+-            document.documentElement.removeEventListener('pointerup', dz)
+-            document.documentElement.removeEventListener('pointercancel', dz)
+-        }
+-    }
+-}
+-
+-function isOverFavoritesBar(x: number, y: number): boolean {
+-    if (!domlinkfavorites) return false
+-
+-    const r = domlinkfavorites?.getBoundingClientRect()
+-    const hasVisibleFavorites = domlinkfavorites.classList.contains('has-links') || r.height > 0
+-
+-    if (hasVisibleFavorites && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) {
+-        return true
+-    }
+-
+-    const mini = document.getElementById('link-mini')?.getBoundingClientRect()
+-    if (!mini) return false
+-
+-    return x >= mini.x && x <= mini.x + mini.width && y >= mini.bottom && y <= mini.bottom + FAVORITES_DROP_HEIGHT
+-}
+-
+-function moveDrag(event: TouchEvent | PointerEvent): void {
+-    if (event.cancelable) event.preventDefault()
+-
+-    const { x, y } = getPosFromEvent(event)
+-    dx = x - cox
+-    dy = y - coy
+-
+-    if (isDraggingLink() && !isFavoritesDrag) {
+-        overFavorites = isOverFavoritesBar(x, y)
+-        if (overFavorites) {
+-            cancelPendingGroupHover()
+-            targetId = ''
+-            markMiniTabDropTarget('')
+-            return
+-        }
+-    }
+-
+-    const result = isDraggingOver({ x, y })
+-    const [curr, id, type] = result ?? ['', '']
+-    const last = lastdropAreas[lastdropAreas.length - 1]
+-    const isDraggingMiniTab = isDraggingMini()
+-
+-    if (type === 'mini' && !isDraggingMiniTab) {
+-        handleMiniTabHover(id)
+-        if (last !== curr) lastdropAreas.push(curr)
+-        return
+-    }
+-
+-    // When hovering over a link-group div (not mini tab), handle group-level drop
+-    if (type === 'group') {
+-        targetGroup = id
+-        if (targetGroup !== originalGroup) applyDragChangeParent(id, 'group')
+-        if (targetGroup === originalGroup) {
+-            for (const b of blocks.values()) b.classList.remove('drop-target', 'drop-source')
+-            for (const b of groups.values()) b.classList.remove('drop-target', 'drop-source')
+-        }
+-        return
+-    }
+-
+-    // After a cross-group switch, allow reordering within the new group
+-    const isInCrossGroup = crossGroupTarget !== '' && crossGroupTarget !== originalGroup
+-
+-    // Block reordering only when hovering over a different group's area (not after switch)
+-    if (targetGroup !== originalGroup && !isInCrossGroup) return
+-
+-    if (curr === '') {
+-        lastdropAreas.push('')
+-        cancelPendingGroupHover()
+-        targetId = ''
+-        targetGroup = originalGroup
+-        markMiniTabDropTarget('')
+-        for (const b of blocks.values()) b.classList.remove('drop-target', 'drop-source')
+-        for (const b of groups.values()) b.classList.remove('drop-target', 'drop-source')
+-        return
+-    }
+-
+-    targetGroup = crossGroupTarget || originalGroup
+-
+-    const staysInCenter = last === curr && curr === 'center'
+-    if (staysInCenter && type === 'mini') handleMiniTabHover(id)
+-    if (staysInCenter && type === 'link') {
+-        applyDragChangeParent(id, type)
+-    }
+-    if ((type === 'link' || type === 'mini') && (curr === 'left' || curr === 'right')) {
+-        applyDragMoveBlocks(id, curr)
+-    }
+-    if (last !== curr) lastdropAreas.push(curr)
+-}
+-
+-function handleMiniTabHover(groupName: string): void {
+-    // Only switch groups when dragging a link, not when dragging mini tabs
+-    const isDraggingMiniTab = isDraggingMini()
+-    if (isDraggingMiniTab) {
+-        applyDragChangeParent(groupName, 'mini')
+-        return
+-    }
+-
+-    targetId = groupName
+-
+-    const selectedGroup = document.querySelector<HTMLElement>('#link-mini .link-title.selected-group')?.dataset.group
+-    if (selectedGroup === groupName && crossGroupTarget === '') {
+-        markMiniTabDropTarget('')
+-        return
+-    }
+-
+-    // Don't re-switch to the same group
+-    if (crossGroupTarget === groupName) return
+-    if (pendingGroupTarget === groupName) return
+-    pendingGroupTarget = groupName
+-    markMiniTabDropTarget(groupName)
+-
+-    clearTimeout(dragChangeParentTimeout)
+-    const token = ++groupHoverToken
+-    dragChangeParentTimeout = setTimeout(async () => {
+-        if (token !== groupHoverToken) return
+-
+-        crossGroupTarget = groupName
+-        pendingGroupTarget = ''
+-
+-        // Switch the selected group visually (don't persist to storage)
+-        const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
+-        for (const btn of buttons) btn.classList.remove('selected-group')
+-        findMiniTabButton(groupName)?.classList.add('selected-group')
+-
+-        // Rebuild the group's links visually without persisting
+-        const data = await storage.sync.get()
+-        if (token !== groupHoverToken) return
+-
+-        const savedSelected = data.links.selectedFolder
+-        data.links.selectedFolder = groupName
+-        initblocks(data)
+-        // Restore the original selected folder in storage (don't persist the switch)
+-        data.links.selectedFolder = savedSelected
+-        setGroupFocus(true)
+-        updateSelectedFolderPosition()
+-
+-        // Re-collect dropzones for the new group's links
+-        rebuildDragState()
+-    }, GROUP_HOVER_DELAY)
+-}
+-
+-function cancelPendingGroupHover(): void {
+-    clearTimeout(dragChangeParentTimeout)
+-    pendingGroupTarget = ''
+-    groupHoverToken += 1
+-}
+-
+-function findMiniTabButton(groupName: string): HTMLElement | undefined {
+-    return [...document.querySelectorAll<HTMLElement>('#link-mini .link-title')]
+-        .find((button) => button.dataset.group === groupName)
+-}
+-
+-function markMiniTabDropTarget(groupName: string): void {
+-    for (const button of document.querySelectorAll<HTMLElement>('#link-mini .link-title')) {
+-        button.classList.toggle('drop-target', button.dataset.group === groupName)
+-    }
+-}
+-
+-function rebuildDragState(): void {
+-    const draggedBlock = blocks.get(draggedId)
+-    const draggedOrigin = originRects.get(draggedId)
+-
+-    // Clear old link dropzones and blocks (keep mini/group zones intact)
+-    for (const id of [...dropzones.link.keys()]) {
+-        dropzones.link.delete(id)
+-        if (id !== draggedId) {
+-            blocks.delete(id)
+-            originRects.delete(id)
+-        }
+-    }
+-
+-    if (draggedBlock) blocks.set(draggedId, draggedBlock)
+-    if (draggedOrigin) originRects.set(draggedId, draggedOrigin)
+-
+-    // Reset position arrays
+-    ids = []
+-    coords = []
+-    lastIndex = 0
+-    lastdropAreas = []
+-    linkDropDirection = 'vertical'
+-
+-    // Update DOM references — only collect links inside .link-group, not favorites
+-    domlinkgroups = document.querySelectorAll('#linkblocks .link-group')
+-    domlinklinks = document.querySelectorAll('#linkblocks .link-group li')
+-    domlinkgroup = document.querySelector('#linkblocks .link-group:not(.pinned)') as HTMLDivElement
+-
+-    // Re-collect link dropzones from the new group
+-    for (const li of domlinklinks) {
+-        const r = li.getBoundingClientRect()
+-        const id = li.id
+-        if (!id) continue
+-        blocks.set(id, li)
+-        dropzones.link.set(id, { x: r.x, y: r.y, h: r.height, w: r.width })
+-        originRects.set(id, { x: r.x, y: r.y, h: r.height, w: r.width })
+-        ids.push(id)
+-        coords.push({ x: r.x, y: r.y, w: r.width, h: r.height })
+-    }
+-
+-    // Add the dragged element into the ids list so reordering works
+-    // Insert at the end by default — user can then drag to reposition
+-    if (!ids.includes(draggedId)) {
+-        ids.push(draggedId)
+-        // Use a dummy coord (the dragged element follows the cursor anyway)
+-        const lastCoord = coords.length > 0 ? coords[coords.length - 1] : { x: 0, y: 0, w: 0, h: 0 }
+-        coords.push({ x: lastCoord.x, y: lastCoord.y + lastCoord.h, w: lastCoord.w, h: lastCoord.h })
+-    }
+-
+-    lastIndex = ids.indexOf(draggedId)
+-
+-    // Mark the new group container as in-drag
+-    dragContainers = document.querySelectorAll('.link-group')
+-    for (const container of dragContainers) {
+-        container.classList.add('in-drag', 'dragging')
+-    }
+-}
+-
+-function applyDragMoveBlocks(id: string, area: DropArea): void {
+-    const currentIndex = ids.indexOf(draggedId)
+-    const targetIndex = ids.indexOf(id)
+-
+-    if (targetIndex < 0 || currentIndex < 0) return
+-
+-    cancelPendingGroupHover()
+-
+-    let nextIndex = area === 'right' ? targetIndex + 1 : targetIndex
+-
+-    if (currentIndex < nextIndex) {
+-        nextIndex -= 1
+-    }
+-
+-    nextIndex = Math.max(0, Math.min(nextIndex, ids.length - 1))
+-
+-    if (currentIndex === nextIndex || lastIndex === nextIndex) return
+-
+-    lastIndex = nextIndex
+-    ids.splice(currentIndex, 1)
+-    ids.splice(nextIndex, 0, draggedId)
+-
+-    if (isDraggingMini()) {
+-        coords = measureMiniTabCoords(ids) ?? coords
+-    }
+-
+-    for (let i = 0; i < ids.length; i++) {
+-        if (ids[i] !== draggedId) deplaceBlock(ids[i], coords[i])
+-    }
+-}
+-
+-function measureMiniTabCoords(order: string[]): Coords[] | undefined {
+-    const miniInner = document.querySelector<HTMLElement>('#link-mini > div')
+-    const miniRect = miniInner?.getBoundingClientRect()
+-    if (!(miniInner && miniRect)) return
+-
+-    const styles = getComputedStyle(miniInner)
+-    const measure = document.createElement('div')
+-    measure.style.position = 'fixed'
+-    measure.style.left = `${miniRect.x}px`
+-    measure.style.top = `${miniRect.y}px`
+-    measure.style.width = `${miniRect.width}px`
+-    measure.style.visibility = 'hidden'
+-    measure.style.pointerEvents = 'none'
+-    measure.style.zIndex = '-1'
+-    measure.style.boxSizing = styles.boxSizing
+-    measure.style.display = styles.display
+-    measure.style.flexWrap = 'nowrap'
+-    measure.style.justifyContent = styles.justifyContent
+-    measure.style.alignItems = styles.alignItems
+-    measure.style.columnGap = styles.columnGap
+-    measure.style.rowGap = styles.rowGap
+-    measure.style.padding = styles.padding
+-    measure.style.overflow = 'visible'
+-
+-    const elements = new Map<string, HTMLElement>()
+-    for (const id of order) {
+-        const source = blocks.get(id)
+-        const size = originRects.get(id)
+-        if (!(source && size)) continue
+-
+-        const clone = source.cloneNode(true) as HTMLElement
+-        clone.style.display = 'block'
+-        clone.style.flex = '0 0 auto'
+-        clone.style.width = `${Math.ceil(size.w)}px`
+-        clone.style.height = `${Math.ceil(size.h)}px`
+-        clone.style.margin = '0'
+-        clone.style.transform = 'none'
+-        measure.appendChild(clone)
+-        elements.set(id, clone)
+-    }
+-
+-    document.body.appendChild(measure)
+-
+-    const nextCoords = order.map((id) => {
+-        const fallback = originRects.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+-        const rect = elements.get(id)?.getBoundingClientRect()
+-        return rect ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height } : fallback
+-    })
+-
+-    measure.remove()
+-    return nextCoords
+-}
+-
+-function placeMiniTabsInSingleRow(): void {
+-    coords = measureMiniTabCoords(ids) ?? coords
+-    for (let i = 0; i < ids.length; i++) {
+-        if (ids[i] !== draggedId) deplaceBlock(ids[i], coords[i])
+-    }
+-}
+-
+-function preventNextClick(): void {
+-    if (shouldPreventNextClick) return
+-    shouldPreventNextClick = true
+-    document.addEventListener('click', stopNextClick, true)
+-}
+-
+-function stopNextClick(event: MouseEvent): void {
+-    shouldPreventNextClick = false
+-    event.preventDefault()
+-    event.stopImmediatePropagation()
+-    document.removeEventListener('click', stopNextClick, true)
+-}
+-
+-function applyDragChangeParent(id: string, type: DropType): void {
+-    const delay = type === 'group'
+-        ? 0
+-        : Number.parseInt(getComputedStyle(domlinkblocks).getPropertyValue('--drop-delay') || '120')
+-    cancelPendingGroupHover()
+-    dragChangeParentTimeout = setTimeout(() => {
+-        if (id === draggedId || domlinkgroup?.classList.contains('in-folder')) return
+-        if (type === 'mini') {
+-            const sel = document.querySelector<HTMLElement>('#link-mini .link-title.selected-group')
+-            if ((sel?.dataset.group ?? id) === id) return
+-        }
+-        targetId = id
+-        for (const b of blocks.values()) b.classList.remove('drop-target', 'drop-source')
+-        for (const b of groups.values()) b.classList.remove('drop-target', 'drop-source')
+-        blocks.get(draggedId)?.classList.toggle('drop-source', true)
+-        if (type === 'group') groups.get(id)?.classList.toggle('drop-target', true)
+-        else blocks.get(id)?.classList.toggle('drop-target', true)
+-    }, delay)
+-}
+-
+-function endDrag(event: Event): void {
+-    if (!isDragging) return
+-    isDragging = false
+-
+-    event.preventDefault()
+-    document.documentElement.removeEventListener('pointermove', moveDrag)
+-    document.documentElement.removeEventListener('pointerup', endDrag)
+-    document.documentElement.removeEventListener('pointercancel', endDrag)
+-    document.documentElement.removeEventListener('pointerleave', endDrag)
+-    document.documentElement.removeEventListener('touchmove', moveDrag)
+-    document.documentElement.removeEventListener('touchend', endDrag)
+-    document.documentElement.removeEventListener('touchcancel', endDrag)
+-    globalThis.removeEventListener('pointerup', endDrag)
+-    globalThis.removeEventListener('pointercancel', endDrag)
+-    globalThis.removeEventListener('blur', endDrag)
+-    cancelPendingGroupHover()
+-    markMiniTabDropTarget('')
+-    pendingDragAnchor = undefined
+-
+-    const path = event.composedPath() as Element[]
+-    const type = findTypeFromElement(blocks.get(draggedId))
+-    const group = domlinkgroup?.dataset.group ?? ''
+-    const newIndex = ids.indexOf(draggedId)
+-    const coord = coords[newIndex] ?? originRects.get(draggedId) ?? { x: dx, y: dy, w: 0, h: 0 }
+-
+-    const isDroppable = !!document.querySelector('.drop-source')
+-    const outOfFolder = !path[0]?.classList.contains('link-list') && domlinkgroup?.classList.contains('in-folder')
+-    const targetIsLink = blocks.get(targetId)?.tagName === 'LI'
+-    const targetIsFolder = blocks.get(targetId)?.classList.contains('link-folder')
+-    const draggedIsFolder = blocks.get(draggedId)?.classList.contains('link-folder')
+-    const toFolder = isDroppable && targetIsLink && targetIsFolder && !draggedIsFolder
+-    const toTab = targetId !== '' && targetId !== originalGroup && !targetIsLink
+-    const toFavorites = overFavorites && isDraggingLink()
+-    // Use originalGroup to detect cross-group (not draggedGroup which no longer exists)
+-    const isCrossGroup = crossGroupTarget !== '' && crossGroupTarget !== originalGroup
+-
+-    globalThis.cancelAnimationFrame(dragAnimationFrame)
+-    blocks.get(draggedId)?.classList.remove('on')
+-    domlinkblocks.classList.remove('favorites-drop-active')
+-    domlinkfavorites?.classList.remove('drop-target')
+-    for (const container of dragContainers) container?.classList.replace('dragging', 'dropping')
+-
+-    // For cross-group: the element was removed from old group DOM, just animate removal
+-    if (isCrossGroup || outOfFolder || toFolder || toTab || toFavorites) {
+-        blocks.get(draggedId)?.classList.add('removed')
+-    } else {
+-        const dragBlock = blocks.get(draggedId)
+-        if (dragBlock) dragBlock.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)'
+-        deplaceBlock(draggedId, coord)
+-    }
+-
+-    for (const b of groups.values()) b.classList.remove('drop-target', 'drop-source')
+-    markMiniTabDropTarget('')
+-
+-    const updateDelay = isCrossGroup || toTab || toFavorites || toFolder ? 0 : 200
+-
+-    setTimeout(() => {
+-        if (type === 'mini') {
+-            linksUpdate({ moveFolders: ids })
+-        } else if (toFavorites) {
+-            linksUpdate({ moveFavorites: [draggedId] })
+-        } else if (toFolder) {
+-            linksUpdate({ moveToFolder: { source: draggedId, target: targetId } })
+-            // Auto-open the folder after dropping a link into it
+-            setTimeout(() => {
+-                const folderLi = document.getElementById(targetId) as HTMLLIElement
+-                if (folderLi) {
+-                    storage.sync.get().then((data) => openFolder(data, folderLi))
+-                }
+-            }, 300)
+-        } else if (isCrossGroup) {
+-            // Move to the new group at the position the user chose
+-            const position = ids.indexOf(draggedId)
+-            linksUpdate({ moveToFolder: { ids: [draggedId], target: crossGroupTarget, source: position.toString() } })
+-        } else if (toTab) {
+-            linksUpdate({ moveToFolder: { ids: [draggedId], target: targetId } })
+-        } else if (outOfFolder) {
+-            linksUpdate({ moveOutSubfolder: { ids: [draggedId], folder: group } })
+-        } else if (isFavoritesDrag) {
+-            linksUpdate({ moveFavorites: ids })
+-        } else {
+-            linksUpdate({ moveLinks: ids })
+-        }
+-
+-        setTimeout(() => {
+-            const containers = document.querySelectorAll<HTMLElement>(
+-                '#linkblocks .in-drag, #linkblocks .dragging, #linkblocks .dropping',
+-            )
+-            for (const container of containers) {
+-                for (const el of container.querySelectorAll('li, button')) el.removeAttribute('style')
+-                container?.removeAttribute('style')
+-                container?.classList.remove('in-drag', 'dragging', 'dropping')
+-            }
+-            dragLayer?.remove()
+-            dragLayer = undefined
+-        }, 1)
+-    }, updateDelay)
+-}
+-
+-function createDragClone(element: HTMLElement, { w, h }: Coords): HTMLElement {
+-    const clone = element.cloneNode(true) as HTMLElement
+-    clone.removeAttribute('id')
+-    clone.style.width = `${Math.ceil(w)}px`
+-    clone.style.height = `${Math.ceil(h)}px`
+-    return clone
+-}
+-
+-function deplaceBlock(id: string, coord: Coords): void {
+-    const block = blocks.get(id)
+-    if (!block) return
+-    if (layeredIds.has(id)) {
+-        deplaceElem(block, coord.x, coord.y)
+-        return
+-    }
+-    const origin = originRects.get(id) ?? { x: 0, y: 0, w: 0, h: 0 }
+-    deplaceElem(block, coord.x - origin.x, coord.y - origin.y)
+-}
+-
+-function deplaceElem(dom?: HTMLElement, x = 0, y = 0): void {
+-    if (dom) dom.style.transform = `translate3d(${x}px, ${y}px, 0)`
+-}
+-
+-function deplaceDraggedElem(): void {
+-    const block = blocks.get(draggedId)
+-    if (block) {
+-        deplaceBlock(draggedId, { x: dx, y: dy, w: 0, h: 0 })
+-        dragAnimationFrame = globalThis.requestAnimationFrame(deplaceDraggedElem)
+-    }
+-}
+-
+-function isDraggingOver({ x, y }: { x: number; y: number }): [DropArea, string, DropType] | undefined {
+-    const miniPaddingY = isDraggingLink() && !isFavoritesDrag ? MINI_HOVER_PADDING_Y : 0
+-    const la = findDropzoneArea(dropzones.link, linkDropDirection, x, y)
+-
+-    if (isFavoritesDrag) {
+-        const slot = findCurrentSlotArea(linkDropDirection, x, y)
+-        const hit = la ?? slot
+-
+-        if (hit) return [hit.area, hit.id, 'link']
+-    }
+-
+-    const ma = findDropzoneArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
+-    if (ma && isDraggingLink()) return [ma.area, ma.id, 'mini']
+-    if (la) return [la.area, la.id, 'link']
+-    if (ma) return [ma.area, ma.id, 'mini']
+-
+-    const slotDirection = isDraggingMini() ? 'horizontal' : linkDropDirection
+-    const slot = findCurrentSlotArea(slotDirection, x, y)
+-    if (slot) return [slot.area, slot.id, isDraggingMini() ? 'mini' : 'link']
+-
+-    const miniSlot = isDraggingLink()
+-        ? findDropzoneSlotArea(dropzones.mini, 'horizontal', x, y, miniPaddingY)
+-        : undefined
+-    if (miniSlot) return [miniSlot.area, miniSlot.id, 'mini']
+-
+-    const ga = findDropzoneArea(dropzones.group, 'center', x, y)
+-    if (ga) return [ga.area, ga.id, 'group']
+-}
+-
+-function isDraggingLink(): boolean {
+-    return draggedType === 'link'
+-}
+-
+-function isDraggingMini(): boolean {
+-    return draggedType === 'mini'
+-}
+-
+-function findDropzoneArea(
+-    zones: Dropzones,
+-    dir: 'horizontal' | 'vertical' | 'center',
+-    x: number,
+-    y: number,
+-    paddingY = 0,
+-): DropzoneHit | undefined {
+-    for (const [id, z] of zones) {
+-        if (!(x >= z.x && x <= z.x + z.w && y >= z.y - paddingY && y <= z.y + z.h + paddingY)) continue
+-        let area: DropArea = ''
+-        if (dir === 'center') area = 'center'
+-        if (dir === 'horizontal') {
+-            area = x < z.x + z.w * DROP_EDGE_RATIO ? 'left' : x > z.x + z.w * (1 - DROP_EDGE_RATIO) ? 'right' : 'center'
+-        }
+-        if (dir === 'vertical') {
+-            area = y < z.y + z.h * DROP_EDGE_RATIO ? 'left' : y > z.y + z.h * (1 - DROP_EDGE_RATIO) ? 'right' : 'center'
+-        }
+-        return { area, id }
+-    }
+-}
+-
+-function findCurrentSlotArea(dir: LinkDropDirection, x: number, y: number): DropzoneHit | undefined {
+-    const zones = new Map<string, Coords>()
+-
+-    for (let i = 0; i < ids.length; i++) {
+-        const coord = coords[i] ?? originRects.get(ids[i])
+-
+-        if (coord) zones.set(ids[i], coord)
+-    }
+-
+-    return findDropzoneSlotArea(zones, dir, x, y)
+-}
+-
+-function findDropzoneSlotArea(
+-    zones: Dropzones,
+-    dir: LinkDropDirection,
+-    x: number,
+-    y: number,
+-    paddingY = 0,
+-): DropzoneHit | undefined {
+-    const entries = [...zones]
+-        .filter(([, z]) => z.w > 0 && z.h > 0)
+-        .map(([id, z]) => ({ id, z }))
+-
+-    if (entries.length === 0) return
+-
+-    const minX = Math.min(...entries.map(({ z }) => z.x))
+-    const maxX = Math.max(...entries.map(({ z }) => z.x + z.w))
+-    const minY = Math.min(...entries.map(({ z }) => z.y))
+-    const maxY = Math.max(...entries.map(({ z }) => z.y + z.h))
+-    const inHorizontalBounds = x >= minX - SLOT_MAIN_AXIS_PADDING && x <= maxX + SLOT_MAIN_AXIS_PADDING &&
+-        y >= minY - SLOT_CROSS_AXIS_PADDING - paddingY && y <= maxY + SLOT_CROSS_AXIS_PADDING + paddingY
+-    const inVerticalBounds = x >= minX - SLOT_CROSS_AXIS_PADDING && x <= maxX + SLOT_CROSS_AXIS_PADDING &&
+-        y >= minY - SLOT_MAIN_AXIS_PADDING - paddingY && y <= maxY + SLOT_MAIN_AXIS_PADDING + paddingY
+-
+-    if ((dir === 'horizontal' && !inHorizontalBounds) || (dir === 'vertical' && !inVerticalBounds)) return
+-
+-    let nearest = entries[0]
+-    let nearestDistance = Number.POSITIVE_INFINITY
+-
+-    for (const entry of entries) {
+-        const center = dir === 'horizontal' ? entry.z.x + entry.z.w / 2 : entry.z.y + entry.z.h / 2
+-        const distance = Math.abs((dir === 'horizontal' ? x : y) - center)
+-
+-        if (distance < nearestDistance) {
+-            nearest = entry
+-            nearestDistance = distance
+-        }
+-    }
+-
+-    const center = dir === 'horizontal' ? nearest.z.x + nearest.z.w / 2 : nearest.z.y + nearest.z.h / 2
+-    const area = (dir === 'horizontal' ? x : y) < center ? 'left' : 'right'
+-
+-    return { area, id: nearest.id }
+-}
+-
+-function getPosFromEvent(event: TouchEvent | PointerEvent): { x: number; y: number } {
+-    if (event.type === 'touchmove' || event.type === 'touchend' || event.type === 'touchcancel') {
+-        const t = (event as TouchEvent).touches[0]
+-        if (!t) return { x: dx + cox, y: dy + coy }
+-        return { x: t.clientX, y: t.clientY }
+-    }
+-    if (event.type.startsWith('pointer')) return { x: (event as PointerEvent).x, y: (event as PointerEvent).y }
+-    return { x: 0, y: 0 }
+-}
+-
+-function findTypeFromElement(element?: HTMLElement): 'link' | 'mini' | 'group' {
+-    if (element?.classList.contains('link')) return 'link'
+-    if (element?.classList.contains('link-title')) return 'mini'
+-    if (element?.classList.contains('link-group')) return 'group'
+-    throw new Error('No valid type found for specified element')
+-}
+-
+-function findIdFromElement(element?: HTMLElement, type?: 'link' | 'mini' | 'group'): string {
+-    const t = type ?? findTypeFromElement(element)
+-    if (t === 'link') return element?.id ?? ''
+-    return element?.dataset.group ?? ''
+-}
+diff --git a/src/scripts/features/links/edit.ts b/src/scripts/features/links/edit.ts
+index e5d351f..fdb5fa0 100644
+--- a/src/scripts/features/links/edit.ts
++++ b/src/scripts/features/links/edit.ts
+@@ -11,7 +11,6 @@ interface EditStates {
+     folder: string
+     selected: string[]
+     selectall: boolean
+-    dragging: boolean
+     container: {
+         mini: boolean
+         group: boolean
+@@ -22,7 +21,6 @@ interface EditStates {
+         folder: boolean
+         title: boolean
+         synced: boolean
+-        addgroup: boolean
+     }
+ }
+ 
+@@ -69,11 +67,9 @@ export async function populateDialogWithEditLink(
+         folder: classNames.some((cl) => cl.includes('link-folder')),
+         title: classNames.some((cl) => cl.includes('link-title')),
+         synced: isFavorite || classNames.some((cl) => cl.includes('synced')),
+-        addgroup: classNames.some((cl) => cl.includes('add-group')),
+     }
+ 
+     const selectall = classNames.some((cl) => cl.includes('select-all'))
+-    const dragging = classNames.some((cl) => cl.includes('dragging') || cl.includes('dropping'))
+     const group = (container.mini ? linktitle : linkgroup)?.dataset.group ?? ''
+ 
+     const domfolder = document.querySelector<HTMLElement>('.link-group.in-folder')
+@@ -84,7 +80,6 @@ export async function populateDialogWithEditLink(
+         folder,
+         selectall,
+         container,
+-        dragging,
+         target,
+         selected: getSelectedIds(),
+     }
+@@ -94,7 +89,7 @@ export async function populateDialogWithEditLink(
+     const noSelection = selectall && editStates.selected.length === 0
+     const noInputs = inputs.length === 0
+ 
+-    if (noInputs || folderTitle || noSelection || dragging) {
++    if (noInputs || folderTitle || noSelection) {
+         closeContextMenu()
+         return
+     }
+@@ -112,17 +107,13 @@ export async function populateDialogWithEditLink(
+     if (target.title) {
+         const folders = data.links.folders
+         const folder = folders.find((item) => item.id === editStates.group)
+-        const title = editStates.target.addgroup ? '' : folder?.title ?? editStates.group
++        const title = folder?.title ?? editStates.group
+ 
+         domeditlink.dataset.group = folder?.id ?? ''
+         domtitle.value = title
+ 
+-        const onlyOneTitleUnpinned = folders.filter((item) => !item.pinned).length < 2
+         const onlyOneTitleLeft = folders.length < 2
+ 
+-        if (onlyOneTitleUnpinned) {
+-            document.getElementById('edit-pin')?.setAttribute('disabled', '')
+-        }
+         if (onlyOneTitleLeft) {
+             document.getElementById('edit-delete')?.setAttribute('disabled', '')
+         }
+@@ -166,18 +157,12 @@ function toggleEditInputs(): string[] {
+     inputToFocus = domtitle
+     setSubmitOnEnter('edit-apply')
+ 
+-    document.querySelector('#edit-delete')?.removeAttribute('disabled')
+-    document.querySelector('#edit-pin')?.removeAttribute('disabled')
+-
+     domurl.value = ''
+     domtitle.value = ''
+ 
+     if (container.mini) {
+         if (target.synced && target.title) {
+             inputs = []
+-        } else if (target.addgroup) {
+-            inputs = ['title*', 'add'] // * for required inputs
+-            setSubmitOnEnter('edit-add')
+         } else if (target.title) {
+             inputs = ['title', 'delete', 'apply']
+         }
+@@ -216,7 +201,6 @@ function toggleEditInputs(): string[] {
+         }
+     }
+ 
+-    // shows/enables every input, button and label needed
+     for (const id of inputs) {
+         const required = id.endsWith('*')
+         const cleanId = required ? id.slice(0, -1) : id
+@@ -244,13 +228,7 @@ function toggleEditInputs(): string[] {
+     }
+ 
+     if (addButtonTxt) {
+-        if (selectall) {
+-            addButtonTxt.textContent = tradThis('Create new folder')
+-        } else if (target.title) {
+-            addButtonTxt.textContent = tradThis('Add new group')
+-        } else {
+-            addButtonTxt.textContent = tradThis('Add new link')
+-        }
++        addButtonTxt.textContent = tradThis(selectall ? 'Create new folder' : 'Add new link')
+     }
+ 
+     return inputs
+@@ -299,7 +277,7 @@ function submitChanges(event: SubmitEvent): void {
+     }
+ 
+     if (change === 'edit-add') {
+-        if (container.folder) { // new link inside folder
++        if (container.folder) {
+             quickLinks(undefined, {
+                 addLinks: [{
+                     folder,
+@@ -307,24 +285,18 @@ function submitChanges(event: SubmitEvent): void {
+                     url: domurl.value,
+                 }],
+             })
+-        } else if (target.title && domtitle.value) { // new group
+-            quickLinks(undefined, {
+-                addFolders: [{
+-                    title: domtitle.value,
+-                }],
+-            })
+         } else if (selectall) {
+-            document.dispatchEvent(new Event('remove-select-all')) // new folder from multi-selection
++            document.dispatchEvent(new Event('remove-select-all'))
+             quickLinks(undefined, {
+                 addSubfolder: {
+                     ids: selected,
+                     folder: group,
+                 },
+             })
+-        } else if (container.group) { // new link
++        } else {
+             quickLinks(undefined, {
+                 addLinks: [{
+-                    folder: group,
++                    group,
+                     title: domtitle.value,
+                     url: domurl.value,
+                 }],
+@@ -357,13 +329,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
+     const id = editStates.selected[0]
+     const li = document.querySelector<HTMLLIElement>(`#${id}`)
+     const _inputs = document.querySelectorAll<HTMLInputElement>('#editlink input')
+-
+-    if (editStates.target.addgroup) {
+-        quickLinks(undefined, { addFolders: [{ title: domtitle.value }] })
+-        closeContextMenu()
+-        return
+-    }
+-
+     if (editStates.target.title) {
+         quickLinks(undefined, {
+             folderTitle: {
+@@ -387,18 +352,6 @@ function applyLinkChanges(_origin: 'inputs' | 'button'): void {
+         return
+     }
+ 
+-    if (editStates.container.group && !editStates.target.link && !editStates.target.folder) {
+-        quickLinks(undefined, {
+-            addLinks: [{
+-                group: editStates.group,
+-                title: domtitle.value,
+-                url: domurl.value,
+-            }],
+-        })
+-        closeContextMenu()
+-        return
+-    }
+-
+     if (!id || !li) {
+         return
+     }
+diff --git a/src/scripts/features/links/groups.ts b/src/scripts/features/links/groups.ts
+index f4d1bf5..c354a96 100644
+--- a/src/scripts/features/links/groups.ts
++++ b/src/scripts/features/links/groups.ts
+@@ -1,12 +1,10 @@
+-import { newFolderId } from './model.ts'
+-import { openContextMenu } from '../contextmenu.ts'
+ import { initblocks, initFavorites } from './index.ts'
+ 
+ import { transitioner } from '../../utils/transitioner.ts'
+ import { tradThis } from '../../utils/translations.ts'
+ import { storage } from '../../storage.ts'
+ 
+-import type { LinkFolder, Sync } from '../../../types/sync.ts'
++import type { Sync } from '../../../types/sync.ts'
+ 
+ const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
+ let positionListenerAdded = false
+@@ -45,18 +43,12 @@ export function initFolders(data: Sync, init?: true): void {
+ }
+ 
+ function createFolderTabs(data: Sync): void {
+-    const visibleFolders = data.links.folders.length === 0 ? [] : [...data.links.folders, addFolderPlaceholder()]
++    const visibleFolders = data.links.folders
+ 
+     for (const folder of visibleFolders) {
+         const button = document.createElement('button')
+         const isTopSite = folder.id === 'topsites'
+         const isDefault = folder.id === 'default'
+-        const isAddMore = folder.id === '+'
+-
+-        if (folder.pinned) {
+-            continue
+-        }
+-
+         button.textContent = folder.title
+         button.dataset.group = folder.id
+         button.classList.add('link-title')
+@@ -72,12 +64,7 @@ function createFolderTabs(data: Sync): void {
+             button.textContent = tradThis('Default folder')
+         }
+ 
+-        if (isAddMore) {
+-            button.classList.add('add-group')
+-            button.addEventListener('click', openContextMenu)
+-        } else {
+-            button.addEventListener('click', changeFolder)
+-        }
++        button.addEventListener('click', changeFolder)
+ 
+         document.querySelector('#link-mini div')?.appendChild(button)
+     }
+@@ -188,34 +175,6 @@ export function changeFolderTitle(title: { old: string; new: string }, data: Syn
+     initFolders(data)
+     return data
+ }
+-
+-export function addFolder(folders: { title: string; sync?: boolean }[], data: Sync): Sync {
+-    for (const { title, sync } of folders) {
+-        const isReserved = title === 'default' || title === '+'
+-        const isAlreadyUsed = data.links.folders.some((folder) => folder.title === title || folder.id === title)
+-
+-        if (isReserved || isAlreadyUsed) {
+-            continue
+-        }
+-
+-        const folder: LinkFolder = {
+-            id: newFolderId(),
+-            title,
+-            pinned: false,
+-            source: sync ? 'bookmarks' : 'local',
+-            items: [],
+-        }
+-
 -        data.links.folders.push(folder)
 -        data.links.selectedFolder = folder.id
 -    }
 -
--    return folder
+-    removeEmptyDefaultFolder(data)
+-    initFolders(data)
+-    initblocks(data)
+-    return data
 -}
 -
- export function isElem(link: unknown): link is LinkElem {
-     const value = link as LinkElem | LinkSubfolder | undefined
-     return !!value && typeof value.id === 'string' && typeof value.title === 'string' && !isSubfolder(value)
-@@ -286,16 +252,3 @@ function favoritesFolder(): LinkFolder {
+ export function deleteFolder(folderId: string, data: Sync): Sync {
+     const { folders } = data.links
+     const index = folders.findIndex((folder) => folder.id === folderId || folder.title === folderId)
+@@ -226,56 +185,11 @@ export function deleteFolder(folderId: string, data: Sync): Sync {
+ 
+     const [removed] = folders.splice(index, 1)
+ 
+-    if (data.links.selectedFolder === removed.id || removed.pinned) {
+-        data.links.selectedFolder = folders.find((folder) => !folder.pinned)?.id ?? folders[0]?.id ?? 'default'
+-    }
+-
+-    if (folders.length === 1) {
+-        folders[0].pinned = false
++    if (data.links.selectedFolder === removed.id) {
++        data.links.selectedFolder = folders[0]?.id ?? 'default'
+     }
+ 
+     initblocks(data)
+     initFolders(data)
+     return data
+ }
+-
+-export function moveFolders(mini: string[], data: Sync): Sync {
+-    const order = mini.filter((id) => id !== '+')
+-    const folderById = new Map(data.links.folders.map((folder) => [folder.id, folder]))
+-    const pinned = data.links.folders.filter((folder) => folder.pinned)
+-    const ordered = order.map((id) => folderById.get(id)).filter((folder): folder is LinkFolder => !!folder)
+-    const missing = data.links.folders.filter((folder) => !order.includes(folder.id) && !folder.pinned)
+-
+-    data.links.folders = [...pinned, ...ordered, ...missing]
+-    initFolders(data)
+-
+-    return data
+-}
+-
+-function removeEmptyDefaultFolder(data: Sync): void {
+-    if (data.links.folders.length < 2) {
+-        return
+-    }
+-
+-    const defaultFolder = data.links.folders.find((folder) => folder.id === 'default')
+-
+-    if (!defaultFolder || defaultFolder.items.length > 0) {
+-        return
+-    }
+-
+-    data.links.folders = data.links.folders.filter((folder) => folder.id !== 'default')
+-
+-    if (data.links.selectedFolder === 'default') {
+-        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
+-    }
+-}
+-
+-function addFolderPlaceholder(): LinkFolder {
+-    return {
+-        id: '+',
+-        title: '+',
+-        pinned: false,
+-        source: 'local',
+-        items: [],
+-    }
+-}
+diff --git a/src/scripts/features/links/index.ts b/src/scripts/features/links/index.ts
+index 5245239..f813b5e 100644
+--- a/src/scripts/features/links/index.ts
++++ b/src/scripts/features/links/index.ts
+@@ -1,17 +1,8 @@
+-import {
+-    addFolder,
+-    changeFolderTitle,
+-    deleteFolder,
+-    initFolders,
+-    moveFolders,
+-    toggleFolders,
+-    updateSelectedFolderPosition,
+-} from './groups.ts'
++import { changeFolderTitle, deleteFolder, initFolders, toggleFolders, updateSelectedFolderPosition } from './groups.ts'
+ import { initBookmarkSync, syncBookmarksUpdate } from './bookmarks.ts'
+ import { openContextMenu } from '../contextmenu.ts'
+ import { storeIconFile } from './fileicons.ts'
+ import { folderClick } from './folders.ts'
+-import { startDrag } from './drag.ts'
+ import {
+     createTitle,
+     DEFAULT_FAVICON,
+@@ -23,7 +14,7 @@ import {
+ } from './helpers.ts'
+ import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
+ 
+-import { PLATFORM } from '../../defaults.ts'
++import { EXTENSION, PLATFORM } from '../../defaults.ts'
+ import { stringMaxSize } from '../../shared/generic.ts'
+ import { displayInterface } from '../../shared/display.ts'
+ import { getHTMLTemplate } from '../../shared/dom.ts'
+@@ -50,11 +41,6 @@ type UpdateLink = {
+     file?: File
+ }
+ 
+-type AddFolders = {
+-    title: string
+-    sync?: boolean
+-}[]
+-
+ type SubfolderMove = {
+     source: string
+     target: string
+@@ -84,12 +70,10 @@ export type LinksUpdate = {
+     newtab?: boolean
+     folders?: boolean
+     addLinks?: AddLinks
+-    addFolders?: AddFolders
+     addSubfolder?: { ids: string[]; folder?: string; group?: string }
+     updateLink?: UpdateLink
+     moveLinks?: string[]
+     moveFavorites?: string[]
+-    moveFolders?: string[]
+     concatSubfolders?: SubfolderMove
+     moveToSubfolder?: SubfolderMove
+     moveToFolder?: SubfolderMove | MoveToFolderArgs
+@@ -105,7 +89,6 @@ export type LinksUpdate = {
+ type RenderFolder = {
+     folder: LinkFolder
+     items: LinkNode[]
+-    pinned: boolean
+     synced: boolean
+     div: HTMLDivElement | null
+     lis: HTMLLIElement[]
+@@ -122,9 +105,24 @@ export const FAVORITES_GROUP = FAVORITES_FOLDER
+ let initIconList: [HTMLImageElement, string][] = []
+ let selectallTimer = 0
+ 
++const INTERNAL_URL_SCHEMES = [
++    'about:',
++    'chrome://',
++    'edge://',
++    'helium://',
++    'brave://',
++    'opera://',
++    'vivaldi://',
++    'arc://',
++]
++
+ domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
+     const anchor = (event.target as HTMLElement).closest('a')
+-    if (anchor && anchor.href.startsWith('data:')) {
++    if (!anchor) {
++        return
++    }
++
++    if (anchor.href.startsWith('data:')) {
+         event.preventDefault()
+         try {
+             const response = await fetch(anchor.href)
+@@ -134,9 +132,33 @@ domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
+         } catch {
+             globalThis.open(anchor.href, '_blank')
+         }
++        return
++    }
++
++    const internalUrl = extractInternalUrl(anchor.getAttribute('href') ?? '')
++    if (internalUrl) {
++        event.preventDefault()
++        openInternalUrl(internalUrl, anchor.target === '_blank')
+     }
+ })
+ 
++function extractInternalUrl(href: string): string | null {
++    const candidate = href.startsWith('#') ? href.slice(1) : href
++    return INTERNAL_URL_SCHEMES.some((scheme) => candidate.startsWith(scheme)) ? candidate : null
++}
++
++function openInternalUrl(url: string, newTab: boolean): void {
++    const tabs = EXTENSION?.tabs as typeof chrome.tabs | undefined
++    if (!tabs) {
++        return
++    }
++    if (newTab) {
++        tabs.create({ url })
++    } else {
++        tabs.update({ url })
++    }
++}
++
+ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise<void> {
+     if (event) {
+         await linksUpdate(event)
+@@ -211,7 +233,6 @@ export function initblocks(sync: Sync, local?: Local): true {
+ 
+             if (!activeFolder.synced) {
+                 li.addEventListener('keyup', openContextMenu)
+-                li.addEventListener('pointerdown', startDrag)
+                 li.addEventListener('click', selectAll)
+                 li.addEventListener('pointerdown', selectAll)
+             }
+@@ -223,7 +244,6 @@ export function initblocks(sync: Sync, local?: Local): true {
+         const subfolder = subfolderId ? getNode(sync, subfolderId) : undefined
+         linktitle.textContent = isSubfolder(subfolder) ? subfolder.title : activeFolder.folder.title
+         linkgroup.dataset.group = activeFolder.folder.id
+-        linkgroup.classList.toggle('pinned', activeFolder.pinned)
+         linkgroup.classList.toggle('synced', activeFolder.synced)
+         domlinkblocks.insertBefore(linkgroup, domlinkmini)
+     }
+@@ -243,19 +263,19 @@ export function initblocks(sync: Sync, local?: Local): true {
+ }
+ 
+ function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
+-    const selected = getFolder(sync, sync.links.selectedFolder) ?? sync.links.folders[0]
+-    const visible = [selected, ...sync.links.folders.filter((folder) => folder.pinned)]
+-        .filter((folder): folder is LinkFolder => !!folder)
+-    const unique = new Map(visible.map((folder) => [folder.id, folder]))
++    const folder = getFolder(sync, sync.links.selectedFolder) ?? sync.links.folders[0]
++
++    if (!folder) {
++        return []
++    }
+ 
+-    return [...unique.values()].map((folder) => ({
++    return [{
+         folder,
+         items: folder.items,
+-        pinned: folder.id !== sync.links.selectedFolder,
+         synced: folder.source === 'bookmarks',
+         div: null,
+         lis: [],
+-    }))
++    }]
+ }
+ 
+ export function initFavorites(sync: Sync): void {
+@@ -491,10 +511,8 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
+             folder: update.addSubfolder.folder ?? update.addSubfolder.group,
+         }, data)
+     }
+-    if (update.addFolders) data = addFolder(update.addFolders, data)
+     if (update.moveLinks) data = moveLinks(update.moveLinks, data)
+     if (update.moveFavorites) data = moveFavorites(update.moveFavorites, data)
+-    if (update.moveFolders) data = moveFolders(update.moveFolders, data)
+     if (update.moveToFolder && 'ids' in update.moveToFolder) data = moveToFolder(update.moveToFolder, data)
+     if (update.moveToSubfolder || update.moveToFolder && 'source' in update.moveToFolder) {
+         data = moveToSubfolder((update.moveToSubfolder ?? update.moveToFolder) as SubfolderMove, data)
+@@ -695,7 +713,7 @@ function deleteLinks(ids: string[], data: Sync): Sync {
+ }
+ 
+ function moveLinks(ids: string[], data: Sync): Sync {
+-    const folderId = document.querySelector<HTMLElement>('#linkblocks .link-group:not(.pinned)')?.dataset.group ??
++    const folderId = document.querySelector<HTMLElement>('#linkblocks .link-group')?.dataset.group ??
+         data.links.selectedFolder
+     const subfolderId = domlinkblocks.dataset.folderid
+     const items = subfolderId ? getLinksInSubfolder(data, subfolderId) : getFolder(data, folderId)?.items
+@@ -840,7 +858,7 @@ export function validateLink(title: string, url: string, id?: string): LinkElem
+ 
+ function normalizeLinkUrl(url: string): string {
+     const startsWithEither = (values: string[]) => values.some((value) => url.startsWith(value))
+-    const isConfig = startsWithEither(['about:', 'chrome://', 'edge://'])
++    const isConfig = startsWithEither(INTERNAL_URL_SCHEMES)
+     const hasOwnProtocol = startsWithEither(['https://', 'http://', 'data:', 'ftp:'])
+     const isLocalhost = url.startsWith('localhost') || url.startsWith('127.0.0.1')
+     const prefix = isConfig ? '#' : isLocalhost ? 'http://' : !hasOwnProtocol ? 'https://' : ''
+@@ -897,7 +915,6 @@ function getFolderByTitleOrDefault(data: Sync, idOrTitle?: string): LinkFolder {
+     const created: LinkFolder = {
+         id: idOrTitle && idOrTitle !== '+' ? idOrTitle : newFolderId(),
+         title: idOrTitle && idOrTitle !== '+' ? idOrTitle : 'default',
+-        pinned: false,
+         source: 'local',
          items: [],
      }
- }
--
--function uniqueById(folders: LinkFolder[]): LinkFolder[] {
--    const seen = new Set<string>()
--    const unique: LinkFolder[] = []
--
--    for (const folder of folders) {
--        if (seen.has(folder.id)) continue
--        seen.add(folder.id)
--        unique.push(folder)
--    }
--
--    return unique
--}
+diff --git a/src/scripts/features/links/model.ts b/src/scripts/features/links/model.ts
+index 7d019d8..6a68004 100644
+--- a/src/scripts/features/links/model.ts
++++ b/src/scripts/features/links/model.ts
+@@ -32,7 +32,6 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
+         folders: [{
+             id: 'default',
+             title: 'default',
+-            pinned: false,
+             source: 'local',
+             items: [],
+         }],
+@@ -162,7 +161,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
+     for (const folder of links.folders) {
+         folder.id ||= newFolderId()
+         folder.title ||= 'default'
+-        folder.pinned = !!folder.pinned
+         folder.source = normalizeFolderSource(folder.source)
+         folder.items = normalizeItems(folder.items)
+     }
+@@ -171,7 +169,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
+         links.folders.push({
+             id: 'default',
+             title: 'default',
+-            pinned: false,
+             source: 'local',
+             items: [],
+         })
+@@ -247,7 +244,6 @@ function favoritesFolder(): LinkFolder {
+     return {
+         id: FAVORITES_FOLDER,
+         title: FAVORITES_FOLDER,
+-        pinned: false,
+         source: 'bookmarks',
+         items: [],
+     }
+diff --git a/src/scripts/features/notes.ts b/src/scripts/features/notes.ts
+index 7cb1b2e..54c90fa 100644
+--- a/src/scripts/features/notes.ts
++++ b/src/scripts/features/notes.ts
+@@ -90,7 +90,7 @@ function toggleNotes(force?: boolean): void {
+ 
+     panel?.classList.toggle('hidden', !shouldOpen)
+     panel?.classList.toggle('shown', shouldOpen)
+-    panel?.setAttribute('aria-hidden', String(!shouldOpen))
++    panel?.toggleAttribute('inert', !shouldOpen)
+     trigger?.classList.toggle('shown', shouldOpen)
+ 
+     if (shouldOpen && noteState.records.length === 0) {
 diff --git a/src/scripts/features/synchronization/gist.ts b/src/scripts/features/synchronization/gist.ts
-index 3830f38..5240247 100644
+index 5240247..f653ddc 100644
 --- a/src/scripts/features/synchronization/gist.ts
 +++ b/src/scripts/features/synchronization/gist.ts
-@@ -50,7 +50,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
-         return false
-     }
+@@ -43,7 +43,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
+     let resp: Response
  
--    if (resp.status !== 200) {
-+    if (!resp.ok) {
+     try {
+-        resp = await fetch(`https://api.github.com/gists/${id}`, { headers: gistHeaders(token) })
++        resp = await fetchGistWithTimeout(`https://api.github.com/gists/${id}`, { headers: gistHeaders(token) })
+     } catch (_) {
          document.querySelector('#gist-sync-status')?.remove()
-         base.textContent = tradThis('No saved data yet')
-         return false
-@@ -81,7 +81,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
- }
+         base.textContent = tradThis('Cannot connect to GitHub')
+@@ -164,7 +164,7 @@ export async function isGistTokenValid(token = ''): Promise<boolean> {
  
- export async function retrieveGist(token: string, id?: string): Promise<Sync> {
--    type GistGet = { files: { content: string }[] }
-+    type GistGet = { files: Record<string, { content: string } | undefined> }
- 
-     if (!token) {
-         throw new Error(GIST_ERROR.TOKEN)
-@@ -90,33 +90,27 @@ export async function retrieveGist(token: string, id?: string): Promise<Sync> {
-         throw new Error(GIST_ERROR.ID)
-     }
- 
--    let req: Response
--
--    try {
--        req = await fetch(`https://api.github.com/gists/${id}`, {
--            headers: gistHeaders(token),
--        })
--    } catch (_) {
--        throw new Error(GIST_ERROR.NOCONN)
--    }
-+    const req = await gistFetch(`https://api.github.com/gists/${id}`, {
-+        headers: gistHeaders(token),
-+    })
- 
--    if (req.status === 200) {
--        const gist = (await req.json()) as GistGet
--        const content = Object.values(gist?.files ?? {})[0]?.content ?? ''
-+    const gist = (await req.json()) as GistGet
-+    const content = gist?.files?.[GIST_FILENAME]?.content
- 
--        try {
--            return JSON.parse(content)
--        } catch (_) {
--            throw new Error(GIST_ERROR.JSON)
--        }
-+    if (!content) {
-+        throw new Error(GIST_ERROR.NOGIST)
-     }
- 
--    throw new Error(GIST_ERROR.OTHER)
-+    try {
-+        return JSON.parse(content)
-+    } catch (_) {
-+        throw new Error(GIST_ERROR.JSON)
-+    }
- }
- 
- export async function sendGist(token: string, id: string | undefined, data: Sync): Promise<string> {
-     const description = 'File automatically generated by Bonjourr.'
--    const files = { 'bonjourr-export.json': { content: JSON.stringify(data, undefined, 2) } }
-+    const files = { [GIST_FILENAME]: { content: JSON.stringify(data, undefined, 2) } }
- 
-     if (isStorageDefault(data)) {
-         throw new Error(GIST_ERROR.DEFAULT)
-@@ -124,24 +118,11 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
- 
-     // Create
-     if (!id) {
--        let resp: Response
--
--        try {
--            resp = await fetch('https://api.github.com/gists', {
--                body: JSON.stringify({ files, description, public: false }),
--                headers: gistHeaders(token),
--                method: 'POST',
--            })
--        } catch (_) {
--            throw new Error(GIST_ERROR.NOCONN)
--        }
--
--        if (resp.status === 401) {
--            throw new Error(GIST_ERROR.TOKEN)
--        }
--        if (resp.status >= 300) {
--            throw new Error(GIST_ERROR.OTHER)
--        }
-+        const resp = await gistFetch('https://api.github.com/gists', {
-+            body: JSON.stringify({ files, description, public: false }),
-+            headers: gistHeaders(token),
-+            method: 'POST',
-+        })
- 
-         const api = await resp.json()
-         return api.id
-@@ -152,27 +133,11 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
-     }
- 
-     // Update
--    let resp: Response
--
--    try {
--        resp = await fetch(`https://api.github.com/gists/${id}`, {
--            body: JSON.stringify({ files, description }),
--            headers: gistHeaders(token),
--            method: 'PATCH',
--        })
--    } catch (_) {
--        throw new Error(GIST_ERROR.NOCONN)
--    }
--
--    if (resp.status === 404) {
--        throw new Error(GIST_ERROR.NOGIST)
--    }
--    if (resp.status === 401) {
--        throw new Error(GIST_ERROR.TOKEN)
--    }
--    if (resp.status >= 300) {
--        throw new Error(GIST_ERROR.OTHER)
--    }
-+    await gistFetch(`https://api.github.com/gists/${id}`, {
-+        body: JSON.stringify({ files, description }),
-+        headers: gistHeaders(token),
-+        method: 'PATCH',
-+    }, { 404: GIST_ERROR.NOGIST })
- 
-     return id
- }
-@@ -182,23 +147,12 @@ export async function findGistId(token?: string): Promise<string | undefined> {
-         throw new Error(GIST_ERROR.TOKEN)
-     }
- 
--    let resp: Response
--
--    try {
--        resp = await fetch('https://api.github.com/gists?per_page=100', { headers: gistHeaders(token) })
--    } catch (_) {
--        throw new Error(GIST_ERROR.NOCONN)
--    }
--
--    if (resp.status === 401) {
--        throw new Error(GIST_ERROR.TOKEN)
--    }
--    if (resp.status >= 300) {
--        throw new Error(GIST_ERROR.OTHER)
--    }
-+    const resp = await gistFetch('https://api.github.com/gists?per_page=100', {
-+        headers: gistHeaders(token),
-+    })
- 
-     const list = (await resp.json()) as GistItem[]
--    const file = list.filter((gist) => !gist.public && gist.files['bonjourr-export.json']?.size > 0)[0]
-+    const file = list.filter((gist) => !gist.public && gist.files[GIST_FILENAME]?.size > 0)[0]
- 
-     return file?.id
- }
-@@ -214,7 +168,7 @@ export async function isGistTokenValid(token = ''): Promise<boolean> {
+     try {
+         const isoDate = new Date()?.toISOString()
+-        const resp = await fetch(`https://api.github.com/gists?since=${isoDate}`, {
++        const resp = await fetchGistWithTimeout(`https://api.github.com/gists?since=${isoDate}`, {
              headers: gistHeaders(token),
          })
  
--        return resp.status === 200
-+        return resp.ok
-     } catch (_) {
-         return false
-     }
-@@ -245,6 +199,34 @@ function gistHeaders(token: string): HeadersInit {
+@@ -199,6 +199,17 @@ function gistHeaders(token: string): HeadersInit {
      }
  }
  
-+async function gistFetch(
-+    input: RequestInfo,
-+    init?: RequestInit,
-+    statusOverrides?: Record<number, string>,
-+): Promise<Response> {
-+    let resp: Response
++async function fetchGistWithTimeout(input: RequestInfo, init?: RequestInit): Promise<Response> {
++    const controller = new AbortController()
++    const timeout = setTimeout(() => controller.abort(), GIST_FETCH_TIMEOUT_MS)
 +
 +    try {
-+        resp = await fetch(input, init)
-+    } catch (_) {
-+        throw new Error(GIST_ERROR.NOCONN)
++        return await fetch(input, { ...init, signal: controller.signal })
++    } finally {
++        clearTimeout(timeout)
 +    }
-+
-+    if (statusOverrides && resp.status in statusOverrides) {
-+        throw new Error(statusOverrides[resp.status])
-+    }
-+    if (resp.status === 401) {
-+        throw new Error(GIST_ERROR.TOKEN)
-+    }
-+    if (!resp.ok) {
-+        throw new Error(GIST_ERROR.OTHER)
-+    }
-+
-+    return resp
 +}
 +
-+const GIST_FILENAME = 'bonjourr-export.json'
-+
- const GIST_ERROR = {
-     ID: tradThis('Invalid Gist ID in settings.'),
-     TOKEN: tradThis('Invalid token.'),
-diff --git a/src/scripts/features/synchronization/index.ts b/src/scripts/features/synchronization/index.ts
-index 3835d3f..eb1bda4 100644
---- a/src/scripts/features/synchronization/index.ts
-+++ b/src/scripts/features/synchronization/index.ts
-@@ -3,7 +3,7 @@ import { isDistantUrlValid, receiveFromURL } from './url.ts'
- import { dedupeSyncLinks } from './merge.ts'
- import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
- import { onSettingsLoad } from '../../utils/onsettingsload.ts'
--import { filterData } from '../../compatibility/apply.ts'
-+import { mergeImportedConfig } from '../../compatibility/apply.ts'
- import { networkForm } from '../../shared/form.ts'
- import { fadeOut } from '../../shared/dom.ts'
- import { SYNC_DEFAULT } from '../../defaults.ts'
-@@ -119,8 +119,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
-             local.gistToken = update.gistToken
-             local.gistId = await findGistId(local.gistToken)
+ async function gistFetch(
+     input: RequestInfo,
+     init?: RequestInit,
+@@ -207,7 +218,7 @@ async function gistFetch(
+     let resp: Response
  
--            storage.local.set({ gistId: local.gistId })
--            storage.local.set({ gistToken: local.gistToken })
-+            storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
- 
-             gistsyncform.accept()
-             toggleSyncSettingsOption(local)
-@@ -251,10 +250,22 @@ function isSyncType(val = ''): val is SyncType {
-     return ['browser', 'gist', 'url', 'off'].includes(val)
- }
- 
--async function mergeDownloadedSync(_current: Sync, incoming: Sync): Promise<Sync> {
-+async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
-     incoming = normalizeExternalSync(incoming)
-     let update = dedupeSyncLinks(structuredClone(incoming))
- 
-+    // Snapshot the soon-to-be-overwritten config so a failed clear+set still leaves
-+    // the user with a recoverable copy in localStorage. Web mode shares a 5 MB
-+    // localStorage quota with the live config, so cap the snapshot size.
-+    try {
-+        const snapshot = JSON.stringify(current)
-+        if (snapshot.length < 2_000_000) {
-+            localStorage.setItem('bonjourr-archive-pre-sync', snapshot)
-+        }
-+    } catch (_) {
-+        // localStorage might be full; the sync still proceeds.
-+    }
-+
-     await storage.sync.clear()
-     await storage.sync.set(update)
- 
-@@ -292,7 +303,7 @@ function getSettingsTextAreaSync(): Sync | undefined {
- }
- 
- function normalizeExternalSync(data: Partial<Sync>): Sync {
--    return filterData('import', structuredClone(SYNC_DEFAULT), data)
-+    return mergeImportedConfig(structuredClone(SYNC_DEFAULT), data)
- }
- 
- // function isSyncFreq(val: string): val is SyncFreq {
-diff --git a/src/scripts/index.ts b/src/scripts/index.ts
-index 8206758..88e043c 100644
---- a/src/scripts/index.ts
-+++ b/src/scripts/index.ts
-@@ -18,10 +18,9 @@ import { serviceWorker } from './startup/serviceworker.ts'
- import { tabsTracking } from './startup/tabstracking.ts'
- import { settingsInit } from './settings.ts'
- import { userActions } from './events.ts'
--import { filterData } from './compatibility/apply.ts'
- import { storage } from './storage.ts'
- 
--import { BROWSER, CURRENT_VERSION, LOCAL_DEFAULT, PLATFORM, SYNC_DEFAULT, SYSTEM_OS } from './defaults.ts'
-+import { BROWSER, PLATFORM, SYSTEM_OS } from './defaults.ts'
- 
- restoreBackgroundCache()
- 
-@@ -53,31 +52,7 @@ try {
- }
- 
- async function startup(): Promise<void> {
--    let { sync, local } = await storage.init()
--    const oldVersion = sync?.about?.version
--
--    if (!sync || !local) {
--        console.warn('Storage failed, loading Bonjourr with default settings')
--        sync = structuredClone(SYNC_DEFAULT)
--        local = structuredClone(LOCAL_DEFAULT)
--    }
--
--    if (oldVersion !== CURRENT_VERSION) {
--        console.info(`Updated Bonjourr, ${oldVersion} => ${CURRENT_VERSION}`)
--
--        localStorage.setItem('update-archive', JSON.stringify(sync))
--
--        sync = filterData('update', sync)
--
--        local.translations = undefined
--        storage.local.remove('translations')
--        local = { ...LOCAL_DEFAULT, ...local }
--
--        // <!> keep this order
--        // <!> must delete old keys before upgrading storage
--        await storage.sync.clear()
--        await storage.sync.set(sync)
--    }
-+    const { sync, local } = await storage.init()
- 
-     await setTranslationCache(sync.lang, local)
- 
-diff --git a/src/scripts/settings.ts b/src/scripts/settings.ts
-index f000e56..a34ee37 100644
---- a/src/scripts/settings.ts
-+++ b/src/scripts/settings.ts
-@@ -25,7 +25,7 @@ import { getPermissions } from './utils/permissions.ts'
- import { opacityFromHex } from './shared/generic.ts'
- import { loadCallbacks } from './utils/onsettingsload.ts'
- import { onclickdown } from 'clickdown/mod'
--import { filterData } from './compatibility/apply.ts'
-+import { mergeImportedConfig } from './compatibility/apply.ts'
- import { stringify } from './utils/stringify.ts'
- import { debounce } from './utils/debounce.ts'
- import { langList } from './langs.ts'
-@@ -974,7 +974,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
-             }
-         }
- 
--        const importedData = dedupeSyncLinks(filterData('import', structuredClone(SYNC_DEFAULT), imported))
-+        const importedData = dedupeSyncLinks(mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported))
-         let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
- 
-         if (mode === 'replace') {
-diff --git a/src/scripts/shared/api.ts b/src/scripts/shared/api.ts
-deleted file mode 100644
-index 6efd59c..0000000
---- a/src/scripts/shared/api.ts
-+++ /dev/null
-@@ -1,24 +0,0 @@
--export async function apiWebSocket(path: string): Promise<WebSocket | undefined> {
--    try {
--        const socket = new WebSocket(`wss://services.bonjourr.fr/${path}`)
--        const isOpened = await new Promise((resolve) => {
--            socket.onopen = () => resolve(true)
--            socket.onerror = () => resolve(false)
--            socket.onclose = () => resolve(false)
--        })
--
--        if (isOpened) {
--            return socket
--        }
--    } catch (_error) {
--        // ...
--    }
--}
--
--export async function apiFetch(path: string): Promise<Response | undefined> {
--    try {
--        return await fetch(`https://services.bonjourr.fr${path}`)
--    } catch (_error) {
--        // ...
--    }
--}
-diff --git a/src/scripts/shared/dom.ts b/src/scripts/shared/dom.ts
-index 9c66490..9f0902f 100644
---- a/src/scripts/shared/dom.ts
-+++ b/src/scripts/shared/dom.ts
-@@ -11,18 +11,6 @@ export function webkitRangeTrackColor(input: HTMLInputElement): void {
-     input.setAttribute('aria-valuemax', max || '100')
- }
- 
--export function toggleDisabled(element: Element | null, force?: boolean): void {
--    if (element) {
--        const toggle = force !== undefined ? force : typeof element.getAttribute('disabled') === 'string'
--
--        if (toggle) {
--            element.setAttribute('disabled', '')
--        } else {
--            element.removeAttribute('disabled')
--        }
--    }
--}
--
- export function getSplitRangeData(id: string): { range?: string; button?: string } {
-     const wrapper = document.querySelector<HTMLInputElement>(`#${id.replace('#', '')}`)
-     const range = wrapper?.querySelector<HTMLInputElement>('input')
-diff --git a/src/scripts/storage.ts b/src/scripts/storage.ts
-index 15b484a..06de144 100644
---- a/src/scripts/storage.ts
-+++ b/src/scripts/storage.ts
-@@ -13,6 +13,11 @@ interface AllStorage {
-     local?: Local
- }
- 
-+interface InitializedStorage {
-+    sync: Sync
-+    local: Local
-+}
-+
- interface StorageTypeReturn {
-     init: () => StorageType
-     get: () => StorageType
-@@ -37,7 +42,7 @@ interface Storage {
-         set: (type: StorageType) => void
-         init: () => StorageType
-     }
--    init: () => Promise<AllStorage>
-+    init: () => Promise<InitializedStorage>
-     clearall: () => Promise<void>
- }
- 
-@@ -99,9 +104,7 @@ async function syncGet(_key?: string | string[]): Promise<Sync> {
-     }
- }
- 
--async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<void> {
--    // console.log('sync set', JSON.stringify(keyval))
--
-+async function syncSet(keyval: Record<string, unknown>): Promise<void> {
-     switch (storage.type.get()) {
-         case 'webext-local': {
-             try {
-@@ -114,7 +117,6 @@ async function syncSet(keyval: Record<string, unknown>, fn = () => {}): Promise<
-             } catch (err) {
-                 console.warn('Local storage write failed', err)
-             }
--            fn()
-             return
-         }
- 
-@@ -146,7 +148,6 @@ async function syncRemove(key: string): Promise<void> {
- 
-                 if (syncStorage) {
-                     delete syncStorage[key]
--                    await chrome.storage.local.remove('syncStorage')
-                     await chrome.storage.local.set({ syncStorage })
-                 }
-             } catch (_) { /* ignore */ }
-@@ -183,8 +184,6 @@ async function syncClear(): Promise<void> {
- //	Local data
- 
- function localSet(value: Record<string, unknown>): void {
--    // console.log('local set', JSON.stringify(value))
--
-     switch (storage.type.get()) {
-         case 'webext-local': {
-             chrome.storage.local.set(value).catch((err) => {
-@@ -297,7 +296,7 @@ async function localClear(): Promise<void> {
- 
- //	Init data
- 
--async function init(): Promise<AllStorage> {
-+async function init(): Promise<InitializedStorage> {
-     const store = globalThis.startupStorage as AllStorage ?? {}
- 
-     if (PLATFORM !== 'online' && !webextStoreReady()) {
-@@ -338,6 +337,7 @@ async function init(): Promise<AllStorage> {
-     }
- 
-     const sync = verifyDataAsSync(store.sync)
-+    normalizeLinksState(sync)
-     const local = verifyDataAsLocal(store.local)
- 
-     return {
-@@ -358,7 +358,8 @@ async function clearall(): Promise<void> {
-     sessionStorage.clear()
- 
-     Object.keys(localStorage).forEach((key) => {
--        if (key.startsWith('bonjourr-archive-') === false) {
-+        const isArchive = key.startsWith('bonjourr-archive-') || key === 'update-archive'
-+        if (!isArchive) {
-             localStorage.removeItem(key)
-         }
-     })
-@@ -399,7 +400,9 @@ async function clearall(): Promise<void> {
- export async function getSyncDefaults(): Promise<Sync> {
      try {
-         const json = await (await fetch('config.json')).json()
--        return verifyDataAsSync(json)
-+        const sync = verifyDataAsSync(json)
-+        normalizeLinksState(sync)
-+        return sync
+-        resp = await fetch(input, init)
++        resp = await fetchGistWithTimeout(input, init)
      } catch (_) {
-         // ...
+         throw new Error(GIST_ERROR.NOCONN)
      }
-@@ -416,14 +419,10 @@ export function isStorageDefault(data: Sync): boolean {
+@@ -225,6 +236,7 @@ async function gistFetch(
+     return resp
  }
  
- function verifyDataAsSync(data: Partial<Sync> = {}): Sync {
--    const sync = {
-+    return {
-         ...SYNC_DEFAULT,
-         ...data,
++const GIST_FETCH_TIMEOUT_MS = 5000
+ const GIST_FILENAME = 'bonjourr-export.json'
+ 
+ const GIST_ERROR = {
+diff --git a/src/styles/_responsive.css b/src/styles/_responsive.css
+index c14bc2d..e97651b 100644
+--- a/src/styles/_responsive.css
++++ b/src/styles/_responsive.css
+@@ -163,15 +163,6 @@
+     #image-background-overlay {
+         position: fixed;
      }
 -
--    normalizeLinksState(sync)
--
--    return sync
- }
- 
- function verifyDataAsLocal(data: Partial<Local> = {}): Local {
-diff --git a/src/scripts/utils/bundlelinks.ts b/src/scripts/utils/bundlelinks.ts
-deleted file mode 100644
-index d3a466a..0000000
---- a/src/scripts/utils/bundlelinks.ts
-+++ /dev/null
-@@ -1,38 +0,0 @@
--import type { LinkIcon } from '../../types/shared.ts'
--import type { Sync } from '../../types/sync.ts'
--
--export type LegacyLink = LegacyLinkElem | LegacyLinkFolder
--
--export interface LegacyLinkElem {
--    _id: string
--    parent?: string | number
--    folder?: false
--    order: number
--    title: string
--    url: string
--    icon?: LinkIcon | string
--    bookmark?: {
--        id: string
--        parentId?: string
--    }
--}
--
--export interface LegacyLinkFolder {
--    _id: string
--    parent?: string | number
--    folder: true
--    order: number
--    title: string
--}
--
--export function bundleLinks(data: Partial<Sync> | Record<string, unknown>): LegacyLink[] {
--    const res: LegacyLink[] = []
--
--    Object.entries(data).map(([key, val]) => {
--        if (key.length === 11 && key.startsWith('links')) {
--            res.push(val as LegacyLink)
--        }
--    })
--
--    return res
--}
-diff --git a/src/scripts/utils/semver.ts b/src/scripts/utils/semver.ts
-deleted file mode 100644
-index 7aaad13..0000000
---- a/src/scripts/utils/semver.ts
-+++ /dev/null
-@@ -1,28 +0,0 @@
--export interface SemVer {
--    major: number
--    minor: number
--    patch: number
--}
--
--export function toSemVer(version = '0.0.0'): SemVer {
--    const result = {
--        major: 0,
--        minor: 0,
--        patch: 0,
+-    #link-mini .link-title.add-group {
+-        visibility: visible;
+-        max-width: 3em;
+-        padding-right: 0.5em;
+-        padding-left: 0.5em;
+-        opacity: 1;
 -    }
 -
--    if (typeof version === 'string') {
--        const arr = version.split('.')
--        const major = parseInt(arr[0] ?? '0')
--        const minor = parseInt(arr[1] ?? '0')
--        const patch = parseInt(arr[2] ?? '0')
--
--        if (!isNaN(major) && !isNaN(minor) && !isNaN(patch)) {
--            result.major = major
--            result.minor = minor
--            result.patch = patch
--        }
--    }
--
--    return result
--}
-diff --git a/src/settings.html b/src/settings.html
-index d651292..5e26989 100644
---- a/src/settings.html
-+++ b/src/settings.html
-@@ -796,9 +796,7 @@
-                 </button>
-             </span>
- 
--            <select id="i_customfont">
--                <option value="" class="trn">System default</option>
--            </select>
-+            <select id="i_customfont"></select>
-         </div>
- 
-         <p class="tooltiptext dropdown ttfontfamily">
+     aside,
+     button,
+     select,
 diff --git a/src/styles/features/links.css b/src/styles/features/links.css
-index e4efe03..108fa1b 100644
+index 108fa1b..8dc9955 100644
 --- a/src/styles/features/links.css
 +++ b/src/styles/features/links.css
-@@ -469,7 +469,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
-     height: var(--icon-size);
+@@ -57,7 +57,7 @@
+     z-index: 3;
+     display: flex;
+     flex-direction: column;
+-    row-gap: 4px;
++    row-gap: 2px;
+     text-align: center;
+     pointer-events: none;
+ }
+@@ -117,11 +117,6 @@
+     align-items: center;
+     row-gap: 8px;
+ }
+-
+-.link-group.pinned {
+-    margin-bottom: 40px;
+-}
+-
+ .link-group.hiding .link-list {
+     opacity: 0;
+ }
+@@ -191,7 +186,7 @@
+     z-index: 1;
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link-list {
++#linkblocks > .link-group .link-list {
+     justify-content: flex-start;
+     align-items: flex-start;
+     width: max-content;
+@@ -213,7 +208,7 @@
+ 
+ /* Liquid glass lens: transparent middle with stronger refractive edges. */
+ .link-group.in-folder .link-list::before,
+-#linkblocks > .link-group:not(.pinned)::before {
++#linkblocks > .link-group::before {
+     content: '';
+     position: absolute;
+     inset: 1px;
+@@ -226,7 +221,7 @@
+ }
+ 
+ .link-group.in-folder .link-list::after,
+-#linkblocks > .link-group:not(.pinned)::after {
++#linkblocks > .link-group::after {
+     content: '';
+     position: absolute;
+     inset: 0;
+@@ -251,18 +246,18 @@
+     -webkit-mask-composite: xor;
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link-list::-webkit-scrollbar {
++#linkblocks > .link-group .link-list::-webkit-scrollbar {
+     display: none;
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link {
++#linkblocks > .link-group .link {
+     width: max-content;
+     min-width: 100%;
+     max-width: none;
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link a,
+-#linkblocks > .link-group:not(.pinned) .link-folder {
++#linkblocks > .link-group .link a,
++#linkblocks > .link-group .link-folder {
+     display: flex;
+     align-items: center;
+     column-gap: 0.6em; /* scale gap between icon and text with font-size */
+@@ -270,16 +265,16 @@
+     max-width: none;
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link div {
++#linkblocks > .link-group .link div {
+     width: max(14px, 1.4em);
+     height: max(14px, 1.4em);
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link-folder > div {
++#linkblocks > .link-group .link-folder > div {
+     height: max(14px, 1.4em);
+ }
+ 
+-#linkblocks > .link-group:not(.pinned) .link span {
++#linkblocks > .link-group .link span {
+     position: static;
+     display: block;
+     visibility: visible;
+@@ -337,7 +332,6 @@
+     max-width: 100%;
+ }
+ 
+-.with-groups .link-group.pinned .link-title,
+ .link-group.in-folder .link-title {
+     display: initial;
+ }
+@@ -348,20 +342,21 @@
+ 
+ #linkblocks > .link-group {
+     position: absolute;
+-    bottom: calc(100% + 6px);
++    bottom: calc(100% + 2px);
+     left: var(--active-group-x);
+     display: flex;
+     justify-content: center;
+     max-width: calc(100vw - 2em);
+     opacity: 0;
+     pointer-events: none;
+-    transform: translate(-50%, 32px);
++    transform: translate(-50%, 10px) scale(0.98);
++    transform-origin: 50% 100%;
+     z-index: 10;
+-    transition: opacity 0.2s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
++    transition: opacity 0.14s var(--out-cubic), transform 0.18s var(--ease-out-expo);
+ }
+ 
+ /* Glass container: clear center, refractive edges */
+-#linkblocks > .link-group:not(.pinned) {
++#linkblocks > .link-group {
+     isolation: isolate;
+     border-radius: var(--glass-radius);
+     padding: 0;
+@@ -373,19 +368,14 @@
+ }
+ 
+ /* Ensure popup tab title renders above decorative pseudo-elements */
+-#linkblocks > .link-group:not(.pinned) > .link-title {
++#linkblocks > .link-group > .link-title {
+     position: relative;
+     z-index: 1;
+ }
+-
+-#linkblocks > .link-group.pinned {
+-    display: none;
+-}
+-
+-body.group-focus #linkblocks > .link-group:not(.pinned) {
++body.group-focus #linkblocks > .link-group {
+     opacity: 1;
+     pointer-events: auto;
+-    transform: translate(-50%, 0);
++    transform: translate(-50%, 0) scale(1);
+ }
+ 
+ .link-title:hover {
+@@ -412,7 +402,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+ }
+ 
+-.link-group.pinned .link-title,
+ .link-title.selected-group,
+ .link-group.in-folder .link-title {
+     opacity: 1;
+@@ -428,14 +417,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+     backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
+     -webkit-backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
+ }
+-
+-.link-title.drop-target {
+-    opacity: 1;
+-    border-color: rgba(255, 255, 255, 0.5);
+-    background-color: rgba(255, 255, 255, 0.18);
+-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+-}
+-
+ .link-group.in-folder .link-title {
+     align-self: center;
+     user-select: none;
+@@ -698,178 +679,6 @@ dialog a {
+     padding: 0 4px;
      box-sizing: border-box;
-     overflow: hidden;
--    border-radius: 22%;
-+    border-radius: 50%;
  }
+-
+-/* Links drag and drop */
+-
+-.link.drop-target:not(.link-folder) img,
+-.link.drop-source div {
+-    transform: scale(0.8);
+-}
+-
+-.link.drop-source span {
+-    opacity: 0;
+-    transition: opacity 0.05s;
+-}
+-
+-.link.drop-target div {
+-    border-color: #fff4;
+-    background-color: #fff3;
+-}
+-
+-.drop-target.link-group {
+-    opacity: 0.5;
+-}
+-
+-.inline .link.drop-source div,
+-.text .link.drop-source div {
+-    opacity: 0;
+-}
+-
+-.inline .drop-source span,
+-.text .drop-source span {
+-    transform: scale(0.8);
+-}
+-
+-.inline .drop-target:not(.link-folder) span,
+-.inline .drop-target:not(.link-folder) div,
+-.text .drop-target:not(.link-folder) span,
+-.text .drop-target:not(.link-folder) div {
+-    opacity: 0.5;
+-}
+-
+-.links-drag-layer {
+-    position: fixed;
+-    inset: 0;
+-    z-index: 20;
+-    pointer-events: none;
+-}
+-
+-.links-drag-layer .link,
+-.links-drag-layer .link-title {
+-    position: fixed;
+-    top: 0;
+-    left: 0;
+-    margin: 0;
+-    pointer-events: none;
+-    z-index: 3;
+-    backface-visibility: hidden;
+-    will-change: transform;
+-}
+-
+-.links-drag-layer .link-title {
+-    display: initial;
+-    border-color: #fff2;
+-    background: transparent;
+-    backdrop-filter: none;
+-    -webkit-backdrop-filter: none;
+-    box-shadow: none;
+-}
+-
+-.links-drag-layer .link a,
+-.links-drag-layer .link-folder {
+-    display: flex;
+-    align-items: center;
+-    column-gap: 12px;
+-    width: max-content;
+-    max-width: none;
+-}
+-
+-.links-drag-layer .link span {
+-    position: static;
+-    display: block;
+-    visibility: visible;
+-    width: max-content;
+-    max-width: none;
+-    max-height: none;
+-    padding: 0 3px;
+-    overflow: visible;
+-    opacity: 1;
+-    white-space: pre;
+-    text-align: left;
+-    text-overflow: clip;
+-    background-color: transparent;
+-    border: 0;
+-    backdrop-filter: none;
+-    -webkit-backdrop-filter: none;
+-    transform: none;
+-}
+-
+-.links-drag-layer .link-favorite div,
+-.links-drag-layer .link-favorite img {
+-    display: none;
+-}
+-
+-.links-drag-layer .on {
+-    z-index: 4;
+-    opacity: 0.62;
+-    transition: none;
+-}
+-
+-.in-drag#link-mini {
+-    padding: 0;
+-    max-width: none;
+-    box-sizing: border-box;
+-    width: var(--drag-width);
+-    height: var(--drag-height);
+-    overflow: visible;
+-}
+-
+-.in-drag#link-mini > div {
+-    flex-wrap: nowrap;
+-    max-width: none;
+-    overflow: visible;
+-}
+-
+-#linkblocks > .in-drag.link-group .link-list {
+-    overflow: hidden;
+-}
+-
+-.in-drag.link-group.in-folder .link-list {
+-    box-sizing: border-box;
+-    width: var(--drag-width);
+-    height: var(--drag-height);
+-    overflow: hidden;
+-}
+-
+-.in-drag.link-group .link {
+-    z-index: 3;
+-    pointer-events: none;
+-}
+-
+-.in-drag.link-group .link.on {
+-    z-index: 4;
+-}
+-
+-.in-drag.link-group .link.on a,
+-.in-drag.link-group .link-folder.on {
+-    border-radius: 4px;
+-    outline: 1px solid #fff4;
+-    background-color: #fff2;
+-}
+-
+-.in-drag a,
+-.in-drag div {
+-    user-select: none;
+-    pointer-events: none;
+-}
+-
+-.in-drag#link-mini .link-title,
+-.in-drag .link {
+-    pointer-events: none;
+-    backface-visibility: hidden;
+-    will-change: transform;
+-}
+-
+-.in-drag#link-mini .link-title {
+-    border-color: #fff2;
+-}
+-
+-.in-drag .on {
+-    z-index: 4;
+-    transition: none;
+-    pointer-events: none;
+-}
+-
+ /* Link mini (at the bottom) */
  
- .link a {
-@@ -483,7 +483,7 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
- .link img {
+ #link-mini {
+@@ -945,33 +754,6 @@ dialog a {
+ #link-mini .link-title {
+     display: initial;
+ }
+-
+-#link-mini .add-group {
+-    visibility: hidden;
+-    position: absolute;
+-    top: 50%;
+-    right: 3px;
+-    flex: 0 0 auto;
+-    font-weight: bold;
+-    font-size: 1.25em;
+-    width: auto;
+-    padding: 2px 5px;
+-    opacity: 0;
+-    transform: translateY(-50%);
+-    transition: opacity 0.15s var(--out-cubic);
+-}
+-
+-#link-mini .add-group:hover,
+-#link-mini .add-group.selected,
+-#link-mini:hover .add-group {
+-    visibility: visible;
+-    opacity: 1;
+-}
+-
+-#link-mini.in-drag .add-group {
+-    visibility: hidden;
+-}
+-
+ .link-group.in-folder + #link-mini {
+     /* hides link-mini when opening folder in bottom group */
+     display: none;
+@@ -992,9 +774,9 @@ dialog a {
+     box-sizing: border-box;
      width: 100%;
-     height: 100%;
--    border-radius: 22%;
-+    border-radius: 50%;
-     object-fit: cover;
+     max-width: 60vw;
+-    min-height: 28px;
+-    margin: 0 auto;
+-    padding: 2px 5px;
++    min-height: 24px;
++    margin: -1px auto 0;
++    padding: 0 5px;
+     column-gap: 12px;
+     row-gap: 4px;
+     border: 1px solid transparent;
+@@ -1003,7 +785,7 @@ dialog a {
  }
  
-@@ -504,13 +504,8 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
+ #link-favorites.has-links {
+-    min-height: 28px;
++    min-height: 24px;
  }
  
- .backgrounds .link div {
--    background-color: white;
--    border-color: white;
--    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+ #link-favorites .link {
+@@ -1036,12 +818,3 @@ dialog a {
+ #link-favorites .link:hover span {
+     opacity: 1;
+ }
+-
+-#link-favorites.drop-target {
+-    border-color: #fff6;
+-    border-style: dashed;
 -}
 -
--.backgrounds .link div:hover {
--    box-shadow: unset;
-+    background-color: transparent;
-+    border-color: transparent;
- }
- 
- .link.removed {
-@@ -546,10 +541,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
- }
- 
- @media only screen and (hover: hover) {
--    #linkblocks.backgrounds .link:hover div {
--        box-shadow: 0px 0.2em 1em #0003;
--    }
--
-     .link:hover:not(.selected) div {
-         transform: scale(0.95);
-     }
-@@ -658,11 +649,11 @@ dialog a {
- }
- 
- .inline .link div {
--    border-radius: 22%;
-+    border-radius: 50%;
- }
- 
- .inline .link img {
--    border-radius: 22%;
-+    border-radius: 50%;
- }
- 
- .inline .link span {
-diff --git a/src/types/shared.ts b/src/types/shared.ts
-index db5e72b..b40e56b 100644
---- a/src/types/shared.ts
-+++ b/src/types/shared.ts
-@@ -66,60 +66,6 @@ export interface LinkSubfolder {
-     items: LinkElem[]
- }
- 
--// Old
--
--export type UnsplashCollections = 'night' | 'noon' | 'day' | 'evening' | 'user'
--
--export interface OldSync {
--    usdate: boolean
--    searchbar: boolean
--    background_blur: number
--    background_bright: number
--    background_type: string
--    weather: {
--        location: [number, number]
--    }
--    unsplash: {
--        time?: number
--        every: Frequency
--        pausedImage?: UnsplashImage
--        collection: string
--        lastCollec: UnsplashCollections
--    }
--    linktabs: {
--        active: boolean
--        selected: number
--        titles: string[]
--        pinned: number[]
--    }
--    hide: [[number, number], [number, number, number], [number], [number]]
+-#link-favorites.drop-target:not(.has-links) {
+-    justify-content: center;
 -}
--
--export interface OldLocal {
--    unsplashCache: Record<UnsplashCollections, UnsplashImage[]>
--    selected?: boolean
--    idsList: string[]
--}
--
--export interface UnsplashImage {
--    url: string
--    link: string
--    download_link: string
--    username: string
--    name: string
--    city: string | null
--    country: string | null
--    color: string
--    exif?: {
--        make: string
--        model: string
--        exposure_time: string
--        aperture: string
--        focal_length: string
--        iso: number
--    }
--}
--
- // Globals
- 
- declare global {
 diff --git a/src/types/sync.ts b/src/types/sync.ts
-index 17c7791..946336f 100644
+index 946336f..28d74a6 100644
 --- a/src/types/sync.ts
 +++ b/src/types/sync.ts
-@@ -50,16 +50,6 @@ export interface LinkFolder {
- 
- export type LinkFolderSource = 'local' | 'bookmarks'
- 
--export interface LegacyLinkGroups {
--    on: boolean
--    selected: string
--    groups: string[]
--    pinned: string[]
--    synced: string[]
--    hidden: Record<string, string[]>
--    bookmarkFolders: Record<string, string>
--}
--
- export interface Hide {
-     clock?: boolean
-     date?: boolean
-diff --git a/tests/configs/10.0.0.json b/tests/configs/10.0.0.json
-deleted file mode 100644
-index f361563..0000000
---- a/tests/configs/10.0.0.json
-+++ /dev/null
-@@ -1,126 +0,0 @@
--{
--    "background_blur": 0,
--    "clock": {
--        "ampm": false,
--        "analog": true,
--        "seconds": true,
--        "timezone": "auto"
--    },
--    "dark": "system",
--    "dynamic": {
--        "current": {
--            "city": "Kinbidhoo",
--            "country": "Maldives",
--            "link": "https://unsplash.com/photos/nXhT7-3it0Y",
--            "name": "Saud Edum",
--            "url": "https://images.unsplash.com/photo-1619873068038-b25550eeff69?ixid=Mnw4ODczOHwwfDF8cmFuZG9tfHx8fHx8fHx8MTYyMzQyMTg3Ng&ixlib=rb-1.2.1&w=2560&fm=jpg&q=70",
--            "username": "saudedum"
--        },
--        "every": "hour",
--        "next": {
--            "city": null,
--            "country": "México",
--            "link": "https://unsplash.com/photos/jOV7yVid2wM",
--            "name": "Eduardo Cano Photo Co.",
--            "url": "https://images.unsplash.com/photo-1579230757892-bfb5af370290?ixid=Mnw4ODczOHwwfDF8cmFuZG9tfHx8fHx8fHx8MTYyMzQyMTg4Nw&ixlib=rb-1.2.1&w=2560&fm=jpg&q=70",
--            "username": "eduardocanophotoco"
--        },
--        "time": 0
--    },
--    "font": {
--        "family": "Roboto",
--        "size": "15",
--        "supportedWeights": [
--            "100",
--            "300",
--            "regular",
--            "500",
--            "700",
--            "900"
--        ],
--        "weight": "200"
--    },
--    "greeting": "Victor",
--    "hide": [],
--    "lang": "fr",
--    "linknewtab": false,
--    "links": [
--        {
--            "icon": "https://api.faviconkit.com/www.youtube.com/144",
--            "title": "Youtube",
--            "url": "https://www.youtube.com/"
--        },
--        {
--            "icon": "https://api.faviconkit.com/vault.bitwarden.com/144",
--            "title": "Bitwarden",
--            "url": "https://vault.bitwarden.com/#/vault"
--        },
--        {
--            "icon": "https://api.faviconkit.com/github.com/144",
--            "title": "Github",
--            "url": "https://github.com/yinyu985/"
--        }
--    ],
--    "linksrow": 5,
--    "reviewPopup": "removed",
--    "searchbar": false,
--    "searchbar_engine": "ddg",
--    "searchbar_newtab": false,
--    "showall": true,
--    "usdate": true,
--    "weather": {
--        "ccode": "FR",
--        "city": "Paris",
--        "fcDay": 2,
--        "fcHigh": 21,
--        "lastCall": 1623767816,
--        "lastState": {
--            "base": "stations",
--            "clouds": {
--                "all": 0
--            },
--            "cod": 200,
--            "coord": {
--                "lat": 47.8625,
--                "lon": -4.2382
--            },
--            "dt": 1623767817,
--            "id": 2986712,
--            "main": {
--                "feels_like": 26.22,
--                "humidity": 57,
--                "pressure": 1019,
--                "temp": 26.22,
--                "temp_max": 26.45,
--                "temp_min": 22.5
--            },
--            "name": "Plomeur",
--            "sys": {
--                "country": "FR",
--                "id": 6568,
--                "sunrise": 1623730652,
--                "sunset": 1623788250,
--                "type": 1
--            },
--            "timezone": 7200,
--            "visibility": 10000,
--            "weather": [
--                {
--                    "description": "ciel dégagé",
--                    "icon": "01d",
--                    "id": 800,
--                    "main": "Clear"
--                }
--            ],
--            "wind": {
--                "deg": 230,
--                "speed": 3.09
--            }
--        },
--        "location": [
--            47.8625183,
--            -4.2382070999999994
--        ],
--        "unit": "metric"
--    }
--}
-diff --git a/tests/configs/12.1.0.json b/tests/configs/12.1.0.json
-deleted file mode 100644
-index b0a1725..0000000
---- a/tests/configs/12.1.0.json
-+++ /dev/null
-@@ -1,46 +0,0 @@
--{
--    "usdate": false,
--    "showall": true,
--    "dynamic": { "collection": "", "every": "day", "lastCollec": "day", "time": 1647587966842 },
--    "background_blur": 15,
--    "css": "",
--    "weather": {
--        "ccode": "FR",
--        "city": "Mozac",
--        "fcHigh": 9,
--        "lastState": {
--            "temp": 5.66,
--            "feels_like": 2.6,
--            "temp_max": 5.66,
--            "sunrise": 1647582902,
--            "sunset": 1647626193,
--            "description": "couvert",
--            "icon_id": 804
--        },
--        "location": [45.7801728, 3.0769152],
--        "unit": "metric",
--        "forecast": "auto",
--        "temperature": "feelslike"
--    },
--    "favicon": "",
--    "greeting": "",
--    "custom_every": "pause",
--    "background_type": "dynamic",
--    "about": { "browser": "firefox", "version": "1.12.1" },
--    "clock": { "ampm": false, "analog": false, "face": "none", "seconds": false, "timezone": "auto" },
--    "font": {
--        "availWeights": ["400", "500", "600", "700", "800", "900"],
--        "family": "Playfair Display",
--        "size": "14",
--        "url": "https://fonts.googleapis.com/css?family=Playfair Display:800",
--        "weight": "800"
--    },
--    "searchbar": { "on": false, "opacity": 0.1, "newtab": false, "engine": "google", "request": "" },
--    "links": [],
--    "hide": [[0, 0], [0, 0, 0], [0], [0]],
--    "lang": "fr",
--    "linksrow": 4,
--    "reviewPopup": "removed",
--    "background_bright": 0.63,
--    "cssHeight": 100
--}
-diff --git a/tests/configs/14.2.0.json b/tests/configs/14.2.0.json
-deleted file mode 100644
-index f97ecf0..0000000
---- a/tests/configs/14.2.0.json
-+++ /dev/null
-@@ -1,135 +0,0 @@
--{
--    "usdate": true,
--    "dynamic": {
--        "collection": "",
--        "every": "hour",
--        "lastCollec": "day",
--        "time": 1662800669419
--    },
--    "linksrow": 7,
--    "linkstyle": "large",
--    "cssHeight": 211,
--    "about": { "browser": "firefox", "version": "1.14.2" },
--    "background_blur": 0,
--    "background_bright": 0.48,
--    "css": "",
--    "lang": "fr",
--    "favicon": "",
--    "tabtitle": "",
--    "greeting": "",
--    "dark": "disable",
--    "custom_every": "pause",
--    "background_type": "custom",
--    "clock": {
--        "ampm": true,
--        "analog": false,
--        "face": "none",
--        "seconds": false,
--        "timezone": "auto"
--    },
--    "reviewPopup": "removed",
--    "searchbar": {
--        "on": false,
--        "opacity": 0,
--        "newtab": true,
--        "engine": "brave",
--        "request": ""
--    },
--    "quotes": {
--        "author": true,
--        "frequency": "tabs",
--        "last": 1662800806621,
--        "on": false,
--        "type": "classic"
--    },
--    "font": {
--        "availWeights": [
--            "100",
--            "200",
--            "300",
--            "400",
--            "500",
--            "600",
--            "700",
--            "800",
--            "900"
--        ],
--        "family": "Fira Sans",
--        "size": "13.15",
--        "url": "https://fonts.googleapis.com/css?family=Fira%20Sans:400",
--        "weight": 400
--    },
--    "textShadow": 0.025,
--    "hide": [[0, 0], [0, 0, 0], [0], [0]],
--    "showall": true,
--    "linknewtab": false,
--    "linksrdekbm": {
--        "_id": "linksrdekbm",
--        "icon": "data:image/png;base64,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",
--        "order": 3,
--        "title": "gmail",
--        "url": "https://mail.google.com/mail/u/0/#inbox"
--    },
--    "linksqkrncn": {
--        "_id": "linksqkrncn",
--        "order": 4,
--        "title": "maps",
--        "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCmFyaWEtbGFiZWw9Ikdvb2dsZSBNYXBzIiByb2xlPSJpbWciCnZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdAp3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIKcng9IjE1JSIKZmlsbD0iI2ZmZiIvPjxjbGlwUGF0aCBpZD0iYSI+PHBhdGggZD0iTTM3NSAxMzZhMTMzIDEzMyAwIDAwLTc5LTY2IDEzNiAxMzYgMCAwMC00MC02IDEzMyAxMzMgMCAwMC0xMDMgNDggMTMzIDEzMyAwIDAwLTMxIDg2YzAgMzggMTMgNjQgMTMgNjQgMTUgMzIgNDIgNjEgNjEgODZhMzk5IDM5OSAwIDAxMzAgNDUgMjIyIDIyMiAwIDAxMTcgNDJjMyAxMCA2IDEzIDEzIDEzczExLTUgMTMtMTNhMjI4IDIyOCAwIDAxMTYtNDEgNDcyIDQ3MiAwIDAxNDUtNjNjNS02IDMyLTM5IDQ1LTY0IDAgMCAxNS0yOSAxNS02OCAwLTM3LTE1LTYzLTE1LTYzeiIvPjwvY2xpcFBhdGg+PGcgc3Ryb2tlLXdpZHRoPSIxMzAiIGNsaXAtcGF0aD0idXJsKCNhKSI+PHBhdGggc3Ryb2tlPSIjZmJiYzA0IiBkPSJNMTA0IDM3OWwxNTItMTgxIi8+PHBhdGggc3Ryb2tlPSIjNDI4NWY0IiBkPSJNMjU2IDE5OEwzNzggNTMiLz48cGF0aCBzdHJva2U9IiMzNGE4NTMiIGQ9Ik0xODkgNDU5bDI0My0yOTAiLz48cGF0aCBzdHJva2U9IiMxYTczZTgiIGQ9Ik0yNTUgMTIwbC03OS02NyIvPjxwYXRoIHN0cm9rZT0iI2VhNDMzNSIgZD0iTTc2IDIzMmw5MS0xMDkiLz48L2c+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMTk4IiByPSI1MSIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==",
--        "url": "https://google.com/maps"
--    },
--    "linksepoqol": {
--        "_id": "linksepoqol",
--        "icon": "https://www.google.com/s2/favicons?sz=64&domain=discord.com",
--        "order": 7,
--        "title": "discord",
--        "url": "https://discord.com/channels/@me"
--    },
--    "linksmmijfe": {
--        "_id": "linksmmijfe",
--        "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAGhklEQVR4Xu1ba2xURRQ+c/fZdrvSAvKqICpEhQDysFsLbMGIgAQkMUB4CAhCJSrEaBSNiAY0MRgJgZBAAEXxh5ZYxJSXUXnJohEogiIBRd4t2i3bpd3XnfHMtruutOzeO/futqU7yU0oe853znxz5nlmCCgo1woLuxpM8nhCyWggrCeqdGr4FGinRIShlUr8KgDYH4RJO4OytL3jwYOXE1kn8QTcwwseIoS9i+iPo1xc2USGmuF3ig7vYhJdnPPdj+W3st9kpSqLimwm8K0GBjNQUWoG5/U0SRHsY7+l9oXOu4/fuBm4EQH/FOXnSYyUouAgPb1oAVjHMYYn5HzvOhfry/8IcI98pAeRqQtDvnMLcDgJLpArTDY4cg8cOB8BjxIQDnvmO4g/9EuC5ZYEWY7doTDSHaIEuIscH2Gfn9mSPE2iL5ty9rqe4fhhAtwjHu4PVDpyGwx4SjmjhMKQdvtdR8IEVDsdO7Dfj1aqfTvIYcV3tNvrGkv4IsdolC+2wnleazswSlh3UuXMX0CArNGK1hr1CSPFBFd7pbi8ndAaK6DZZ0a2EbfTcQyB+msGa50AZzkBfBPRsXX6r9lrLydAbkPT382MMU4A30q22ZImIB0B6S6gzxhA7HaQctsDycwCyMwEYrMBycIP/w0mExCDEUhGRsKxhgWDwPy+erm6OmChEJ5yMWAeD7Aa/DzXgV66CMzXIJMQMb6A5jHA2KcvZDy/CAwP9NHoigp1SiH060nwrV0FoZMnVCg2FtVEgLH/ALCtWBVu4WYpGC3elxdCqPyosHlNBGSv2wSG3vcLG9dDUT73J9TMmioMJUyA1KED2Eu2CxvWU9EzYzLQC9FTLlXQwgSYnCMh6+3lqowlS7j2/eUQKPtaCF6YAOvcYrBOV3eCxvx+IBaLkKPxlHxbNoNv/VohXGECMl9fAuZRY1QZ9ZduhZDrB7DOmQ+GXr1V6cYTDny7B2rfWSKEJ0yAbeUaMA4YqMooJ6Bu5Qo8iSRgKiisJ+Le+1RhNCUcPHwIbrz6khCOMAHZGz5R7XyUgIirkgSm4UWQMW8BSF27CVWAK4XKj4F34XNC+sIE2Ld8AVK3PFVGGxEQ0TYawTxmHFhnzgE+u6gt8ulTUDNvtlq1sLw4ATgFqnX2lgQ0uE6sVjCPmwDWaTOB5OQorpB8/i+oeXqKYvlYQWEC7viyTJWT3GgiAiKO8T1E1tJlYBySr6hStLICPJOeVCR7s5AwAfatGAHt1YWrEgL43oIPjsaBgxVXiLmr4PrEJxTL6xIB9pKvsAuoO0qMR4Ch5z3hMcDkHBGeJdQUWoERMDnVEfBZieqRuykCDD3uBuvsZ4UqHiGJXrwAnumT1HAWlRXuAiIboVgC+LTHW9z8GF4+welQS5FP/46zwCwhCGECbB+sAuOgIaqMcgL8uGy1TJkGlvETddtGh346DN5XFqnyJTrgip4JZr6xtL71VBRacRVnjlwgZrMKrcSigT27oHb50sSCTUgIRwAfqa0zxMJOyNM4Sr7NG8G3cb0QrDAB5tFjIfO1N4WM6q1Uu+wtCHyzWwhWmAAp7y6wf/q5kFG9lTxTnwJ6+ZIQrDAB3Fr2hs24IeolZFgvJS0zAPdBEwHGB/tC1oerk3LIoYQgFgiA98VikE/9pkS8SRlNBHBEHgHWOfOAnxDzNXwqCquuxuPwX3DgWwfy2TOaTGomINY63xuQ9pgcsWUDybYDT5ZECk+URJa4xGDAJAkmTGIKC/iBt2g4CeL11v+CyQ8WxP/DPACvNKt2A8V1P6up0VTpWGVdCdDNqxQCpQkQXQmmsJGSaiodAekrMk4HvrKAO5MaZy0XnF+SysfUKhnQcn1Mqmdn0hclq4ocxYSBWGItqY2TfHACbD7xPprfKRgi/HWVtnOp5PurtwUaosG8yHX5MrwsqC7Tqbc7KcaLXpfndquG5fcjEuH3TNpKFODmggzO2Xfo6H9PZpyOjUiAWIItxa2n2RyBDfh6bC7HiRJwoaAgw2aGfbgdU56S0exJcwCwY35L3dBGj6bCXWHo0O7EILuQhC7N4VrybcZ5Nhcx/vfIgm4GmW3Dv9vew8kICVdH9cuy+DPwAiCZdRsMjBQ7+ia/uXahoqezsWHIn9MRKr3X8Hi6tc0Q/PH0TkrZ4tz9h4/fqnspSsNeGzaoi4mYxzPCxiIQvxPLn8+n5gBQ+cDAz8kqcXo7QQgtC9LQ9o77f76SSP1fUb1UgMhnN6QAAAAASUVORK5CYII=",
--        "order": 0,
--        "title": "youtube",
--        "url": "https://youtube.com"
--    },
--    "linksmjjrkg": {
--        "_id": "linksmjjrkg",
--        "icon": "data:image/png;base64,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",
--        "order": 2,
--        "title": "figma",
--        "url": "https://www.figma.com/"
--    },
--
--    "linksqeqkbq": {
--        "_id": "linksqeqkbq",
--        "icon": "data:image/png;base64,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",
--        "order": 1,
--        "title": "mtype",
--        "url": "https://monkeytype.com"
--    },
--    "linkshlpkah": {
--        "_id": "linkshlpkah",
--        "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMGMtNi42MjYgMC0xMiA1LjM3My0xMiAxMiAwIDUuMzAyIDMuNDM4IDkuOCA4LjIwNyAxMS4zODcuNTk5LjExMS43OTMtLjI2MS43OTMtLjU3N3YtMi4yMzRjLTMuMzM4LjcyNi00LjAzMy0xLjQxNi00LjAzMy0xLjQxNi0uNTQ2LTEuMzg3LTEuMzMzLTEuNzU2LTEuMzMzLTEuNzU2LTEuMDg5LS43NDUuMDgzLS43MjkuMDgzLS43MjkgMS4yMDUuMDg0IDEuODM5IDEuMjM3IDEuODM5IDEuMjM3IDEuMDcgMS44MzQgMi44MDcgMS4zMDQgMy40OTIuOTk3LjEwNy0uNzc1LjQxOC0xLjMwNS43NjItMS42MDQtMi42NjUtLjMwNS01LjQ2Ny0xLjMzNC01LjQ2Ny01LjkzMSAwLTEuMzExLjQ2OS0yLjM4MSAxLjIzNi0zLjIyMS0uMTI0LS4zMDMtLjUzNS0xLjUyNC4xMTctMy4xNzYgMCAwIDEuMDA4LS4zMjIgMy4zMDEgMS4yMy45NTctLjI2NiAxLjk4My0uMzk5IDMuMDAzLS40MDQgMS4wMi4wMDUgMi4wNDcuMTM4IDMuMDA2LjQwNCAyLjI5MS0xLjU1MiAzLjI5Ny0xLjIzIDMuMjk3LTEuMjMuNjUzIDEuNjUzLjI0MiAyLjg3NC4xMTggMy4xNzYuNzcuODQgMS4yMzUgMS45MTEgMS4yMzUgMy4yMjEgMCA0LjYwOS0yLjgwNyA1LjYyNC01LjQ3OSA1LjkyMS40My4zNzIuODIzIDEuMTAyLjgyMyAyLjIyMnYzLjI5M2MwIC4zMTkuMTkyLjY5NC44MDEuNTc2IDQuNzY1LTEuNTg5IDguMTk5LTYuMDg2IDguMTk5LTExLjM4NiAwLTYuNjI3LTUuMzczLTEyLTEyLTEyeiIvPjwvc3ZnPg==",
--        "order": 10,
--        "title": "github",
--        "url": "https://github.com/yinyu985"
--    },
--    "custom_time": 1652777554053,
--    "weather": {
--        "ccode": "FR",
--        "city": "Lyon",
--        "fcHigh": 21,
--        "forecast": "auto",
--        "lastState": {
--            "temp": 17.66,
--            "feels_like": 17.13,
--            "temp_max": 17.66,
--            "sunrise": 1662787177,
--            "sunset": 1662833411,
--            "description": "couvert",
--            "icon_id": 804
--        },
--        "location": [45.7801728, 3.080192],
--        "temperature": "actual",
--        "unit": "metric"
--    }
--}
-diff --git a/tests/configs/20.4.2-default.json b/tests/configs/20.4.2-default.json
-deleted file mode 100644
-index 466ad6c..0000000
---- a/tests/configs/20.4.2-default.json
-+++ /dev/null
-@@ -1,108 +0,0 @@
--{
--    "about": {
--        "browser": "firefox",
--        "version": "20.4.2"
--    },
--    "showall": false,
--    "lang": "en",
--    "dark": "system",
--    "favicon": "",
--    "tabtitle": "",
--    "greeting": "",
--    "pagegap": 1,
--    "pagewidth": 1600,
--    "time": true,
--    "main": true,
--    "dateformat": "auto",
--    "background_blur": 15,
--    "background_bright": 0.8,
--    "background_type": "unsplash",
--    "quicklinks": true,
--    "syncbookmarks": null,
--    "textShadow": 0.2,
--    "announcements": "major",
--    "review": 31,
--    "css": "",
--    "hide": {},
--    "linkstyle": "medium",
--    "linktitles": true,
--    "linkbackgrounds": true,
--    "linkicons": true,
--    "linknewtab": false,
--    "linksrow": 6,
--    "linkgroups": {
--        "on": false,
--        "selected": "default",
--        "groups": [
--            "default"
--        ],
--        "pinned": [],
--        "synced": []
--    },
--    "clock": {
--        "size": 1,
--        "ampm": false,
--        "analog": false,
--        "seconds": false,
--        "ampmlabel": false,
--        "timezone": "auto",
--        "worldclocks": false
--    },
--    "analogstyle": {
--        "face": "none",
--        "hands": "modern",
--        "shape": "round",
--        "border": "#ffff",
--        "background": "#fff2"
--    },
--    "worldclocks": [],
--    "unsplash": {
--        "every": "hour",
--        "collection": "",
--        "lastCollec": "day",
--        "time": 1747677308677
--    },
--    "weather": {
--        "unit": "metric",
--        "provider": "",
--        "moreinfo": "none",
--        "forecast": "auto",
--        "temperature": "actual",
--        "geolocation": "approximate",
--        "city": "romagnat"
--    },
--    "notes": {
--        "on": false,
--        "width": 40,
--        "opacity": 0.1,
--        "align": "left"
--    },
--    "searchbar": {
--        "on": false,
--        "opacity": 0.1,
--        "newtab": false,
--        "suggestions": true,
--        "engine": "default",
--        "request": "",
--        "placeholder": ""
--    },
--    "quotes": {
--        "on": false,
--        "author": false,
--        "type": "classic",
--        "frequency": "day",
--        "last": 1747726990397
--    },
--    "font": {
--        "size": "14",
--        "family": "",
--        "system": true,
--        "weightlist": [],
--        "weight": "300"
--    },
--    "supporters": {
--        "enabled": true,
--        "closed": true,
--        "month": 5
--    }
--}
-diff --git a/tests/configs/20.4.2.json b/tests/configs/20.4.2.json
-deleted file mode 100644
-index 9bcd716..0000000
---- a/tests/configs/20.4.2.json
-+++ /dev/null
-@@ -1,150 +0,0 @@
--{
--    "about": {
--        "browser": "firefox",
--        "version": "20.4.2"
--    },
--    "showall": true,
--    "lang": "en",
--    "dark": "system",
--    "favicon": "",
--    "tabtitle": "",
--    "greeting": "",
--    "pagegap": 1,
--    "pagewidth": 1600,
--    "time": true,
--    "main": true,
--    "dateformat": "auto",
--    "background_blur": 0,
--    "background_bright": 0.35,
--    "background_type": "local",
--    "quicklinks": true,
--    "syncbookmarks": null,
--    "textShadow": 0.2,
--    "announcements": "major",
--    "review": -1,
--    "css": "",
--    "hide": {},
--    "linkstyle": "medium",
--    "linktitles": true,
--    "linkbackgrounds": true,
--    "linkicons": true,
--    "linknewtab": false,
--    "linksrow": 6,
--    "linkgroups": {
--        "on": true,
--        "selected": "Socials",
--        "groups": ["Dev", "Socials"],
--        "pinned": ["Dev"],
--        "synced": []
--    },
--    "clock": {
--        "size": 1,
--        "ampm": false,
--        "analog": false,
--        "seconds": false,
--        "timezone": "Asia/Irkutsk",
--        "ampmlabel": false,
--        "worldclocks": true
--    },
--    "analogstyle": {
--        "face": "none",
--        "hands": "modern",
--        "shape": "round",
--        "border": "#ffff",
--        "background": "#fff2"
--    },
--    "worldclocks": [
--        {
--            "timezone": "Europe/Paris",
--            "region": "Clermont-Ferrand"
--        },
--        {
--            "timezone": "America/Sao_Paulo",
--            "region": "Sao Paulo"
--        }
--    ],
--    "unsplash": {
--        "every": "tabs",
--        "collection": "KWcmZT9FkSo",
--        "lastCollec": "user",
--        "time": 1746606433306
--    },
--    "weather": {
--        "unit": "metric",
--        "provider": "",
--        "moreinfo": "none",
--        "forecast": "auto",
--        "temperature": "actual",
--        "geolocation": "approximate",
--        "city": "romagnat"
--    },
--    "notes": {
--        "on": false,
--        "opacity": 0.1,
--        "width": 40,
--        "align": "left"
--    },
--    "searchbar": {
--        "on": false,
--        "opacity": 0.1,
--        "newtab": true,
--        "suggestions": true,
--        "engine": "default",
--        "request": "",
--        "placeholder": ""
--    },
--    "quotes": {
--        "on": false,
--        "author": false,
--        "type": "classic",
--        "frequency": "day",
--        "last": 1746589872934
--    },
--    "font": {
--        "size": "14",
--        "family": "",
--        "system": true,
--        "weightlist": [],
--        "weight": "300"
--    },
--    "supporters": {
--        "enabled": true,
--        "closed": true,
--        "month": 5
--    },
--    "linkscgnoff": {
--        "_id": "linkscgnoff",
--        "order": 0,
--        "parent": "Socials",
--        "title": "",
--        "url": "https://x.com"
--    },
--    "linksepjerj": {
--        "_id": "linksepjerj",
--        "order": 1,
--        "parent": "linksijngll",
--        "title": "",
--        "url": "https://github.com/yinyu985"
--    },
--    "linksijngll": {
--        "_id": "linksijngll",
--        "order": 0,
--        "parent": "Dev",
--        "title": "",
--        "folder": true
--    },
--    "linkskodlen": {
--        "_id": "linkskodlen",
--        "order": 0,
--        "parent": "linksijngll",
--        "title": "",
--        "url": "https://github.com/yinyu985"
--    },
--    "linkskqfoda": {
--        "_id": "linkskqfoda",
--        "order": 1,
--        "parent": "Socials",
--        "title": "",
--        "url": "https://ddg.gg"
--    }
--}
-diff --git a/tests/imports.test.ts b/tests/imports.test.ts
-index ec903d6..8e8e9e3 100644
---- a/tests/imports.test.ts
-+++ b/tests/imports.test.ts
-@@ -2,7 +2,7 @@ import './init.test.ts'
- 
- // Import script after test init, document needs to be loaded first
- import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
--import { filterData } from '../src/scripts/compatibility/apply.ts'
-+import { mergeImportedConfig } from '../src/scripts/compatibility/apply.ts'
- import { assert } from '@std/assert'
- 
- const defaults = structuredClone(SYNC_DEFAULT)
-@@ -21,132 +21,25 @@ Deno.test({
-     sanitizeOps: false,
-     sanitizeResources: false,
-     fn: () => {
--        filterData('import', defaults, {})
-+        mergeImportedConfig(defaults, {})
-     },
- })
- 
--Deno.test('Current version small import', () => {
-+Deno.test('Partial import keeps defaults for missing keys', () => {
-     const imported = {
-         time: false,
--        main: true,
-         lang: 'en',
-     } as Record<string, unknown>
--    const config = filterData('import', defaults, imported)
-+    const config = mergeImportedConfig(defaults, imported)
- 
-     assert(defaults.time !== config.time)
-     assert(defaults.lang === config.lang)
--    assert('main' in config === false)
- })
- 
--Deno.test('1.10.0', async (t) => {
--    const text = Deno.readTextFileSync('./tests/configs/10.0.0.json')
--    const old = JSON.parse(text)
--    const res = filterData('import', defaults, old)
-+Deno.test('Full import replaces current entirely', () => {
-+    const incoming = structuredClone(SYNC_DEFAULT)
-+    incoming.tabtitle = 'replaced'
-+    const config = mergeImportedConfig(defaults, incoming)
- 
--    await t.step('Links', async (t) => {
--        const defaultGroup = res.links.folders.find((group) => group.id === 'default')
--
--        await t.step('Legacy links are ignored by runtime imports', () => {
--            assert(defaultGroup)
--            assert((defaultGroup?.items.length ?? 0) === 0)
--        })
--    })
--
--    await t.step('Clock', () => {
--        assert(res.dateformat === 'us')
--    })
--
--    await t.step('Backgrounds', () => {
--        assert(old.background_blur === res.backgrounds.blur)
--    })
--
--    await t.step('Removed widgets', async (t) => {
--        await t.step('Searchbar removed', () => {
--            assert('searchbar' in res === false)
--        })
--
--        await t.step('Weather removed', () => {
--            assert('weather' in res === false)
--        })
--
--        await t.step('Greeting removed', () => {
--            assert('greeting' in res === false)
--        })
--    })
--
--    await t.step('Hide', () => {
--        assert(Array.isArray(res.hide) === false)
--    })
--
--    await t.step('Review', () => {
--        assert(res.review === -1)
--    })
--})
--
--Deno.test('20.4.2', async (t) => {
--    const text = Deno.readTextFileSync('./tests/configs/20.4.2.json')
--    const old = JSON.parse(text)
--    const res = filterData('import', defaults, old)
--
--    await t.step('Backgrounds', async (t) => {
--        await t.step('Local type', () => {
--            assert(res.backgrounds.type === 'files')
--        })
--
--        await t.step('Blur', () => {
--            assert(old.background_blur === res.backgrounds.blur)
--        })
--
--        await t.step('Bright', () => {
--            assert(old.background_bright === res.backgrounds.bright)
--        })
--
--        await t.step('Unsplash collection', () => {
--            assert(old.unsplash.collection === res.backgrounds.queries['unsplash-images-collections'])
--        })
--
--        await t.step('Frequency', () => {
--            assert(old.unsplash.every === res.backgrounds.frequency)
--        })
--    })
--
--    await t.step('Links', async (t) => {
--        await t.step('Legacy link groups are ignored by runtime imports', () => {
--            assert(res.links.folders.length === 1)
--            assert(res.links.folders[0].id === 'default')
--            assert(res.links.folders[0].items.length === 0)
--        })
--    })
--
--    await t.step('Removed widgets', () => {
--        assert('main' in res === false)
--        assert('weather' in res === false)
--        assert('searchbar' in res === false)
--        assert('quotes' in res === false)
--    })
--
--    await t.step('Notes kept', () => {
--        assert('notes' in res)
--    })
--})
--
--Deno.test('20.4.2-default', async (t) => {
--    const text = Deno.readTextFileSync('./tests/configs/20.4.2-default.json')
--    const old = JSON.parse(text)
--    const res = filterData('import', defaults, old)
--
--    await t.step('Keep default link groups', () => {
--        assert(JSON.stringify(res.links.folders.map((group) => group.id)) === `["default"]`)
--    })
--
--    await t.step('Removed widgets', () => {
--        assert('main' in res === false)
--        assert('weather' in res === false)
--        assert('searchbar' in res === false)
--        assert('quotes' in res === false)
--    })
--
--    await t.step('Notes kept', () => {
--        assert('notes' in res)
--    })
-+    assert(config.tabtitle === 'replaced')
- })
+@@ -43,7 +43,6 @@ export interface LinksState {
+ export interface LinkFolder {
+     id: string
+     title: string
+-    pinned: boolean
+     source: LinkFolderSource
+     items: LinkNode[]
+ }
+diff --git a/tests/merge.test.ts b/tests/merge.test.ts
+index 5bd8992..62ffa8c 100644
+--- a/tests/merge.test.ts
++++ b/tests/merge.test.ts
+@@ -58,7 +58,6 @@ Deno.test({
+         incoming.links.folders.push({
+             id: 'work',
+             title: 'Work',
+-            pinned: false,
+             source: 'bookmarks',
+             items: [
+                 bookmarkLink('Remote work', 'https://example.com/work', 'bm-work'),
+@@ -174,7 +173,6 @@ function group(id: string, title: string, items: LinkNode[]): LinkFolder {
+     return {
+         id,
+         title,
+-        pinned: false,
+         source: 'local',
+         items,
+     }
 

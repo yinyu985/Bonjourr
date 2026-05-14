@@ -1,12 +1,10 @@
-import { newFolderId } from './model.ts'
-import { openContextMenu } from '../contextmenu.ts'
 import { initblocks, initFavorites } from './index.ts'
 
 import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkFolder, Sync } from '../../../types/sync.ts'
+import type { Sync } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 let positionListenerAdded = false
@@ -45,18 +43,12 @@ export function initFolders(data: Sync, init?: true): void {
 }
 
 function createFolderTabs(data: Sync): void {
-    const visibleFolders = data.links.folders.length === 0 ? [] : [...data.links.folders, addFolderPlaceholder()]
+    const visibleFolders = data.links.folders
 
     for (const folder of visibleFolders) {
         const button = document.createElement('button')
         const isTopSite = folder.id === 'topsites'
         const isDefault = folder.id === 'default'
-        const isAddMore = folder.id === '+'
-
-        if (folder.pinned) {
-            continue
-        }
-
         button.textContent = folder.title
         button.dataset.group = folder.id
         button.classList.add('link-title')
@@ -72,12 +64,7 @@ function createFolderTabs(data: Sync): void {
             button.textContent = tradThis('Default folder')
         }
 
-        if (isAddMore) {
-            button.classList.add('add-group')
-            button.addEventListener('click', openContextMenu)
-        } else {
-            button.addEventListener('click', changeFolder)
-        }
+        button.addEventListener('click', changeFolder)
 
         document.querySelector('#link-mini div')?.appendChild(button)
     }
@@ -188,34 +175,6 @@ export function changeFolderTitle(title: { old: string; new: string }, data: Syn
     initFolders(data)
     return data
 }
-
-export function addFolder(folders: { title: string; sync?: boolean }[], data: Sync): Sync {
-    for (const { title, sync } of folders) {
-        const isReserved = title === 'default' || title === '+'
-        const isAlreadyUsed = data.links.folders.some((folder) => folder.title === title || folder.id === title)
-
-        if (isReserved || isAlreadyUsed) {
-            continue
-        }
-
-        const folder: LinkFolder = {
-            id: newFolderId(),
-            title,
-            pinned: false,
-            source: sync ? 'bookmarks' : 'local',
-            items: [],
-        }
-
-        data.links.folders.push(folder)
-        data.links.selectedFolder = folder.id
-    }
-
-    removeEmptyDefaultFolder(data)
-    initFolders(data)
-    initblocks(data)
-    return data
-}
-
 export function deleteFolder(folderId: string, data: Sync): Sync {
     const { folders } = data.links
     const index = folders.findIndex((folder) => folder.id === folderId || folder.title === folderId)
@@ -226,56 +185,11 @@ export function deleteFolder(folderId: string, data: Sync): Sync {
 
     const [removed] = folders.splice(index, 1)
 
-    if (data.links.selectedFolder === removed.id || removed.pinned) {
-        data.links.selectedFolder = folders.find((folder) => !folder.pinned)?.id ?? folders[0]?.id ?? 'default'
-    }
-
-    if (folders.length === 1) {
-        folders[0].pinned = false
+    if (data.links.selectedFolder === removed.id) {
+        data.links.selectedFolder = folders[0]?.id ?? 'default'
     }
 
     initblocks(data)
     initFolders(data)
     return data
-}
-
-export function moveFolders(mini: string[], data: Sync): Sync {
-    const order = mini.filter((id) => id !== '+')
-    const folderById = new Map(data.links.folders.map((folder) => [folder.id, folder]))
-    const pinned = data.links.folders.filter((folder) => folder.pinned)
-    const ordered = order.map((id) => folderById.get(id)).filter((folder): folder is LinkFolder => !!folder)
-    const missing = data.links.folders.filter((folder) => !order.includes(folder.id) && !folder.pinned)
-
-    data.links.folders = [...pinned, ...ordered, ...missing]
-    initFolders(data)
-
-    return data
-}
-
-function removeEmptyDefaultFolder(data: Sync): void {
-    if (data.links.folders.length < 2) {
-        return
-    }
-
-    const defaultFolder = data.links.folders.find((folder) => folder.id === 'default')
-
-    if (!defaultFolder || defaultFolder.items.length > 0) {
-        return
-    }
-
-    data.links.folders = data.links.folders.filter((folder) => folder.id !== 'default')
-
-    if (data.links.selectedFolder === 'default') {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
-    }
-}
-
-function addFolderPlaceholder(): LinkFolder {
-    return {
-        id: '+',
-        title: '+',
-        pinned: false,
-        source: 'local',
-        items: [],
-    }
 }

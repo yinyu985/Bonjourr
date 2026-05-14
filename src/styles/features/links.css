@@ -57,7 +57,7 @@
     z-index: 3;
     display: flex;
     flex-direction: column;
-    row-gap: 4px;
+    row-gap: 2px;
     text-align: center;
     pointer-events: none;
 }
@@ -117,11 +117,6 @@
     align-items: center;
     row-gap: 8px;
 }
-
-.link-group.pinned {
-    margin-bottom: 40px;
-}
-
 .link-group.hiding .link-list {
     opacity: 0;
 }
@@ -191,7 +186,7 @@
     z-index: 1;
 }
 
-#linkblocks > .link-group:not(.pinned) .link-list {
+#linkblocks > .link-group .link-list {
     justify-content: flex-start;
     align-items: flex-start;
     width: max-content;
@@ -213,7 +208,7 @@
 
 /* Liquid glass lens: transparent middle with stronger refractive edges. */
 .link-group.in-folder .link-list::before,
-#linkblocks > .link-group:not(.pinned)::before {
+#linkblocks > .link-group::before {
     content: '';
     position: absolute;
     inset: 1px;
@@ -226,7 +221,7 @@
 }
 
 .link-group.in-folder .link-list::after,
-#linkblocks > .link-group:not(.pinned)::after {
+#linkblocks > .link-group::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -251,18 +246,18 @@
     -webkit-mask-composite: xor;
 }
 
-#linkblocks > .link-group:not(.pinned) .link-list::-webkit-scrollbar {
+#linkblocks > .link-group .link-list::-webkit-scrollbar {
     display: none;
 }
 
-#linkblocks > .link-group:not(.pinned) .link {
+#linkblocks > .link-group .link {
     width: max-content;
     min-width: 100%;
     max-width: none;
 }
 
-#linkblocks > .link-group:not(.pinned) .link a,
-#linkblocks > .link-group:not(.pinned) .link-folder {
+#linkblocks > .link-group .link a,
+#linkblocks > .link-group .link-folder {
     display: flex;
     align-items: center;
     column-gap: 0.6em; /* scale gap between icon and text with font-size */
@@ -270,16 +265,16 @@
     max-width: none;
 }
 
-#linkblocks > .link-group:not(.pinned) .link div {
+#linkblocks > .link-group .link div {
     width: max(14px, 1.4em);
     height: max(14px, 1.4em);
 }
 
-#linkblocks > .link-group:not(.pinned) .link-folder > div {
+#linkblocks > .link-group .link-folder > div {
     height: max(14px, 1.4em);
 }
 
-#linkblocks > .link-group:not(.pinned) .link span {
+#linkblocks > .link-group .link span {
     position: static;
     display: block;
     visibility: visible;
@@ -337,7 +332,6 @@
     max-width: 100%;
 }
 
-.with-groups .link-group.pinned .link-title,
 .link-group.in-folder .link-title {
     display: initial;
 }
@@ -348,20 +342,21 @@
 
 #linkblocks > .link-group {
     position: absolute;
-    bottom: calc(100% + 6px);
+    bottom: calc(100% + 2px);
     left: var(--active-group-x);
     display: flex;
     justify-content: center;
     max-width: calc(100vw - 2em);
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, 32px);
+    transform: translate(-50%, 10px) scale(0.98);
+    transform-origin: 50% 100%;
     z-index: 10;
-    transition: opacity 0.2s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
+    transition: opacity 0.14s var(--out-cubic), transform 0.18s var(--ease-out-expo);
 }
 
 /* Glass container: clear center, refractive edges */
-#linkblocks > .link-group:not(.pinned) {
+#linkblocks > .link-group {
     isolation: isolate;
     border-radius: var(--glass-radius);
     padding: 0;
@@ -373,19 +368,14 @@
 }
 
 /* Ensure popup tab title renders above decorative pseudo-elements */
-#linkblocks > .link-group:not(.pinned) > .link-title {
+#linkblocks > .link-group > .link-title {
     position: relative;
     z-index: 1;
 }
-
-#linkblocks > .link-group.pinned {
-    display: none;
-}
-
-body.group-focus #linkblocks > .link-group:not(.pinned) {
+body.group-focus #linkblocks > .link-group {
     opacity: 1;
     pointer-events: auto;
-    transform: translate(-50%, 0);
+    transform: translate(-50%, 0) scale(1);
 }
 
 .link-title:hover {
@@ -412,7 +402,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.link-group.pinned .link-title,
 .link-title.selected-group,
 .link-group.in-folder .link-title {
     opacity: 1;
@@ -428,14 +417,6 @@ body.group-focus #linkblocks > .link-group:not(.pinned) {
     backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
     -webkit-backdrop-filter: saturate(1.35) contrast(1.04) brightness(1.02) blur(7px);
 }
-
-.link-title.drop-target {
-    opacity: 1;
-    border-color: rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34);
-}
-
 .link-group.in-folder .link-title {
     align-self: center;
     user-select: none;
@@ -698,178 +679,6 @@ dialog a {
     padding: 0 4px;
     box-sizing: border-box;
 }
-
-/* Links drag and drop */
-
-.link.drop-target:not(.link-folder) img,
-.link.drop-source div {
-    transform: scale(0.8);
-}
-
-.link.drop-source span {
-    opacity: 0;
-    transition: opacity 0.05s;
-}
-
-.link.drop-target div {
-    border-color: #fff4;
-    background-color: #fff3;
-}
-
-.drop-target.link-group {
-    opacity: 0.5;
-}
-
-.inline .link.drop-source div,
-.text .link.drop-source div {
-    opacity: 0;
-}
-
-.inline .drop-source span,
-.text .drop-source span {
-    transform: scale(0.8);
-}
-
-.inline .drop-target:not(.link-folder) span,
-.inline .drop-target:not(.link-folder) div,
-.text .drop-target:not(.link-folder) span,
-.text .drop-target:not(.link-folder) div {
-    opacity: 0.5;
-}
-
-.links-drag-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    pointer-events: none;
-}
-
-.links-drag-layer .link,
-.links-drag-layer .link-title {
-    position: fixed;
-    top: 0;
-    left: 0;
-    margin: 0;
-    pointer-events: none;
-    z-index: 3;
-    backface-visibility: hidden;
-    will-change: transform;
-}
-
-.links-drag-layer .link-title {
-    display: initial;
-    border-color: #fff2;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-}
-
-.links-drag-layer .link a,
-.links-drag-layer .link-folder {
-    display: flex;
-    align-items: center;
-    column-gap: 12px;
-    width: max-content;
-    max-width: none;
-}
-
-.links-drag-layer .link span {
-    position: static;
-    display: block;
-    visibility: visible;
-    width: max-content;
-    max-width: none;
-    max-height: none;
-    padding: 0 3px;
-    overflow: visible;
-    opacity: 1;
-    white-space: pre;
-    text-align: left;
-    text-overflow: clip;
-    background-color: transparent;
-    border: 0;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    transform: none;
-}
-
-.links-drag-layer .link-favorite div,
-.links-drag-layer .link-favorite img {
-    display: none;
-}
-
-.links-drag-layer .on {
-    z-index: 4;
-    opacity: 0.62;
-    transition: none;
-}
-
-.in-drag#link-mini {
-    padding: 0;
-    max-width: none;
-    box-sizing: border-box;
-    width: var(--drag-width);
-    height: var(--drag-height);
-    overflow: visible;
-}
-
-.in-drag#link-mini > div {
-    flex-wrap: nowrap;
-    max-width: none;
-    overflow: visible;
-}
-
-#linkblocks > .in-drag.link-group .link-list {
-    overflow: hidden;
-}
-
-.in-drag.link-group.in-folder .link-list {
-    box-sizing: border-box;
-    width: var(--drag-width);
-    height: var(--drag-height);
-    overflow: hidden;
-}
-
-.in-drag.link-group .link {
-    z-index: 3;
-    pointer-events: none;
-}
-
-.in-drag.link-group .link.on {
-    z-index: 4;
-}
-
-.in-drag.link-group .link.on a,
-.in-drag.link-group .link-folder.on {
-    border-radius: 4px;
-    outline: 1px solid #fff4;
-    background-color: #fff2;
-}
-
-.in-drag a,
-.in-drag div {
-    user-select: none;
-    pointer-events: none;
-}
-
-.in-drag#link-mini .link-title,
-.in-drag .link {
-    pointer-events: none;
-    backface-visibility: hidden;
-    will-change: transform;
-}
-
-.in-drag#link-mini .link-title {
-    border-color: #fff2;
-}
-
-.in-drag .on {
-    z-index: 4;
-    transition: none;
-    pointer-events: none;
-}
-
 /* Link mini (at the bottom) */
 
 #link-mini {
@@ -945,33 +754,6 @@ dialog a {
 #link-mini .link-title {
     display: initial;
 }
-
-#link-mini .add-group {
-    visibility: hidden;
-    position: absolute;
-    top: 50%;
-    right: 3px;
-    flex: 0 0 auto;
-    font-weight: bold;
-    font-size: 1.25em;
-    width: auto;
-    padding: 2px 5px;
-    opacity: 0;
-    transform: translateY(-50%);
-    transition: opacity 0.15s var(--out-cubic);
-}
-
-#link-mini .add-group:hover,
-#link-mini .add-group.selected,
-#link-mini:hover .add-group {
-    visibility: visible;
-    opacity: 1;
-}
-
-#link-mini.in-drag .add-group {
-    visibility: hidden;
-}
-
 .link-group.in-folder + #link-mini {
     /* hides link-mini when opening folder in bottom group */
     display: none;
@@ -992,9 +774,9 @@ dialog a {
     box-sizing: border-box;
     width: 100%;
     max-width: 60vw;
-    min-height: 28px;
-    margin: 0 auto;
-    padding: 2px 5px;
+    min-height: 24px;
+    margin: -1px auto 0;
+    padding: 0 5px;
     column-gap: 12px;
     row-gap: 4px;
     border: 1px solid transparent;
@@ -1003,7 +785,7 @@ dialog a {
 }
 
 #link-favorites.has-links {
-    min-height: 28px;
+    min-height: 24px;
 }
 
 #link-favorites .link {
@@ -1035,13 +817,4 @@ dialog a {
 
 #link-favorites .link:hover span {
     opacity: 1;
-}
-
-#link-favorites.drop-target {
-    border-color: #fff6;
-    border-style: dashed;
-}
-
-#link-favorites.drop-target:not(.has-links) {
-    justify-content: center;
 }

@@ -1,17 +1,8 @@
-import {
-    addFolder,
-    changeFolderTitle,
-    deleteFolder,
-    initFolders,
-    moveFolders,
-    toggleFolders,
-    updateSelectedFolderPosition,
-} from './groups.ts'
+import { changeFolderTitle, deleteFolder, initFolders, toggleFolders, updateSelectedFolderPosition } from './groups.ts'
 import { initBookmarkSync, syncBookmarksUpdate } from './bookmarks.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { storeIconFile } from './fileicons.ts'
 import { folderClick } from './folders.ts'
-import { startDrag } from './drag.ts'
 import {
     createTitle,
     DEFAULT_FAVICON,
@@ -23,7 +14,7 @@ import {
 } from './helpers.ts'
 import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
 
-import { PLATFORM } from '../../defaults.ts'
+import { EXTENSION, PLATFORM } from '../../defaults.ts'
 import { stringMaxSize } from '../../shared/generic.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { getHTMLTemplate } from '../../shared/dom.ts'
@@ -49,11 +40,6 @@ type UpdateLink = {
     icon?: LinkIcon
     file?: File
 }
-
-type AddFolders = {
-    title: string
-    sync?: boolean
-}[]
 
 type SubfolderMove = {
     source: string
@@ -84,12 +70,10 @@ export type LinksUpdate = {
     newtab?: boolean
     folders?: boolean
     addLinks?: AddLinks
-    addFolders?: AddFolders
     addSubfolder?: { ids: string[]; folder?: string; group?: string }
     updateLink?: UpdateLink
     moveLinks?: string[]
     moveFavorites?: string[]
-    moveFolders?: string[]
     concatSubfolders?: SubfolderMove
     moveToSubfolder?: SubfolderMove
     moveToFolder?: SubfolderMove | MoveToFolderArgs
@@ -105,7 +89,6 @@ export type LinksUpdate = {
 type RenderFolder = {
     folder: LinkFolder
     items: LinkNode[]
-    pinned: boolean
     synced: boolean
     div: HTMLDivElement | null
     lis: HTMLLIElement[]
@@ -122,9 +105,24 @@ export const FAVORITES_GROUP = FAVORITES_FOLDER
 let initIconList: [HTMLImageElement, string][] = []
 let selectallTimer = 0
 
+const INTERNAL_URL_SCHEMES = [
+    'about:',
+    'chrome://',
+    'edge://',
+    'helium://',
+    'brave://',
+    'opera://',
+    'vivaldi://',
+    'arc://',
+]
+
 domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
     const anchor = (event.target as HTMLElement).closest('a')
-    if (anchor && anchor.href.startsWith('data:')) {
+    if (!anchor) {
+        return
+    }
+
+    if (anchor.href.startsWith('data:')) {
         event.preventDefault()
         try {
             const response = await fetch(anchor.href)
@@ -134,8 +132,32 @@ domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
         } catch {
             globalThis.open(anchor.href, '_blank')
         }
+        return
+    }
+
+    const internalUrl = extractInternalUrl(anchor.getAttribute('href') ?? '')
+    if (internalUrl) {
+        event.preventDefault()
+        openInternalUrl(internalUrl, anchor.target === '_blank')
     }
 })
+
+function extractInternalUrl(href: string): string | null {
+    const candidate = href.startsWith('#') ? href.slice(1) : href
+    return INTERNAL_URL_SCHEMES.some((scheme) => candidate.startsWith(scheme)) ? candidate : null
+}
+
+function openInternalUrl(url: string, newTab: boolean): void {
+    const tabs = EXTENSION?.tabs as typeof chrome.tabs | undefined
+    if (!tabs) {
+        return
+    }
+    if (newTab) {
+        tabs.create({ url })
+    } else {
+        tabs.update({ url })
+    }
+}
 
 export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise<void> {
     if (event) {
@@ -211,7 +233,6 @@ export function initblocks(sync: Sync, local?: Local): true {
 
             if (!activeFolder.synced) {
                 li.addEventListener('keyup', openContextMenu)
-                li.addEventListener('pointerdown', startDrag)
                 li.addEventListener('click', selectAll)
                 li.addEventListener('pointerdown', selectAll)
             }
@@ -223,7 +244,6 @@ export function initblocks(sync: Sync, local?: Local): true {
         const subfolder = subfolderId ? getNode(sync, subfolderId) : undefined
         linktitle.textContent = isSubfolder(subfolder) ? subfolder.title : activeFolder.folder.title
         linkgroup.dataset.group = activeFolder.folder.id
-        linkgroup.classList.toggle('pinned', activeFolder.pinned)
         linkgroup.classList.toggle('synced', activeFolder.synced)
         domlinkblocks.insertBefore(linkgroup, domlinkmini)
     }
@@ -243,19 +263,19 @@ export function initblocks(sync: Sync, local?: Local): true {
 }
 
 function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
-    const selected = getFolder(sync, sync.links.selectedFolder) ?? sync.links.folders[0]
-    const visible = [selected, ...sync.links.folders.filter((folder) => folder.pinned)]
-        .filter((folder): folder is LinkFolder => !!folder)
-    const unique = new Map(visible.map((folder) => [folder.id, folder]))
+    const folder = getFolder(sync, sync.links.selectedFolder) ?? sync.links.folders[0]
 
-    return [...unique.values()].map((folder) => ({
+    if (!folder) {
+        return []
+    }
+
+    return [{
         folder,
         items: folder.items,
-        pinned: folder.id !== sync.links.selectedFolder,
         synced: folder.source === 'bookmarks',
         div: null,
         lis: [],
-    }))
+    }]
 }
 
 export function initFavorites(sync: Sync): void {
@@ -491,10 +511,8 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
             folder: update.addSubfolder.folder ?? update.addSubfolder.group,
         }, data)
     }
-    if (update.addFolders) data = addFolder(update.addFolders, data)
     if (update.moveLinks) data = moveLinks(update.moveLinks, data)
     if (update.moveFavorites) data = moveFavorites(update.moveFavorites, data)
-    if (update.moveFolders) data = moveFolders(update.moveFolders, data)
     if (update.moveToFolder && 'ids' in update.moveToFolder) data = moveToFolder(update.moveToFolder, data)
     if (update.moveToSubfolder || update.moveToFolder && 'source' in update.moveToFolder) {
         data = moveToSubfolder((update.moveToSubfolder ?? update.moveToFolder) as SubfolderMove, data)
@@ -695,7 +713,7 @@ function deleteLinks(ids: string[], data: Sync): Sync {
 }
 
 function moveLinks(ids: string[], data: Sync): Sync {
-    const folderId = document.querySelector<HTMLElement>('#linkblocks .link-group:not(.pinned)')?.dataset.group ??
+    const folderId = document.querySelector<HTMLElement>('#linkblocks .link-group')?.dataset.group ??
         data.links.selectedFolder
     const subfolderId = domlinkblocks.dataset.folderid
     const items = subfolderId ? getLinksInSubfolder(data, subfolderId) : getFolder(data, folderId)?.items
@@ -840,7 +858,7 @@ export function validateLink(title: string, url: string, id?: string): LinkElem 
 
 function normalizeLinkUrl(url: string): string {
     const startsWithEither = (values: string[]) => values.some((value) => url.startsWith(value))
-    const isConfig = startsWithEither(['about:', 'chrome://', 'edge://'])
+    const isConfig = startsWithEither(INTERNAL_URL_SCHEMES)
     const hasOwnProtocol = startsWithEither(['https://', 'http://', 'data:', 'ftp:'])
     const isLocalhost = url.startsWith('localhost') || url.startsWith('127.0.0.1')
     const prefix = isConfig ? '#' : isLocalhost ? 'http://' : !hasOwnProtocol ? 'https://' : ''
@@ -897,7 +915,6 @@ function getFolderByTitleOrDefault(data: Sync, idOrTitle?: string): LinkFolder {
     const created: LinkFolder = {
         id: idOrTitle && idOrTitle !== '+' ? idOrTitle : newFolderId(),
         title: idOrTitle && idOrTitle !== '+' ? idOrTitle : 'default',
-        pinned: false,
         source: 'local',
         items: [],
     }

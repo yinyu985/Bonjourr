@@ -32,7 +32,6 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
         folders: [{
             id: 'default',
             title: 'default',
-            pinned: false,
             source: 'local',
             items: [],
         }],
@@ -162,7 +161,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
     for (const folder of links.folders) {
         folder.id ||= newFolderId()
         folder.title ||= 'default'
-        folder.pinned = !!folder.pinned
         folder.source = normalizeFolderSource(folder.source)
         folder.items = normalizeItems(folder.items)
     }
@@ -171,7 +169,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
         links.folders.push({
             id: 'default',
             title: 'default',
-            pinned: false,
             source: 'local',
             items: [],
         })
@@ -247,7 +244,6 @@ function favoritesFolder(): LinkFolder {
     return {
         id: FAVORITES_FOLDER,
         title: FAVORITES_FOLDER,
-        pinned: false,
         source: 'bookmarks',
         items: [],
     }

@@ -163,15 +163,6 @@
     #image-background-overlay {
         position: fixed;
     }
-
-    #link-mini .link-title.add-group {
-        visibility: visible;
-        max-width: 3em;
-        padding-right: 0.5em;
-        padding-left: 0.5em;
-        opacity: 1;
-    }
-
     aside,
     button,
     select,

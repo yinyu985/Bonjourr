@@ -43,7 +43,6 @@ export interface LinksState {
 export interface LinkFolder {
     id: string
     title: string
-    pinned: boolean
     source: LinkFolderSource
     items: LinkNode[]
 }

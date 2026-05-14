@@ -43,7 +43,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
     let resp: Response
 
     try {
-        resp = await fetch(`https://api.github.com/gists/${id}`, { headers: gistHeaders(token) })
+        resp = await fetchGistWithTimeout(`https://api.github.com/gists/${id}`, { headers: gistHeaders(token) })
     } catch (_) {
         document.querySelector('#gist-sync-status')?.remove()
         base.textContent = tradThis('Cannot connect to GitHub')
@@ -164,7 +164,7 @@ export async function isGistTokenValid(token = ''): Promise<boolean> {
 
     try {
         const isoDate = new Date()?.toISOString()
-        const resp = await fetch(`https://api.github.com/gists?since=${isoDate}`, {
+        const resp = await fetchGistWithTimeout(`https://api.github.com/gists?since=${isoDate}`, {
             headers: gistHeaders(token),
         })
 
@@ -199,6 +199,17 @@ function gistHeaders(token: string): HeadersInit {
     }
 }
 
+async function fetchGistWithTimeout(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), GIST_FETCH_TIMEOUT_MS)
+
+    try {
+        return await fetch(input, { ...init, signal: controller.signal })
+    } finally {
+        clearTimeout(timeout)
+    }
+}
+
 async function gistFetch(
     input: RequestInfo,
     init?: RequestInit,
@@ -207,7 +218,7 @@ async function gistFetch(
     let resp: Response
 
     try {
-        resp = await fetch(input, init)
+        resp = await fetchGistWithTimeout(input, init)
     } catch (_) {
         throw new Error(GIST_ERROR.NOCONN)
     }
@@ -225,6 +236,7 @@ async function gistFetch(
     return resp
 }
 
+const GIST_FETCH_TIMEOUT_MS = 5000
 const GIST_FILENAME = 'bonjourr-export.json'
 
 const GIST_ERROR = {

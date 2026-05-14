@@ -59,11 +59,6 @@ function clickUserActions(event: MouseEvent): void {
     if (isMousingDownOnInput) {
         return
     }
-
-    if (isLinkDragActive()) {
-        return
-    }
-
     const open = isOpen()
     const composedPath = (event.composedPath() as Element[]) ?? [document.body]
     const path = composedPath.filter((node) => node?.className?.includes)
@@ -73,7 +68,6 @@ function clickUserActions(event: MouseEvent): void {
         body: (path[0] as HTMLElement).tagName === 'BODY',
         link: path.some((el) => el.classList.contains('link')),
         linkfolder: path.some((el) => el.className.includes('folder')),
-        addgroup: path.some((el) => el.className.includes('add-group')),
         folder: path.some((el) => el.className.includes('in-folder')),
         linkblocks: pathIds.includes('linkblocks'),
         button: path.some((el) => el.className.includes('param-btn')),
@@ -107,11 +101,6 @@ function clickUserActions(event: MouseEvent): void {
     }
 
     if (open.contextmenu && !on.contextmenu) {
-        // if (on.addgroup && document.querySelector('.link-title.add-group.selected')) {
-        if (on.addgroup) {
-            return
-        }
-
         document.dispatchEvent(new Event('close-edit'))
         return
     }
@@ -139,12 +128,6 @@ function clickUserActions(event: MouseEvent): void {
 }
 
 // Handlers
-
-function isLinkDragActive(): boolean {
-    return !!document.querySelector(
-        '#linkblocks .in-drag, #linkblocks .dragging, #linkblocks .dropping, #link-mini.in-drag, #link-mini.dragging, #link-mini.dropping',
-    )
-}
 
 function isOpen(): {
     settings: boolean

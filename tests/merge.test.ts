@@ -58,7 +58,6 @@ Deno.test({
         incoming.links.folders.push({
             id: 'work',
             title: 'Work',
-            pinned: false,
             source: 'bookmarks',
             items: [
                 bookmarkLink('Remote work', 'https://example.com/work', 'bm-work'),
@@ -174,7 +173,6 @@ function group(id: string, title: string, items: LinkNode[]): LinkFolder {
     return {
         id,
         title,
-        pinned: false,
         source: 'local',
         items,
     }
