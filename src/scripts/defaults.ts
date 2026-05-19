@@ -86,16 +86,8 @@ export const SYNC_DEFAULT: Sync = {
     clock: {
         size: 1.3,
         ampm: false,
-        analog: false,
         seconds: true,
         timezone: 'auto',
-    },
-    analogstyle: {
-        face: 'none',
-        hands: 'modern',
-        shape: 'square',
-        border: '#ffff',
-        background: '#fff2',
     },
     font: {
         family: 'Nunito',
@@ -111,14 +103,16 @@ export const SYNC_DEFAULT: Sync = {
         blur: 0,
         bright: 0.78,
         frequency: 'pause',
-        color: '#1c4026',
+        color: '#222222',
         urls: '',
         images: '',
-        videos: '',
         mute: true,
         queries: {},
         texture: {
-            type: 'none',
+            type: 'topographic',
+            opacity: 0.4,
+            size: 500,
+            color: '#ffffff',
         },
     },
     notes: {

@@ -195,16 +195,18 @@
 .notes-item-title-edit {
     width: 100%;
     height: auto;
-    padding: 1px 4px;
-    margin: -1px -4px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(41, 144, 255, 0.4);
-    border-radius: 4px;
-    color: #1a1a1a;
-    font-weight: 500;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    color: inherit;
+    font-weight: 600;
     font-size: 12.5px;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(41, 144, 255, 0.1);
+    box-shadow: none;
+    opacity: 0.8;
 }
 
 /* Delete button - hidden until row hover */
@@ -241,11 +243,22 @@
 /* ===== Editor Area ===== */
 
 #notes-editor {
+    position: relative;
     min-height: 0;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
     padding: 0;
     background: transparent;
+}
+
+#notes-timestamp {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #aaa;
+    pointer-events: none;
+    user-select: none;
 }
 
 #notes-content {
@@ -340,12 +353,6 @@
     color: #f0f0f5;
 }
 
-[data-theme='dark'] .notes-item-title-edit {
-    background: rgba(50, 50, 56, 0.95);
-    border-color: rgba(106, 180, 255, 0.4);
-    color: #f2f2f7;
-    box-shadow: 0 0 0 2px rgba(106, 180, 255, 0.1);
-}
 
 [data-theme='dark'] .notes-item-delete {
     color: #555;
@@ -361,4 +368,8 @@
 
 [data-theme='dark'] #notes-content::placeholder {
     color: #5a5a62;
+}
+
+[data-theme='dark'] #notes-timestamp {
+    color: #555;
 }

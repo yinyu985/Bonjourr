@@ -1,4 +1,4 @@
-import { findGistId, isGistTokenValid, retrieveGist, sendGist, setGistStatus } from './gist.ts'
+import { findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { dedupeSyncLinks } from './merge.ts'
 import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
@@ -41,9 +41,10 @@ export function synchronization(init?: Local, update?: SyncUpdate): void {
 
 async function updateSyncOption(update: SyncUpdate): Promise<void> {
     const local = await storage.local.get(['gistId', 'gistToken', 'distantUrl', 'syncType'])
-    const data = await storage.sync.get()
 
     if (update.down) {
+        const data = await storage.sync.get()
+
         if (local.syncType === 'gist') {
             gistsyncform.load()
 
@@ -53,6 +54,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 const incoming = normalizeExternalSync(await retrieveGist(token, id))
                 const update = await mergeDownloadedSync(data, incoming)
                 await renderLinksFromSync(update)
+                gistsyncform.accept()
                 fadeOut()
             } catch (err) {
                 gistsyncform.warn(err as string)
@@ -66,6 +68,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 const incoming = normalizeExternalSync(await receiveFromURL(local.distantUrl))
                 const update = await mergeDownloadedSync(data, incoming)
                 await renderLinksFromSync(update)
+                urlsyncform.accept()
                 fadeOut()
             } catch (err) {
                 urlsyncform.warn(err as string)
@@ -86,9 +89,12 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
                 gistsyncform.accept()
 
-                local.gistId = id
-                storage.local.set({ gistId: id })
-                toggleSyncSettingsOption(local)
+                if (!local.gistId) {
+                    local.gistId = id
+                    storage.local.set({ gistId: id })
+                }
+
+                setGistStatusNow()
             } catch (error) {
                 gistsyncform.warn(error as string)
             }
@@ -117,8 +123,9 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
         try {
             local.gistToken = update.gistToken
-            local.gistId = await findGistId(local.gistToken)
+            const foundId = await findGistId(local.gistToken)
 
+            local.gistId = foundId ?? ''
             storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
 
             gistsyncform.accept()
@@ -213,14 +220,15 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
             document.getElementById('url-sync')?.classList.remove('shown')
             document.getElementById('disabled-sync')?.classList.remove('shown')
 
-            const isValid = await isGistTokenValid(gistToken)
+            if (!gistToken) {
+                setGistStatus()
+                break
+            }
 
-            if (isValid) {
-                bGistup?.removeAttribute('disabled')
+            bGistup?.removeAttribute('disabled')
 
-                if (gistId) {
-                    bGistdown?.removeAttribute('disabled')
-                }
+            if (gistId) {
+                bGistdown?.removeAttribute('disabled')
             }
 
             setGistStatus(gistToken, gistId)
@@ -233,7 +241,7 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
             document.getElementById('gist-sync')?.classList.remove('shown')
             document.getElementById('disabled-sync')?.classList.remove('shown')
 
-            if (await isDistantUrlValid(distantUrl)) {
+            if (distantUrl && await isDistantUrlValid(distantUrl)) {
                 bUrldown?.removeAttribute('disabled')
             }
 

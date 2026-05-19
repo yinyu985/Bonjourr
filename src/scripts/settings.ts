@@ -1,6 +1,6 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
 import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
-import { backgroundUpdate, initBackgroundOptions, toggleMuteStatus } from './features/backgrounds/index.ts'
+import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/index.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { dedupeSyncLinks, mergeSyncAppend } from './features/synchronization/merge.ts'
@@ -22,7 +22,6 @@ import { BROWSER, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
-import { opacityFromHex } from './shared/generic.ts'
 import { loadCallbacks } from './utils/onsettingsload.ts'
 import { onclickdown } from 'clickdown/mod'
 import { mergeImportedConfig } from './compatibility/apply.ts'
@@ -196,36 +195,23 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_texture-opacity', data.backgrounds.texture.opacity ?? '0.1')
     setInput('i_texture-color', data.backgrounds.texture.color ?? '#ffffff')
     setInput('i_dateformat', data.dateformat || 'eu')
-    setInput('i_clockface', data.analogstyle?.face || 'none')
-    setInput('i_clockhands', data.analogstyle?.hands || 'none')
-    setInput('i_clockshape', data.analogstyle?.shape || 'round')
-    setInput('i_analog-border-opacity', opacityFromHex(data.analogstyle?.border ?? '#ffff'))
-    setInput('i_analog-background-opacity', opacityFromHex(data.analogstyle?.background ?? '#fff2'))
     setInput('i_clocksize', data.clock?.size ?? 1)
     setInput('i_weight', data.font?.weight || '300')
     setInput('i_size', clampFontSize(data.font?.size || (IS_MOBILE ? '11' : '14')))
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'gist'))
 
-    setFormInput('i_gistsync', 'github_pat_XX000X00X', local?.gistToken)
+    setFormInput('i_gistsync', 'github_pat_XXXXXXXXXXXX', local?.gistToken)
     setFormInput('i_urlsync', 'https://pastebin.com/raw/y7XhhiDs', local?.distantUrl)
 
     setCheckbox('i_showall', data.showall)
-    setCheckbox('i_background-mute-videos', data.backgrounds.mute ?? true)
     setCheckbox('i_quicklinks', data.links.enabled)
     setCheckbox('i_linkgroups', data.links.foldersOn)
     setCheckbox('i_linknewtab', data.links.newTab)
     setCheckbox('i_time', data.time)
-    setCheckbox('i_analog', data.clock?.analog ?? false)
     setCheckbox('i_seconds', data.clock?.seconds ?? false)
     setCheckbox('i_ampm', data.clock?.ampm ?? false)
     colorInput('solid-background', data.backgrounds.color)
     colorInput('texture-color', data.backgrounds.texture.color ?? '#ffffff')
-
-    paramId('i_analog-border-shade')?.classList.toggle('on', (data.analogstyle?.border ?? '#fff').includes('#000'))
-    paramId('i_analog-background-shade')?.classList.toggle(
-        'on',
-        (data.analogstyle?.background ?? '#fff').includes('#000'),
-    )
 
     // Change edit tips on mobile
     if (IS_MOBILE) {
@@ -252,8 +238,6 @@ function initOptionsValues(data: Sync, local: Local): void {
 
     // Activate feature options
     paramId('time_options')?.classList.toggle('shown', data.time)
-    paramId('analog_options')?.classList.toggle('shown', data.clock.analog)
-    paramId('digital_options')?.classList.toggle('shown', !data.clock.analog)
     paramId('quicklinks_options')?.classList.toggle('shown', data.links.enabled)
     paramId('linkgroups_options')?.classList.toggle('shown', data.links.foldersOn)
 
@@ -423,11 +407,6 @@ function initOptionsEvents(): void {
         backgroundUpdate({ urlsapply: true })
     })
 
-    onclickdown(paramId('i_background-mute-videos'), (_, target) => {
-        toggleMuteStatus(target.checked)
-        backgroundUpdate({ mute: target.checked })
-    })
-
     // Background filters
 
     paramId('i_texture').addEventListener('change', function (this: HTMLInputElement): void {
@@ -473,40 +452,8 @@ function initOptionsEvents(): void {
         storage.sync.set({ time: target.checked })
     })
 
-    onclickdown(paramId('i_analog'), (_, target) => {
-        clock(undefined, { analog: target.checked })
-    })
-
     onclickdown(paramId('i_seconds'), (_, target) => {
         clock(undefined, { seconds: target.checked })
-    })
-
-    paramId('i_clockface').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { face: this.value })
-    })
-
-    paramId('i_clockhands').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { hands: this.value })
-    })
-
-    paramId('i_analog-border-opacity').addEventListener('input', function (this: HTMLInputElement): void {
-        clock(undefined, { border: 'opacity' })
-    })
-
-    paramId('i_analog-background-opacity').addEventListener('input', function (this: HTMLInputElement): void {
-        clock(undefined, { background: 'opacity' })
-    })
-
-    paramId('i_analog-border-shade').addEventListener('click', () => {
-        clock(undefined, { border: 'shade' })
-    })
-
-    paramId('i_analog-background-shade').addEventListener('click', () => {
-        clock(undefined, { background: 'shade' })
-    })
-
-    paramId('i_clockshape').addEventListener('change', function (this: HTMLInputElement): void {
-        clock(undefined, { shape: this.value })
     })
 
     paramId('i_clocksize').addEventListener('input', function (this: HTMLInputElement): void {

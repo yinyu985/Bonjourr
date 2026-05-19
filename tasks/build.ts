@@ -17,6 +17,9 @@ const env = args[1] ?? 'prod'
 const isPlatform = (s: string): s is Platform => PLATFORMS.includes(s as Platform)
 const _isEnv = (s: string): s is Env => ENVS.includes(s as Env)
 
+let hashedStylePath = 'src/styles/style.css'
+let hashedScriptPath = 'src/scripts/main.js'
+
 // Main
 
 if (env === 'dev' && platform === 'online') {
@@ -54,12 +57,12 @@ function builder(platform: Platform, env: Env): void {
     console.time(`${platform} built in`)
 
     addDirectories(platform)
-    html(platform)
     assets(platform)
     locales(platform)
     manifests(platform)
     styles(platform, env)
     scripts(platform, env)
+    html(platform, env)
 
     console.timeEnd(`${platform} built in`)
 }
@@ -71,7 +74,7 @@ function watcher(platform: Platform): void {
 
     watchTasks('src', (filename) => {
         if (filename.includes('.html')) {
-            html(platform)
+            html(platform, 'dev')
         }
         if (filename.includes('assets/')) {
             assets(platform)
@@ -109,7 +112,7 @@ function addDirectories(platform: Platform): void {
 
 // Tasks
 
-function html(platform: Platform): void {
+function html(platform: Platform, env: Env): void {
     const indexdata = Deno.readTextFileSync('src/index.html')
     const settingsdata = Deno.readTextFileSync('src/settings.html')
     const helpModeData = Deno.readTextFileSync('src/help-mode.html')
@@ -141,6 +144,12 @@ function html(platform: Platform): void {
         html = html.replace('<!-- webext-storage -->', storage)
     }
 
+    // Inject hashed asset paths for online prod builds
+    if (platform === 'online' && env === 'prod') {
+        html = html.replace('src/styles/style.css', hashedStylePath)
+        html = html.replace('src/scripts/main.js', hashedScriptPath)
+    }
+
     html = html.replace('<!-- settings -->', settingsdata)
     html = html.replace('<!-- help-mode -->', helpModeData)
 
@@ -149,18 +158,39 @@ function html(platform: Platform): void {
 
 function styles(platform: Platform, env: Env): void {
     try {
-        buildSync({
-            entryPoints: ['src/styles/style.css'],
-            outfile: `release/${platform}/src/styles/style.css`,
-            format: 'iife',
-            bundle: true,
-            minify: platform === 'online',
-            loader: {
-                '.svg': 'dataurl',
-                '.png': 'file',
-                '.mp3': 'file',
-            },
-        })
+        if (platform === 'online' && env === 'prod') {
+            const result = buildSync({
+                entryPoints: ['src/styles/style.css'],
+                outdir: `release/${platform}/src/styles`,
+                entryNames: '[name]-[hash]',
+                format: 'iife',
+                bundle: true,
+                minify: true,
+                metafile: true,
+                loader: {
+                    '.svg': 'dataurl',
+                    '.png': 'file',
+                    '.mp3': 'file',
+                },
+            })
+            const outFile = Object.keys(result.metafile.outputs).find((f) => f.endsWith('.css'))
+            if (outFile) {
+                hashedStylePath = outFile.replace(`release/${platform}/`, '')
+            }
+        } else {
+            buildSync({
+                entryPoints: ['src/styles/style.css'],
+                outfile: `release/${platform}/src/styles/style.css`,
+                format: 'iife',
+                bundle: true,
+                minify: platform === 'online',
+                loader: {
+                    '.svg': 'dataurl',
+                    '.png': 'file',
+                    '.mp3': 'file',
+                },
+            })
+        }
     } catch (err) {
         if (env === 'prod') {
             throw (err as Error).message
@@ -172,17 +202,36 @@ function styles(platform: Platform, env: Env): void {
 
 function scripts(platform: Platform, env: Env): void {
     try {
-        buildSync({
-            entryPoints: ['src/scripts/index.ts'],
-            outfile: `release/${platform}/src/scripts/main.js`,
-            bundle: true,
-            target: 'es2023',
-            minify: platform === 'online',
-            sourcemap: env === 'dev',
-            define: {
-                ENV: `"${env.toUpperCase()}"`,
-            },
-        })
+        if (platform === 'online' && env === 'prod') {
+            const result = buildSync({
+                entryPoints: ['src/scripts/index.ts'],
+                outdir: `release/${platform}/src/scripts`,
+                entryNames: '[name]-[hash]',
+                bundle: true,
+                target: 'es2023',
+                minify: true,
+                metafile: true,
+                define: {
+                    ENV: `"${env.toUpperCase()}"`,
+                },
+            })
+            const outFile = Object.keys(result.metafile.outputs).find((f) => f.endsWith('.js'))
+            if (outFile) {
+                hashedScriptPath = outFile.replace(`release/${platform}/`, '')
+            }
+        } else {
+            buildSync({
+                entryPoints: ['src/scripts/index.ts'],
+                outfile: `release/${platform}/src/scripts/main.js`,
+                bundle: true,
+                target: 'es2023',
+                minify: platform === 'online',
+                sourcemap: env === 'dev',
+                define: {
+                    ENV: `"${env.toUpperCase()}"`,
+                },
+            })
+        }
     } catch (err) {
         if (env === 'prod') {
             throw (err as Error).message

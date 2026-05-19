@@ -56,7 +56,7 @@ export function networkForm(targetId: string): NetworkFormReturn {
         form.classList.add('warn')
         form.classList.remove('load')
         button.setAttribute('disabled', '')
-        message.textContent = err as string
+        message.textContent = err instanceof Error ? err.message : String(err)
         clearTimeout(loadTimeout)
     }
 

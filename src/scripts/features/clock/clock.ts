@@ -15,7 +15,6 @@ let clockInterval: number
 export function startClock(options: ClockStartOptions): void {
     const { clock, dateformat } = options
 
-    document.getElementById('time')?.classList.toggle('is-analog', clock.analog)
     document.getElementById('time')?.classList.toggle('seconds', clock.seconds)
 
     document.querySelectorAll('.clock-wrapper').forEach((node, index) => {
@@ -42,11 +41,7 @@ export function startClock(options: ClockStartOptions): void {
             const date = userDate(timezone)
             const isNextHour = date.getMinutes() === 0
 
-            if (clock.analog) {
-                analog(domclock, clock, timezone)
-            } else {
-                digital(domclock, clock, timezone)
-            }
+            digital(domclock, clock, timezone)
 
             if (isNextHour || firstStart) {
                 clockDate(domclock, date, dateformat, timezone)
@@ -116,20 +111,4 @@ function digital(wrapper: HTMLElement, clock: Clock, timezone: string): void {
             domclock.insertBefore(ampm, domclock.firstElementChild)
         }
     }
-}
-
-function analog(wrapper: HTMLElement, clock: Clock, timezone: string): void {
-    const date = userDate(timezone)
-    const m = ((date.getMinutes() + date.getSeconds() / 60) * 6).toFixed(1)
-    const h = (((date.getHours() % 12) + date.getMinutes() / 60) * 30).toFixed(1)
-    const s = (date.getSeconds() * 6).toFixed(1)
-
-    wrapper.querySelector<HTMLElement>('.analog-hours')?.style.setProperty('--deg', `${h}deg`)
-    wrapper.querySelector<HTMLElement>('.analog-minutes')?.style.setProperty('--deg', `${m}deg`)
-
-    if (!clock.seconds) {
-        return
-    }
-
-    wrapper.querySelector<HTMLElement>('.analog-seconds')?.style.setProperty('--deg', `${s}deg`)
 }

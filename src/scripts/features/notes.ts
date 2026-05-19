@@ -1,4 +1,5 @@
-import { tradThis } from '../utils/translations.ts'
+import { updateSettingsJson } from '../settings.ts'
+import { getLang, tradThis } from '../utils/translations.ts'
 import { debounce } from '../utils/debounce.ts'
 import { storage } from '../storage.ts'
 
@@ -8,10 +9,15 @@ type NotesState = NonNullable<Sync['notes']>
 type NoteRecord = NotesState['records'][number]
 
 let noteState: NotesState = { active: '', records: [] }
+let eventsBound = false
 
 export function notes(init: Sync): void {
     noteState = sanitizeNotes(init.notes)
-    bindEvents()
+
+    if (!eventsBound) {
+        eventsBound = true
+        bindEvents()
+    }
     renderNotes()
 }
 
@@ -96,21 +102,24 @@ function toggleNotes(force?: boolean): void {
     if (shouldOpen && noteState.records.length === 0) {
         createNote()
     }
+
+    if (!shouldOpen) {
+        persist(true)
+    }
 }
 
 function createNote(): void {
     const id = `note-${Math.random().toString(36).slice(2, 10)}`
-    const now = Date.now()
 
     noteState.records.unshift({
         id,
         title: tradThis('Untitled note'),
         content: '',
-        updatedAt: now,
+        updatedAt: new Date().toISOString(),
     })
     noteState.active = id
 
-    persist()
+    persist(true)
     renderNotes()
 
     // Trigger inline rename on the newly created note
@@ -135,11 +144,17 @@ function updateActiveNote(update: Partial<NoteRecord>): void {
         return
     }
 
-    updateNote(noteState.active, update)
+    applyNoteUpdate(noteState.active, update)
+    persist()
     renderNotes(false)
 }
 
 function updateNote(noteId: string, update: Partial<NoteRecord>): void {
+    applyNoteUpdate(noteId, update)
+    persist(true)
+}
+
+function applyNoteUpdate(noteId: string, update: Partial<NoteRecord>): void {
     noteState.records = noteState.records.map((note) => {
         if (note.id !== noteId) {
             return note
@@ -148,11 +163,9 @@ function updateNote(noteId: string, update: Partial<NoteRecord>): void {
         return {
             ...note,
             ...update,
-            updatedAt: Date.now(),
+            updatedAt: new Date().toISOString(),
         }
     })
-
-    persist()
 }
 
 function selectNote(noteId: string): void {
@@ -172,6 +185,8 @@ function selectNote(noteId: string): void {
     if (content) {
         content.value = active?.content ?? ''
     }
+
+    renderNoteTimestamp(active)
 }
 
 function renderNotes(syncEditor = true): void {
@@ -202,6 +217,9 @@ function renderNotes(syncEditor = true): void {
                 selectNote(note.id)
             })
             row.addEventListener('keydown', (event) => {
+                if ((event.target as HTMLElement).tagName === 'INPUT') {
+                    return
+                }
                 if (event.key !== 'Enter' && event.key !== ' ') {
                     return
                 }
@@ -239,6 +257,8 @@ function renderNotes(syncEditor = true): void {
     if (syncEditor) {
         content && (content.value = active?.content ?? '')
     }
+
+    renderNoteTimestamp(active)
 }
 
 function startInlineRename(_row: HTMLElement, titleSpan: HTMLSpanElement, noteId: string): void {
@@ -289,8 +309,40 @@ const debouncedPersist = debounce(() => {
     })
 }, 300)
 
-function persist(): void {
-    debouncedPersist()
+function persist(immediate = false): void {
+    if (immediate) {
+        pendingPersist = pendingPersist.then(async () => {
+            await storage.sync.set({ notes: noteState })
+            updateSettingsJson()
+        })
+    } else {
+        debouncedPersist()
+    }
+}
+
+function renderNoteTimestamp(note?: NoteRecord): void {
+    const editor = document.getElementById('notes-editor')
+    let el = document.getElementById('notes-timestamp')
+
+    if (!note?.updatedAt) {
+        el?.remove()
+        return
+    }
+
+    if (!el) {
+        el = document.createElement('span')
+        el.id = 'notes-timestamp'
+        editor?.appendChild(el)
+    }
+
+    const date = new Date(note.updatedAt)
+    el.textContent = date.toLocaleString(getLang(), {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    })
 }
 
 function sanitizeNotes(notes: unknown): NotesState {
@@ -305,7 +357,7 @@ function sanitizeNotes(notes: unknown): NotesState {
                 id: record.id,
                 title: typeof record.title === 'string' ? record.title : tradThis('Untitled note'),
                 content: typeof record.content === 'string' ? record.content : '',
-                updatedAt: typeof record.updatedAt === 'number' ? record.updatedAt : Date.now(),
+                updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : new Date().toISOString(),
             })),
     }
 }

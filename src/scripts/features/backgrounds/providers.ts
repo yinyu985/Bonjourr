@@ -21,45 +21,6 @@ const IMAGES: Provider[] = [
             },
         ],
     },
-    // {
-    // 	optgroup: 'Pixabay',
-    // 	options: [
-    // 		{
-    // 			name: 'Pixabay Search',
-    // 			value: 'pixabay-images-search',
-    // 		},
-    // 	],
-    // },
-    // {
-    // 	optgroup: 'MET Museum',
-    // 	options: [
-    // 		{
-    // 			name: 'MET Museum paintings',
-    // 			value: 'metmuseum-images-paintings',
-    // 		},
-    // 	],
-    // },
-]
-
-const VIDEOS: Provider[] = [
-    {
-        optgroup: 'Bonjourr',
-        options: [
-            {
-                name: 'Bonjourr Daylight',
-                value: 'bonjourr-videos-daylight',
-            },
-        ],
-    },
-    {
-        optgroup: 'Pixabay',
-        options: [
-            {
-                name: 'Pixabay Search',
-                value: 'pixabay-videos-search',
-            },
-        ],
-    },
 ]
 
 //
@@ -72,4 +33,4 @@ interface Provider {
     }[]
 }
 
-export const PROVIDERS = { IMAGES, VIDEOS }
+export const PROVIDERS = { IMAGES }

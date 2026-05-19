@@ -5,7 +5,7 @@ import type { Sync } from './sync.ts'
 export type Langs = keyof typeof langList
 export type Link = LinkSubfolder | LinkElem
 export type LinkNode = LinkSubfolder | LinkElem
-export type Background = BackgroundImage | BackgroundVideo
+export type Background = BackgroundImage
 export type Frequency = 'tabs' | 'hour' | 'day' | 'period' | 'pause'
 export type LinkIconType = 'auto' | 'library' | 'file' | 'url'
 
@@ -30,20 +30,6 @@ export interface BackgroundImage {
         aperture: string
         focal_length: string
         iso: number
-    }
-    file?: BackgroundFile
-}
-
-export interface BackgroundVideo {
-    format: 'video'
-    mimetype?: string
-    duration: number
-    page?: string
-    username?: string
-    thumbnail?: string
-    urls: {
-        full: string
-        small: string
     }
     file?: BackgroundFile
 }

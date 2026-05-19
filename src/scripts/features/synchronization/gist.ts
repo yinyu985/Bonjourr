@@ -24,6 +24,29 @@ interface GistFile {
     size: number
 }
 
+export function setGistStatusNow(): void {
+    const wrapper = document.getElementById('gist-sync-status-wrapper') as HTMLElement
+    const base = document.getElementById('gist-sync-status-base') as HTMLSpanElement
+
+    const dateString = new Date().toLocaleString(getLang(), {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    })
+
+    document.querySelector('#gist-sync-status')?.remove()
+
+    const span = document.createElement('span')
+    span.id = 'gist-sync-status'
+    span.textContent = dateString
+    wrapper?.appendChild(span)
+
+    base.textContent = tradThis('Last update')
+}
+
 export async function setGistStatus(token?: string, id?: string): Promise<boolean> {
     const wrapper = document.getElementById('gist-sync-status-wrapper') as HTMLElement
     const base = document.getElementById('gist-sync-status-base') as HTMLSpanElement
@@ -64,6 +87,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
         year: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     })
 
     document.querySelector('#gist-sync-status')?.remove()
@@ -157,23 +181,6 @@ export async function findGistId(token?: string): Promise<string | undefined> {
     return file?.id
 }
 
-export async function isGistTokenValid(token = ''): Promise<boolean> {
-    if (!token) {
-        return false
-    }
-
-    try {
-        const isoDate = new Date()?.toISOString()
-        const resp = await fetchGistWithTimeout(`https://api.github.com/gists?since=${isoDate}`, {
-            headers: gistHeaders(token),
-        })
-
-        return resp.ok
-    } catch (_) {
-        return false
-    }
-}
-
 function isGistIdValid(id?: string): boolean {
     if (!id || id.length > 32) {
         return false
@@ -200,8 +207,9 @@ function gistHeaders(token: string): HeadersInit {
 }
 
 async function fetchGistWithTimeout(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    const ms = init?.body ? GIST_WRITE_TIMEOUT_MS : GIST_READ_TIMEOUT_MS
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), GIST_FETCH_TIMEOUT_MS)
+    const timeout = setTimeout(() => controller.abort(), ms)
 
     try {
         return await fetch(input, { ...init, signal: controller.signal })
@@ -216,27 +224,45 @@ async function gistFetch(
     statusOverrides?: Record<number, string>,
 ): Promise<Response> {
     let resp: Response
+    let lastError: unknown
 
-    try {
-        resp = await fetchGistWithTimeout(input, init)
-    } catch (_) {
-        throw new Error(GIST_ERROR.NOCONN)
+    for (let attempt = 0; attempt < GIST_MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, GIST_RETRY_DELAY_MS * attempt))
+        }
+
+        try {
+            resp = await fetchGistWithTimeout(input, init)
+        } catch (err) {
+            lastError = err
+            continue
+        }
+
+        if (resp.status >= 500) {
+            lastError = new Error(GIST_ERROR.OTHER)
+            continue
+        }
+
+        if (statusOverrides && resp.status in statusOverrides) {
+            throw new Error(statusOverrides[resp.status])
+        }
+        if (resp.status === 401) {
+            throw new Error(GIST_ERROR.TOKEN)
+        }
+        if (!resp.ok) {
+            throw new Error(GIST_ERROR.OTHER)
+        }
+
+        return resp
     }
 
-    if (statusOverrides && resp.status in statusOverrides) {
-        throw new Error(statusOverrides[resp.status])
-    }
-    if (resp.status === 401) {
-        throw new Error(GIST_ERROR.TOKEN)
-    }
-    if (!resp.ok) {
-        throw new Error(GIST_ERROR.OTHER)
-    }
-
-    return resp
+    throw lastError instanceof Error ? lastError : new Error(GIST_ERROR.NOCONN)
 }
 
-const GIST_FETCH_TIMEOUT_MS = 5000
+const GIST_MAX_RETRIES = 3
+const GIST_RETRY_DELAY_MS = 1500
+const GIST_READ_TIMEOUT_MS = 10000
+const GIST_WRITE_TIMEOUT_MS = 30000
 const GIST_FILENAME = 'bonjourr-export.json'
 
 const GIST_ERROR = {

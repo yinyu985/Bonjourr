@@ -1,59 +1,19 @@
 import { setGroupFocus } from './features/links/groups.ts'
 
 let isMousingDownOnInput = false
+let userActionsBound = false
 
 export function userActions(): void {
-    document.body.addEventListener('mousedown', detectTargetAsInputs)
+    if (userActionsBound) {
+        return
+    }
+    userActionsBound = true
 
+    document.body.addEventListener('mousedown', detectTargetAsInputs)
     document.addEventListener('click', clickUserActions)
-    document.addEventListener('keydown', keyboardUserActions)
-    document.addEventListener('keyup', keyboardUserActions)
 }
 
 // Main functions
-
-function keyboardUserActions(event: KeyboardEvent): void {
-    const domsuggestions = document.getElementById('sb-suggestions')
-
-    if (event.code === 'Escape') {
-        if (domsuggestions?.classList.contains('shown')) {
-            domsuggestions?.classList.remove('shown')
-            return
-        }
-
-        const open = isOpen()
-        const keyup = event.type === 'keyup'
-
-        if (open.contextmenu) {
-            document.dispatchEvent(new Event('close-edit'))
-        } //
-        else if (open.settings && keyup) {
-            document.dispatchEvent(new CustomEvent('toggle-settings'))
-        } //
-        else if (open.notes && keyup) {
-            document.dispatchEvent(new CustomEvent('toggle-notes', { detail: { open: false } }))
-        } //
-        else if (open.selectall) {
-            document.dispatchEvent(new Event('remove-select-all'))
-        } //
-        else if (open.folder) {
-            document.dispatchEvent(new Event('close-folder'))
-        } //
-        else if (open.groupfocus && keyup) {
-            setGroupFocus(false)
-        } //
-        else if (keyup) {
-            document.dispatchEvent(new CustomEvent('toggle-settings'))
-        }
-
-        return
-    }
-
-    if (event.code === 'Tab') {
-        document.body.classList.toggle('tabbing', true)
-        return
-    }
-}
 
 function clickUserActions(event: MouseEvent): void {
     if (isMousingDownOnInput) {
@@ -84,10 +44,6 @@ function clickUserActions(event: MouseEvent): void {
                 )
             )
         ),
-    }
-
-    if (document.body.classList.contains('tabbing')) {
-        document.body?.classList.toggle('tabbing', false)
     }
 
     if (document.querySelectorAll('.thumbnail.selected') && !on.localfiles && !on.button) {

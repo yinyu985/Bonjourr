@@ -22,13 +22,6 @@ export function toggleCredits(backgrounds: Backgrounds): void {
             break
         }
 
-        case 'videos': {
-            domcontainer?.classList.add('shown')
-            domcredit?.classList.remove('hidden')
-            domsave?.classList.add('hidden')
-            break
-        }
-
         default: {
             domcontainer?.classList.add('shown')
             domcredit?.classList.remove('hidden')
@@ -43,18 +36,6 @@ export function updateCredits(image?: Background): void {
     const domsave = document.getElementById('download-background')
 
     if (!(domcontainer && domcredit && image?.page && image?.username)) {
-        return
-    }
-
-    if (image?.format === 'video') {
-        if (image.username) {
-            const dompage = document.createElement('a')
-            dompage.textContent = tradThis(`Video by ${image.username}`)
-            dompage.href = image.page
-            domcredit.textContent = ''
-            domcredit.append(dompage)
-        }
-
         return
     }
 

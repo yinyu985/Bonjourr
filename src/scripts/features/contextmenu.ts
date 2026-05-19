@@ -4,7 +4,7 @@ import { transitioner } from '../utils/transitioner.ts'
 import { debounce } from '../utils/debounce.ts'
 import { initCustomSelects } from '../shared/custom-select.ts'
 import { onclickdown } from 'clickdown/mod'
-import { backgroundUpdate, toggleMuteStatus } from './backgrounds/index.ts'
+import { backgroundUpdate } from './backgrounds/index.ts'
 import { storage } from '../storage.ts'
 
 import type { Backgrounds } from '../../types/sync.ts'
@@ -328,20 +328,12 @@ export function closeContextMenu(): void {
 }
 
 export function handleBackgroundActions(backgrounds: Backgrounds): void {
-    const muteButton = document.getElementById('b_interface-background-mute')
     const type = backgrounds.type
     const freq = backgrounds.frequency
 
     document.getElementById('background-actions')?.setAttribute('data-type', type)
     document.getElementById('b_interface-background-pause')?.classList.toggle('paused', freq === 'pause')
     document.getElementById('b_interface-background-download')?.toggleAttribute('disabled', type !== 'images')
-
-    const shouldShowMute = type === 'files' || type === 'videos'
-    muteButton?.toggleAttribute('disabled', !shouldShowMute)
-
-    if (shouldShowMute) {
-        muteButton?.classList.toggle('muted', backgrounds.mute)
-    }
 }
 
 export function initBackgroundActionsEvents(): void {
@@ -356,26 +348,6 @@ export function initBackgroundActionsEvents(): void {
     onclickdown(document.getElementById('b_interface-background-download'), () => {
         downloadImage()
     })
-
-    onclickdown(document.getElementById('b_interface-background-mute'), () => {
-        toggleMuteVideo()
-    })
-}
-
-async function toggleMuteVideo(): Promise<void> {
-    const muteInput = document.querySelector<HTMLInputElement>('#i_background-mute-videos')
-    const muteContextButton = document.getElementById('b_interface-background-mute')
-    const sync = await storage.sync.get('backgrounds')
-    const lastMuteStatus = sync.backgrounds.mute
-
-    if (muteInput) { // if settings are initialized, sets input
-        muteInput.checked = !lastMuteStatus
-    }
-
-    muteContextButton?.classList.toggle('muted', !lastMuteStatus)
-
-    toggleMuteStatus(!lastMuteStatus)
-    backgroundUpdate({ mute: !lastMuteStatus })
 }
 
 async function toggleBackgroundPause(): Promise<void> {

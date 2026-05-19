@@ -9,7 +9,7 @@ import { getCache } from '../../shared/cache.ts'
 import { hashcode } from '../../utils/hash.ts'
 import { storage } from '../../storage.ts'
 
-import type { Background, BackgroundImage, BackgroundVideo } from '../../../types/shared.ts'
+import type { Background, BackgroundImage } from '../../../types/shared.ts'
 import type { BackgroundFile, Local } from '../../../types/local.ts'
 import type { Backgrounds } from '../../../types/sync.ts'
 
@@ -515,14 +515,7 @@ function addThumbnailImage(id: string, local: Local, data: LocalFileData): void 
 
         btn.dataset.format = format
 
-        if (format === 'image') {
-            img.src = urls.small
-        }
-        if (format === 'video') {
-            if (image.thumbnail) {
-                img.src = image.thumbnail
-            }
-        }
+        img.src = urls.small
     })
 }
 
@@ -633,47 +626,22 @@ export async function mediaFromFiles(
 
     data = data ?? (await getFileFromCache(id))
 
-    if (data.full.type.includes('video/')) {
-        const htmlvideo = await getLoadedVideo(data.full)
-        const duration = htmlvideo.duration
-
-        htmlvideo.remove()
-
-        const videoUrl = URL.createObjectURL(data.full)
-        const thumbnailUrl = URL.createObjectURL(data.small)
-
-        const video: BackgroundVideo = {
-            format: 'video',
-            duration: duration,
-            mimetype: data.full.type,
-            thumbnail: thumbnailUrl,
-            file: metadata,
-            urls: {
-                full: videoUrl,
-                small: videoUrl,
-            },
-        }
-
-        return video
-    } //
-    else {
-        const urls = {
-            full: URL.createObjectURL(data.full),
-            small: URL.createObjectURL(data.small),
-        }
-
-        const image: BackgroundImage = {
-            format: 'image',
-            mimetype: data.full.type,
-            file: metadata,
-            urls: {
-                full: urls.full,
-                small: urls.small,
-            },
-        }
-
-        return image
+    const urls = {
+        full: URL.createObjectURL(data.full),
+        small: URL.createObjectURL(data.small),
     }
+
+    const image: BackgroundImage = {
+        format: 'image',
+        mimetype: data.full.type,
+        file: metadata,
+        urls: {
+            full: urls.full,
+            small: urls.small,
+        },
+    }
+
+    return image
 }
 
 //	Helpers

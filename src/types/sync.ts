@@ -1,4 +1,4 @@
-import type { BackgroundImage, BackgroundVideo, Frequency, LinkElem, LinkNode } from './shared.ts'
+import type { BackgroundImage, Frequency, LinkElem, LinkNode } from './shared.ts'
 
 export interface Sync {
     showall: boolean
@@ -16,7 +16,6 @@ export interface Sync {
     dateformat: 'auto' | 'eu' | 'us' | 'cn'
     backgrounds: Backgrounds
     clock: Clock
-    analogstyle?: AnalogStyle
     font: Font
     notes?: Notes
     about: {
@@ -55,7 +54,7 @@ export interface Hide {
 }
 
 export interface Backgrounds {
-    type: 'files' | 'urls' | 'images' | 'videos' | 'color'
+    type: 'files' | 'urls' | 'images' | 'color'
     frequency: Frequency
     fadein: number
     bright: number
@@ -63,11 +62,9 @@ export interface Backgrounds {
     color: string
     urls: string
     images: string
-    videos: string
     mute: boolean
     pausedUrl?: string
     pausedImage?: BackgroundImage
-    pausedVideo?: BackgroundVideo
     queries: Record<string, string>
     texture: {
         type:
@@ -100,20 +97,9 @@ export interface Backgrounds {
 
 export interface Clock {
     ampm: boolean
-    analog: boolean
     seconds: boolean
     timezone: string
     size: number
-    face?: 'none' | 'number' | 'roman' | 'marks'
-    style?: 'round' | 'square' | 'transparent'
-}
-
-export interface AnalogStyle {
-    border: string
-    background: string
-    shape: 'round' | 'square' | 'rectangle'
-    face: 'none' | 'number' | 'roman' | 'marks' | 'swiss' | 'braun'
-    hands: 'modern' | 'swiss' | 'classic' | 'braun' | 'apple'
 }
 
 export interface Font {
@@ -136,5 +122,5 @@ export interface NoteRecord {
     id: string
     title: string
     content: string
-    updatedAt: number
+    updatedAt: string
 }

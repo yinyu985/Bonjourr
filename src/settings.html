@@ -103,7 +103,6 @@
         <label for="i_type" class="trn">Background type</label>
         <select id="i_type">
             <option value="images" class="trn">Images</option>
-            <option value="videos" class="trn">Videos</option>
             <option value="files" class="trn">Local files</option>
             <option value="urls" class="trn">URLs</option>
             <option value="color" class="trn">Solid color</option>
@@ -226,7 +225,7 @@
         <hr />
 
         <div class="wrapper">
-            <span class="trn">My files (images or videos)</span>
+            <span class="trn">My files</span>
 
             <label id="lbl_background-upload" title="Upload new background" aria-label="Upload new background">
                 <span class="param-btn">
@@ -238,7 +237,7 @@
                     type="file"
                     name="background_file"
                     multiple
-                    accept="image/*, video/mp4, video/webm"
+                    accept="image/*"
                 />
             </label>
         </div>
@@ -335,50 +334,6 @@
                     />
                 </div>
             </div>
-
-            <div id="background-file-video">
-                <div class="wrapper">
-                    <label for="i_background-video-zoom" class="trn">Zoom</label>
-                    <input
-                        id="i_background-video-zoom"
-                        name="background-video-zoom"
-                        type="range"
-                        min="1"
-                        max="2"
-                        value="1"
-                        step=".1"
-                        class="range"
-                    />
-                </div>
-
-                <div class="wrapper">
-                    <label for="i_background-playback-speed" class="trn">Playback speed</label>
-                    <input
-                        id="i_background-playback-speed"
-                        name="background-playback-speed"
-                        type="range"
-                        min=".2"
-                        max="2"
-                        value="1"
-                        step=".2"
-                        class="range"
-                    />
-                </div>
-
-                <div class="wrapper">
-                    <label for="i_background-loop-fade" class="trn">Loop fade</label>
-                    <input
-                        id="i_background-loop-fade"
-                        name="background-loop-fade"
-                        type="range"
-                        min="0"
-                        max="6000"
-                        value="4000"
-                        step="400"
-                        class="range"
-                    />
-                </div>
-            </div>
         </div>
 
         <p class="tooltiptext trn" id="background-local-tooltip">
@@ -406,17 +361,6 @@
             <div id="solid-background" class="color-button">
                 <input type="color" id="i_solid-background" name="solid-background" tabindex="-1" />
                 <button id="b_solid-background" class="trn">Pick a Color</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="as as_video_sound dropdown">
-        <div id="background-video-sound-options" class="dropdown not-safari">
-            <hr />
-
-            <div class="wrapper">
-                <label for="i_background-mute-videos" class="trn">Mute videos</label>
-                <input id="i_background-mute-videos" class="switch" type="checkbox" />
             </div>
         </div>
     </div>
@@ -601,140 +545,9 @@
 
         <hr />
 
-        <div class="wrapper">
-            <label for="i_analog" class="trn">Analog clock</label>
-            <input id="i_analog" class="switch" type="checkbox" />
-        </div>
-
-        <hr />
-
-        <div id="clocktype_options" class="as as_clocktype dropdown">
-            <div id="analog_options" class="dropdown">
-                <div id="w_clockshape" class="wrapper">
-                    <label for="i_clockshape" class="trn">Clock shape</label>
-                    <select id="i_clockshape" class="">
-                        <option value="round" class="trn">Round</option>
-                        <option value="square" class="trn">Square</option>
-                        <option value="rectangle" class="trn">Rectangle</option>
-                    </select>
-                </div>
-
-                <hr />
-
-                <div class="wrapper">
-                    <label for="i_clockface" class="trn">Clock face</label>
-                    <select id="i_clockface" class="">
-                        <option value="none" class="trn">None</option>
-                        <option value="number" class="trn">Numbers</option>
-                        <option value="roman" class="trn">Romans</option>
-                        <option value="marks" class="trn">Marks</option>
-                        <option value="swiss" class="trn">Swiss railway</option>
-                        <option value="braun" class="trn">Braun</option>
-                    </select>
-                </div>
-
-                <hr />
-
-                <div class="wrapper">
-                    <label for="i_clockhands" class="trn">Clock hands</label>
-                    <select id="i_clockhands" class="">
-                        <option value="modern" class="trn">Modern</option>
-                        <option value="classic" class="trn">Classic</option>
-                        <option value="swiss" class="trn">Swiss railway</option>
-                        <option value="braun" class="trn">Braun</option>
-                        <option value="apple" class="trn">Apple Watch</option>
-                    </select>
-                </div>
-
-                <hr />
-
-                <div class="wrapper">
-                    <label for="i_analog-background-opacity" class="trn">Clock background</label>
-
-                    <div id="analog-background-range" class="split-inputs split-range">
-                        <input
-                            id="i_analog-background-opacity"
-                            name="i_analog-background-opacity"
-                            class="range"
-                            type="range"
-                            min="0"
-                            max="15"
-                            step="1"
-                        />
-
-                        <button
-                            id="i_analog-background-shade"
-                            title="Clock background shade"
-                            class="input-btn icon-only"
-                        >
-                            <span data-value="light">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z"
-                                    />
-                                </svg>
-                            </span>
-
-                            <span data-value="dark">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-
-                <hr />
-
-                <div class="wrapper">
-                    <label for="i_analog-border-opacity" class="trn">Clock border</label>
-
-                    <div id="analog-border-range" class="split-inputs split-range">
-                        <input
-                            id="i_analog-border-opacity"
-                            name="i_analog-border-opacity"
-                            class="range"
-                            type="range"
-                            min="0"
-                            max="15"
-                            step="1"
-                        />
-
-                        <button id="i_analog-border-shade" title="Clock border shade" class="input-btn icon-only">
-                            <span data-value="light">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z"
-                                    />
-                                </svg>
-                            </span>
-
-                            <span data-value="dark">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="digital_options" class="dropdown shown">
-                <div id="w_ampm" class="wrapper">
-                    <label for="i_ampm" class="trn">12-Hour Time</label>
-                    <input id="i_ampm" class="switch" type="checkbox" />
-                </div>
-            </div>
-
-            <hr />
+        <div id="w_ampm" class="wrapper">
+            <label for="i_ampm" class="trn">12-Hour Time</label>
+            <input id="i_ampm" class="switch" type="checkbox" />
         </div>
 
         <div class="wrapper">

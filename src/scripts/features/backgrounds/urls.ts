@@ -61,20 +61,7 @@ export function lastUsedValidUrls(metadatas: Local['backgroundUrls']): string[] 
     return urls
 }
 
-function urlAsBackgroundMedia(url: string, metadata: BackgroundUrl): Background {
-    if (metadata.format === 'video') {
-        return {
-            format: 'video',
-            duration: metadata.duration ?? 8,
-            page: '',
-            username: '',
-            urls: {
-                full: url,
-                small: url,
-            },
-        }
-    }
-
+function urlAsBackgroundMedia(url: string, _metadata: BackgroundUrl): Background {
     return {
         format: 'image',
         page: '',

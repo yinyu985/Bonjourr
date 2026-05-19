@@ -1,36 +1,19 @@
-import { isDateFormat, isFace, isHands, isShape } from './helpers.ts'
-import { hexColorFromSplitRange } from '../../shared/dom.ts'
+import { isDateFormat } from './helpers.ts'
 import { displayInterface } from '../../shared/display.ts'
-import { debounce, eventDebounce } from '../../utils/debounce.ts'
+import { debounce } from '../../utils/debounce.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
-import { getLang } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 import { startClock } from './clock.ts'
 
-import type { AnalogStyle, Sync } from '../../../types/sync.ts'
+import type { Sync } from '../../../types/sync.ts'
 
 interface ClockUpdate {
     ampm?: boolean
-    analog?: boolean
     seconds?: boolean
     dateformat?: string
-    shape?: string
-    face?: string
-    hands?: string
     size?: number
-    border?: 'opacity' | 'shade'
-    background?: 'opacity' | 'shade'
 }
 
-const defaultAnalogStyle: AnalogStyle = {
-    face: 'none',
-    hands: 'modern',
-    shape: 'round',
-    border: '#ffff',
-    background: '#fff2',
-}
-
-const sinogramRegex = /zh-CN|zh-HK|ja/
 let pendingClockSize = 1
 let clockSizeFrame = 0
 
@@ -64,20 +47,17 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
         return
     }
 
-    const clock = init?.clock ?? { ...SYNC_DEFAULT.clock }
+    const clockData = init?.clock ?? { ...SYNC_DEFAULT.clock }
     const dateformat = init?.dateformat || 'eu'
 
     try {
-        startClock({ clock, dateformat })
-        analogStyle(init?.analogstyle)
-        clockSize(clock.size)
+        startClock({ clock: clockData, dateformat })
+        clockSize(clockData.size)
         displayInterface('clock')
     } catch (err) {
         console.info(err)
     }
 }
-
-//	Update
 
 async function clockUpdate(update: ClockUpdate): Promise<void> {
     if (update.size !== undefined && Object.keys(update).length === 1) {
@@ -87,57 +67,21 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
     }
 
     const data = await storage.sync.get()
-    const analogstyle = data.analogstyle ?? structuredClone(defaultAnalogStyle)
-
-    if (update.analog !== undefined) {
-        document.getElementById('analog_options')?.classList.toggle('shown', update.analog)
-        document.getElementById('digital_options')?.classList.toggle('shown', !update.analog)
-    }
 
     if (isDateFormat(update.dateformat)) {
         data.dateformat = update.dateformat
         storage.sync.set({ dateformat: update.dateformat })
     }
 
-    if (isHands(update.hands)) {
-        analogstyle.hands = update.hands
-    }
-
-    if (isShape(update.shape)) {
-        analogstyle.shape = update.shape
-    }
-
-    if (isFace(update.face)) {
-        analogstyle.face = update.face
-    }
-
-    if (update.background || update.border) {
-        const option = update.background ? 'background' : 'border'
-
-        analogstyle[option] = hexColorFromSplitRange(`#analog-${option}-range`)
-        analogStyle(analogstyle)
-
-        if (update?.[option] === 'opacity') {
-            eventDebounce({ analogstyle })
-        }
-        if (update?.[option] === 'shade') {
-            storage.sync.set({ analogstyle })
-        }
-
-        return
-    }
-
     data.clock = {
         ampm: update.ampm ?? data.clock.ampm,
         size: update.size ?? data.clock.size,
-        analog: update.analog ?? data.clock.analog,
         seconds: update.seconds ?? data.clock.seconds,
         timezone: data.clock.timezone,
     }
 
     storage.sync.set({
         clock: data.clock,
-        analogstyle: analogstyle,
         dateformat: data.dateformat,
     })
 
@@ -146,54 +90,7 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
         dateformat: data.dateformat,
     })
 
-    analogStyle(data.analogstyle)
     clockSize(data.clock.size)
-}
-
-function analogStyle(style: AnalogStyle = structuredClone(defaultAnalogStyle)): void {
-    const { face, shape, hands } = style
-
-    const time = document.getElementById('time') as HTMLElement
-    const spans = document.querySelectorAll<HTMLSpanElement>('.analog .analog-face span')
-
-    const backgroundAlpha = Number.parseInt(style.background.slice(4), 16)
-    const isWhiteOpaque = style.background?.includes('fff') && backgroundAlpha > 7
-    const isTransparent = backgroundAlpha === 0
-
-    let faceNumbers = ['12', '3', '6', '9']
-    const lang = getLang()
-
-    if (lang === 'am') {
-        faceNumbers = ['Գ', 'Զ', 'Թ', 'ԺԲ']
-    } else if (lang === 'ar') {
-        faceNumbers = ['٣', '٦', '٩', '١٢']
-    } else if (lang === 'fa') {
-        faceNumbers = ['۳', '۶', '۹', '۱۲']
-    } else if (lang.match(sinogramRegex)) {
-        faceNumbers = ['三', '六', '九', '十二']
-    }
-
-    spans.forEach((span, i) => {
-        if (face === 'roman') {
-            span.textContent = ['XII', 'III', 'VI', 'IX'][i % 4]
-        } else if (face === 'marks') {
-            span.textContent = ['│', '―', '│', '―'][i % 4]
-        } else if (face === 'number') {
-            span.textContent = faceNumbers[i % 4]
-        } else {
-            span.textContent = ''
-        }
-    })
-
-    time.dataset.face = face === 'swiss' || face === 'braun' ? face : ''
-    time.dataset.shape = shape || ''
-    time.dataset.hands = hands || ''
-
-    time.classList.toggle('transparent', isTransparent)
-    time.classList.toggle('white-opaque', isWhiteOpaque)
-
-    time.style.setProperty('--analog-border', style.border)
-    time.style.setProperty('--analog-background', style.background)
 }
 
 function clockSize(size = 1): void {
