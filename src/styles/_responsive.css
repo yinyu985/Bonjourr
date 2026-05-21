@@ -54,10 +54,6 @@
         padding-bottom: 77px;
     }
 
-    body #interface.pushed {
-        transform: none;
-    }
-
     #show-settings button {
         height: 40px;
         width: 40px;

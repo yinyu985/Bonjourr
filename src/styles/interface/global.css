@@ -27,10 +27,6 @@
     }
 }
 
-#interface.pushed {
-    transform: translateX(-100px);
-}
-
 #time {
     place-self: center;
 }

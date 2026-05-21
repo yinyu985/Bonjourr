@@ -13,6 +13,7 @@ export interface Local {
     // Sync
     gistId?: string
     gistToken?: string
+    gistLastSyncedAt?: string
     distantUrl?: string
     syncType?: SyncType
 

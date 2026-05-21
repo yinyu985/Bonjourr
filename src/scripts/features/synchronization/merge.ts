@@ -1,8 +1,18 @@
 import { isElem, isSubfolder } from '../links/model.ts'
+import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { randomString } from '../../shared/generic.ts'
+import { SYNC_DEFAULT } from '../../defaults.ts'
 
 import type { LinkElem, LinkNode } from '../../../types/shared.ts'
 import type { Sync } from '../../../types/sync.ts'
+
+// Pure transformation used by the download path. Exposed (and kept in this
+// import-light module) so tests can assert the "incoming overwrites local,
+// deletions propagate" contract without pulling in DOM-touching modules.
+export function computeDownloadedSync(incoming: Partial<Sync>): Sync {
+    const normalized = mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
+    return dedupeSyncLinks(structuredClone(normalized))
+}
 
 export function mergeSyncAppend(current: Sync, incoming: Sync): Sync {
     const merged = structuredClone(current)
@@ -120,17 +130,37 @@ function uniqueLinks(links: LinkElem[]): LinkElem[] {
     return result
 }
 
-function localizeNodeIds(items: LinkNode[]): void {
-    const usedIds = new Set<string>()
+function localizeNodeIds(items: LinkNode[], existing?: Set<string>): void {
+    const usedIds = existing ?? collectIds(items)
 
     for (const item of items) {
         if (isSubfolder(item)) {
-            localizeNodeIds(item.items)
+            localizeNodeIds(item.items, usedIds)
         }
 
-        item.id = uniqueNodeId([...items, ...[...usedIds].map((id) => ({ id }))])
-        usedIds.add(item.id)
+        let id = `links${randomString(6)}`
+        while (usedIds.has(id)) {
+            id = `links${randomString(6)}`
+        }
+
+        item.id = id
+        usedIds.add(id)
     }
+}
+
+function collectIds(items: LinkNode[]): Set<string> {
+    const ids = new Set<string>()
+
+    for (const item of items) {
+        ids.add(item.id)
+        if (isSubfolder(item)) {
+            for (const id of collectIds(item.items)) {
+                ids.add(id)
+            }
+        }
+    }
+
+    return ids
 }
 
 function uniqueNodeId(items: { id: string }[]): string {

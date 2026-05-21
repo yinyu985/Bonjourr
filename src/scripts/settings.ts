@@ -139,9 +139,7 @@ function settingsInitEvent(event: Event): void {
 
 function settingsToggle(event?: CustomEvent): void {
     const domshowsettings = document.getElementById('show-settings')
-    const dominterface = document.getElementById('interface')
     const domsettings = document.getElementById('settings')
-    const domedit = document.getElementById('editlink')
     const isClosed = domsettings?.classList.contains('shown') === false
 
     const scrollTo = event?.detail?.scrollTo ?? false
@@ -168,8 +166,6 @@ function settingsToggle(event?: CustomEvent): void {
     domsettings?.classList.toggle('shown', isClosed)
     domsettings?.setAttribute('aria-hidden', String(!isClosed))
     domsettings?.toggleAttribute('inert', !isClosed)
-    domedit?.classList.toggle('pushed', isClosed)
-    dominterface?.classList.toggle('pushed', isClosed)
     domshowsettings?.classList.toggle('shown', isClosed)
 
     domsettings?.style.removeProperty('transform')
@@ -515,11 +511,11 @@ function initOptionsEvents(): void {
         synchronization(undefined, { up: true })
     })
 
-    onclickdown(paramId('b_gistdown'), () => {
+    armConfirmOverwrite(paramId('b_gistdown'), () => {
         synchronization(undefined, { down: true })
     })
 
-    onclickdown(paramId('b_urldown'), () => {
+    armConfirmOverwrite(paramId('b_urldown'), () => {
         synchronization(undefined, { down: true })
     })
 
@@ -938,8 +934,8 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
             await storage.sync.set(data)
         }
         fadeOut()
-    } catch (_) {
-        // ...
+    } catch (err) {
+        console.warn('Import settings failed', err)
     }
 }
 
@@ -1002,8 +998,8 @@ async function toggleSettingsChangesButtons(action: string): Promise<void> {
 
         try {
             user = stringify(JSON.parse(textarea.value ?? '{}') as Sync)
-        } catch (_) {
-            //
+        } catch (err) {
+            console.warn('Settings JSON parse error', err)
         }
 
         hasChanges = user.length > 2 && current !== user
@@ -1033,6 +1029,51 @@ async function toggleSettingsChangesButtons(action: string): Promise<void> {
 
 function paramId(str: string): HTMLInputElement {
     return document.getElementById(str) as HTMLInputElement
+}
+
+function armConfirmOverwrite(button: HTMLInputElement, action: () => void): void {
+    const CONFIRM_TIMEOUT_MS = 3000
+    const span = button.querySelector('span')
+    let armed = false
+    let timer = 0
+    let savedText = ''
+
+    function disarm(): void {
+        if (!armed) {
+            return
+        }
+        armed = false
+        if (span) {
+            span.textContent = savedText
+        }
+        button.classList.remove('btn-red')
+        if (timer) {
+            clearTimeout(timer)
+            timer = 0
+        }
+    }
+
+    onclickdown(button, () => {
+        if (button.hasAttribute('disabled')) {
+            return
+        }
+
+        if (armed) {
+            disarm()
+            action()
+            return
+        }
+
+        savedText = span?.textContent ?? ''
+        armed = true
+        if (span) {
+            span.textContent = tradThis('Confirm?')
+        }
+        button.classList.add('btn-red')
+        timer = setTimeout(disarm, CONFIRM_TIMEOUT_MS)
+    })
+
+    button.addEventListener('mouseleave', disarm)
 }
 
 function setCheckbox(id: string, cat: boolean): void {

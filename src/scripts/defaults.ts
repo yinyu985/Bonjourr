@@ -140,7 +140,7 @@ export const SYNC_DEFAULT: Sync = {
 }
 
 export const LOCAL_DEFAULT: Local = {
-    syncType: PLATFORM === 'online' ? 'off' : 'gist',
+    syncType: 'off',
     gistToken: '',
     translations: undefined,
     backgroundUrls: {},

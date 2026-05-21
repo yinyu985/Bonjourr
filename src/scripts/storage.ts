@@ -114,6 +114,7 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
                     ...keyval,
                 }
                 await chrome.storage.local.set({ syncStorage: data })
+                globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
             } catch (err) {
                 console.warn('Local storage write failed', err)
             }
@@ -133,6 +134,7 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
 
             localStorage.bonjourr = JSON.stringify(data ?? {})
             globalThis.dispatchEvent(new Event('storage'))
+            globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
             return
         }
 
@@ -150,7 +152,9 @@ async function syncRemove(key: string): Promise<void> {
                     delete syncStorage[key]
                     await chrome.storage.local.set({ syncStorage })
                 }
-            } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn(err)
+            }
             return
         }
 
@@ -279,7 +283,9 @@ async function localClear(): Promise<void> {
                 const sync = (await chrome.storage.local.get('syncStorage')).syncStorage
                 await chrome.storage.local.clear()
                 await chrome.storage.local.set({ syncStorage: sync })
-            } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn(err)
+            }
             return
         }
 
@@ -378,16 +384,22 @@ async function clearall(): Promise<void> {
         case 'webext-local': {
             try {
                 await chrome.storage.sync.clear()
-            } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn(err)
+            }
             try {
                 await chrome.storage.local.clear()
-            } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn(err)
+            }
             try {
                 await chrome.storage.local.set({
                     ...LOCAL_DEFAULT,
                     syncStorage: SYNC_DEFAULT,
                 })
-            } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn(err)
+            }
             return
         }
 
@@ -403,8 +415,8 @@ export async function getSyncDefaults(): Promise<Sync> {
         const sync = verifyDataAsSync(json)
         normalizeLinksState(sync)
         return sync
-    } catch (_) {
-        // ...
+    } catch (err) {
+        console.warn('Failed to load config.json defaults', err)
     }
 
     return SYNC_DEFAULT

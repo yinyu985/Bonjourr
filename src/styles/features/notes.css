@@ -191,22 +191,10 @@
     font-weight: 600;
 }
 
-/* Inline rename input */
-.notes-item-title-edit {
-    width: 100%;
-    height: auto;
-    padding: 0;
-    margin: 0;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid currentColor;
-    border-radius: 0;
-    color: inherit;
-    font-weight: 600;
-    font-size: 12.5px;
+/* Inline rename: contenteditable title */
+.notes-item-title[contenteditable='true'] {
+    user-select: text;
     outline: none;
-    box-shadow: none;
-    opacity: 0.8;
 }
 
 /* Delete button - hidden until row hover */
@@ -352,7 +340,6 @@
 [data-theme='dark'] .notes-item-row.active .notes-item-title {
     color: #f0f0f5;
 }
-
 
 [data-theme='dark'] .notes-item-delete {
     color: #555;

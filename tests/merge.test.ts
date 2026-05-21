@@ -4,7 +4,7 @@ import { assert, assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { orderBookmarkToolbarChildren } from '../src/scripts/features/links/bookmark-order.ts'
 import { allLinks, getSubfolder, isElem, removeNode } from '../src/scripts/features/links/model.ts'
-import { mergeSyncAppend } from '../src/scripts/features/synchronization/merge.ts'
+import { computeDownloadedSync, mergeSyncAppend } from '../src/scripts/features/synchronization/merge.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../src/types/shared.ts'
 import type { LinkFolder } from '../src/types/sync.ts'
@@ -166,6 +166,81 @@ Deno.test({
         assertEquals(removeNode(data, nested.id), nested)
         assertEquals(getSubfolder(data, 'docs')?.items.length, 0)
         assertEquals(allLinks(data).length, 1)
+    },
+})
+
+Deno.test({
+    name: 'downloaded sync drops links that the remote no longer contains',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const incoming = structuredClone(SYNC_DEFAULT)
+
+        // Local had two folders with their own links. Remote (incoming) only has Work.
+        // After download we expect Personal — and its link — to be gone.
+        incoming.links.folders = [
+            group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
+        ]
+
+        const next = computeDownloadedSync(incoming)
+
+        assertEquals(next.links.folders.map((folder) => folder.id), ['work'])
+        assert(
+            !allLinks(next).some((link) => link.url === 'https://example.com/personal'),
+            'remote-deleted link must not survive the download',
+        )
+    },
+})
+
+Deno.test({
+    name: 'downloaded sync removes a single deleted link from a kept folder',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        const incoming = structuredClone(SYNC_DEFAULT)
+
+        // The user kept 'Work' but deleted 'Spec' from it on another device.
+        incoming.links.folders = [
+            group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
+        ]
+
+        const next = computeDownloadedSync(incoming)
+        const work = next.links.folders.find((folder) => folder.id === 'work')
+
+        assert(work)
+        assertEquals(work.items.length, 1)
+        assert(!work.items.some((item) => isElem(item) && item.url === 'https://example.com/spec'))
+    },
+})
+
+Deno.test({
+    name: 'merge import (legacy append behavior) keeps locally-only links',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        // This guards against accidentally swapping the download path back
+        // to the append behavior used by the settings importer.
+        const current = structuredClone(SYNC_DEFAULT)
+        const incoming = structuredClone(SYNC_DEFAULT)
+
+        current.links.folders = [
+            group('work', 'Work', [
+                plainLink('Docs', 'https://example.com/docs'),
+                plainLink('Spec', 'https://example.com/spec'),
+            ]),
+        ]
+        incoming.links.folders = [
+            group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
+        ]
+
+        const merged = mergeSyncAppend(current, incoming)
+        const work = merged.links.folders.find((folder) => folder.id === 'work')
+
+        assert(work)
+        assert(
+            work.items.some((item) => isElem(item) && item.url === 'https://example.com/spec'),
+            'append merge must keep local-only links — download path must not use this',
+        )
     },
 })
 

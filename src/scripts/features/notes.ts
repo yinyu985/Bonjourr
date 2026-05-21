@@ -268,37 +268,40 @@ function startInlineRename(_row: HTMLElement, titleSpan: HTMLSpanElement, noteId
         return
     }
 
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.className = 'notes-item-title-edit'
-    input.value = note.title || ''
-    input.maxLength = 120
-    input.setAttribute('aria-label', tradThis('Rename note'))
+    titleSpan.contentEditable = 'true'
+    titleSpan.textContent = note.title || ''
+    titleSpan.focus()
 
-    titleSpan.replaceWith(input)
-    input.focus()
-    input.select()
+    const range = document.createRange()
+    range.selectNodeContents(titleSpan)
+    const sel = globalThis.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
 
     function commitRename(): void {
-        const newTitle = input.value.trim() || tradThis('Untitled note')
+        titleSpan.contentEditable = 'false'
+        const newTitle = titleSpan.textContent?.trim() || tradThis('Untitled note')
         updateNote(noteId, { title: newTitle })
         noteState.active = noteId
         renderNotes()
     }
 
-    input.addEventListener('blur', commitRename)
-    input.addEventListener('keydown', (event) => {
+    titleSpan.addEventListener('blur', commitRename, { once: true })
+    function handleKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') {
             event.preventDefault()
-            input.blur()
+            titleSpan.blur()
         }
         if (event.key === 'Escape') {
             event.preventDefault()
-            input.removeEventListener('blur', commitRename)
+            titleSpan.removeEventListener('blur', commitRename)
+            titleSpan.removeEventListener('keydown', handleKeydown)
+            titleSpan.contentEditable = 'false'
             renderNotes()
         }
-    })
-    input.addEventListener('click', (event) => event.stopPropagation())
+    }
+
+    titleSpan.addEventListener('keydown', handleKeydown)
 }
 
 let pendingPersist: Promise<void> = Promise.resolve()

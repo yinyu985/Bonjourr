@@ -1,11 +1,12 @@
-import { findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
+import { fetchGistUpdatedAt, findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { dedupeSyncLinks } from './merge.ts'
-import { bootstrapBookmarksFromConfig, renderLinksFromSync, restoreBookmarksFromConfig } from '../links/bookmarks.ts'
+import { bootstrapBookmarksFromConfig, renderLinksFromSync, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
+import { notes } from '../notes.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
+import { tradThis } from '../../utils/translations.ts'
 import { networkForm } from '../../shared/form.ts'
-import { fadeOut } from '../../shared/dom.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
 import { storage } from '../../storage.ts'
 
@@ -14,9 +15,7 @@ import type { Sync } from '../../../types/sync.ts'
 
 interface SyncUpdate {
     type?: string
-    freq?: string
     url?: string
-    status?: string
     gistToken?: string
     firefoxPersist?: boolean
     down?: true
@@ -26,12 +25,19 @@ interface SyncUpdate {
 const gistsyncform = networkForm('f_gistsync')
 const urlsyncform = networkForm('f_urlsync')
 
+let syncLocked = false
+let autoUploadTimer = 0
+const AUTO_UPLOAD_DEBOUNCE_MS = 5000
+
 export function synchronization(init?: Local, update?: SyncUpdate): void {
     if (init) {
         onSettingsLoad(() => {
             toggleSyncSettingsOption(init)
             setTimeout(() => handleStoragePersistence(init.syncType), 200)
         })
+
+        autoSyncOnStartup(init)
+        globalThis.addEventListener('bonjourr-sync-write', scheduleAutoUpload)
     }
 
     if (update) {
@@ -39,60 +45,174 @@ export function synchronization(init?: Local, update?: SyncUpdate): void {
     }
 }
 
-async function updateSyncOption(update: SyncUpdate): Promise<void> {
-    const local = await storage.local.get(['gistId', 'gistToken', 'distantUrl', 'syncType'])
+async function autoSyncOnStartup(local: Local): Promise<void> {
+    if (local.syncType !== 'gist') {
+        return
+    }
 
-    if (update.down) {
+    const token = local.gistToken
+    const id = local.gistId
+
+    if (!token || !id) {
+        return
+    }
+
+    syncLocked = true
+
+    try {
+        const result = await retrieveGist(token, id)
+
+        if (local.gistLastSyncedAt && !isRemoteNewer(result.updatedAt, local.gistLastSyncedAt)) {
+            return
+        }
+
         const data = await storage.sync.get()
+        const next = await applyDownloadedSync(data, result.sync)
+        storage.local.set({ gistLastSyncedAt: result.updatedAt })
+        await renderLinksFromSync(next)
+        notes(next)
+    } catch (err) {
+        console.warn('Auto sync on startup failed', err)
+    } finally {
+        syncLocked = false
+    }
+}
 
-        if (local.syncType === 'gist') {
-            gistsyncform.load()
+function scheduleAutoUpload(): void {
+    if (syncLocked) {
+        return
+    }
 
-            try {
-                const id = local.gistId ?? ''
-                const token = local.gistToken ?? ''
-                const incoming = normalizeExternalSync(await retrieveGist(token, id))
-                const update = await mergeDownloadedSync(data, incoming)
-                await renderLinksFromSync(update)
-                gistsyncform.accept()
-                fadeOut()
-            } catch (err) {
-                gistsyncform.warn(err as string)
+    if (autoUploadTimer) {
+        clearTimeout(autoUploadTimer)
+    }
+
+    autoUploadTimer = setTimeout(doAutoUpload, AUTO_UPLOAD_DEBOUNCE_MS)
+}
+
+async function doAutoUpload(): Promise<void> {
+    autoUploadTimer = 0
+
+    if (syncLocked) {
+        return
+    }
+
+    const local = await storage.local.get(['gistId', 'gistToken', 'gistLastSyncedAt', 'syncType'])
+
+    if (local.syncType !== 'gist' || !local.gistToken) {
+        return
+    }
+
+    syncLocked = true
+
+    try {
+        const token = local.gistToken
+
+        if (local.gistId && local.gistLastSyncedAt) {
+            const remoteUpdatedAt = await fetchGistUpdatedAt(token, local.gistId)
+            if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, local.gistLastSyncedAt)) {
+                return
             }
         }
 
-        if (local.syncType === 'url') {
-            urlsyncform.load()
+        const latest = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        const result = await sendGist(token, local.gistId, latest)
+        storage.local.set({ gistLastSyncedAt: result.updatedAt, gistId: result.id })
+    } catch (err) {
+        console.warn('Auto upload failed', err)
+    } finally {
+        syncLocked = false
+    }
+}
 
-            try {
-                const incoming = normalizeExternalSync(await receiveFromURL(local.distantUrl))
-                const update = await mergeDownloadedSync(data, incoming)
-                await renderLinksFromSync(update)
-                urlsyncform.accept()
-                fadeOut()
-            } catch (err) {
-                urlsyncform.warn(err as string)
+async function updateSyncOption(update: SyncUpdate): Promise<void> {
+    const local = await storage.local.get([
+        'gistId',
+        'gistToken',
+        'gistLastSyncedAt',
+        'distantUrl',
+        'syncType',
+    ])
+
+    if (update.down) {
+        if (syncLocked) {
+            gistsyncform.warn(tradThis('Sync in progress, please wait.'))
+            return
+        }
+
+        syncLocked = true
+
+        try {
+            const data = await storage.sync.get()
+
+            if (local.syncType === 'gist') {
+                gistsyncform.load()
+
+                try {
+                    const id = local.gistId ?? ''
+                    const token = local.gistToken ?? ''
+                    const result = await retrieveGist(token, id)
+                    const next = await applyDownloadedSync(data, result.sync)
+                    storage.local.set({ gistLastSyncedAt: result.updatedAt })
+                    await renderLinksFromSync(next)
+                    notes(next)
+                    gistsyncform.accept()
+                } catch (err) {
+                    gistsyncform.warn(err as string)
+                }
             }
+
+            if (local.syncType === 'url') {
+                urlsyncform.load()
+
+                try {
+                    const incoming = await receiveFromURL(local.distantUrl)
+                    const next = await applyDownloadedSync(data, incoming)
+                    await renderLinksFromSync(next)
+                    notes(next)
+                    urlsyncform.accept()
+                } catch (err) {
+                    urlsyncform.warn(err as string)
+                }
+            }
+        } finally {
+            syncLocked = false
         }
     }
 
     if (update.up) {
+        if (syncLocked) {
+            gistsyncform.warn(tradThis('Sync in progress, please wait.'))
+            return
+        }
+
         if (local.syncType === 'gist') {
             gistsyncform.load()
 
             try {
                 const token = local.gistToken ?? ''
+
+                if (local.gistId && local.gistLastSyncedAt) {
+                    const remoteUpdatedAt = await fetchGistUpdatedAt(token, local.gistId)
+                    if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, local.gistLastSyncedAt)) {
+                        gistsyncform.warn(tradThis('Remote Gist is newer than local. Please download first.'))
+                        return
+                    }
+                }
+
                 const latest = getSettingsTextAreaSync() ??
                     await bootstrapBookmarksFromConfig(await storage.sync.get())
 
-                const id = await sendGist(token, local.gistId, latest)
+                const result = await sendGist(token, local.gistId, latest)
 
                 gistsyncform.accept()
 
+                const localPatch: Partial<Local> = { gistLastSyncedAt: result.updatedAt }
                 if (!local.gistId) {
-                    local.gistId = id
-                    storage.local.set({ gistId: id })
+                    local.gistId = result.id
+                    localPatch.gistId = result.id
                 }
+                storage.local.set(localPatch)
 
                 setGistStatusNow()
             } catch (error) {
@@ -104,8 +224,10 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
     if (update.gistToken === '') {
         local.gistToken = ''
         local.gistId = ''
+        local.gistLastSyncedAt = undefined
         storage.local.remove('gistToken')
         storage.local.remove('gistId')
+        storage.local.remove('gistLastSyncedAt')
         gistsyncform.accept()
         toggleSyncSettingsOption(local)
         return
@@ -210,7 +332,6 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
         case 'off':
         case 'browser': {
             document.getElementById('url-sync')?.classList.remove('shown')
-            document.getElementById('sync-freq')?.classList.remove('shown')
             document.getElementById('gist-sync')?.classList.remove('shown')
             break
         }
@@ -258,9 +379,9 @@ function isSyncType(val = ''): val is SyncType {
     return ['browser', 'gist', 'url', 'off'].includes(val)
 }
 
-async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync> {
-    incoming = normalizeExternalSync(incoming)
-    let update = dedupeSyncLinks(structuredClone(incoming))
+async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Promise<Sync> {
+    const normalized = normalizeExternalSync(incoming)
+    let next = dedupeSyncLinks(structuredClone(normalized))
 
     // Snapshot the soon-to-be-overwritten config so a failed clear+set still leaves
     // the user with a recoverable copy in localStorage. Web mode shares a 5 MB
@@ -274,19 +395,31 @@ async function mergeDownloadedSync(current: Sync, incoming: Sync): Promise<Sync>
         // localStorage might be full; the sync still proceeds.
     }
 
+    // Browser bookmarks are reconciled to match incoming exactly: bookmarks present
+    // locally but absent from the remote config are removed. This is what makes
+    // deletions on one device propagate to others.
+    await replaceBookmarksFromConfig(current, normalized)
+
     await storage.sync.clear()
-    await storage.sync.set(update)
+    await storage.sync.set(next)
 
-    // restoreBookmarksFromConfig is append-only: it never deletes
-    // existing browser bookmarks, only adds missing ones from the config.
-    const restored = await restoreBookmarksFromConfig(incoming)
+    next = await bootstrapBookmarksFromConfig(next)
+    await storage.sync.set(next)
 
-    if (restored) {
-        update = await bootstrapBookmarksFromConfig(update)
-        await storage.sync.set(update)
+    return next
+}
+
+function isRemoteNewer(remoteIso: string, localIso: string): boolean {
+    const remote = new Date(remoteIso).getTime()
+    const local = new Date(localIso).getTime()
+
+    if (Number.isNaN(remote) || Number.isNaN(local)) {
+        return false
     }
 
-    return update
+    // Ignore sub-second drift: GitHub returns whole-second precision and our own
+    // saved timestamp can be a few ms ahead/behind the value the API echoes back.
+    return remote - local > 1000
 }
 
 function getSettingsTextAreaSync(): Sync | undefined {
@@ -313,7 +446,3 @@ function getSettingsTextAreaSync(): Sync | undefined {
 function normalizeExternalSync(data: Partial<Sync>): Sync {
     return mergeImportedConfig(structuredClone(SYNC_DEFAULT), data)
 }
-
-// function isSyncFreq(val: string): val is SyncFreq {
-// 	return ['newtabs', 'start', 'manual'].includes(val)
-// }
