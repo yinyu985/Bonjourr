@@ -28,7 +28,7 @@ const urlsyncform = networkForm('f_urlsync')
 let syncLocked = false
 let autoUploadTimer = 0
 let lastSyncedPayload = ''
-const AUTO_UPLOAD_DEBOUNCE_MS = 5000
+const AUTO_UPLOAD_DEBOUNCE_MS = 30000
 
 export function synchronization(init?: Local, update?: SyncUpdate): void {
     if (init) {
@@ -64,6 +64,8 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         const result = await retrieveGist(token, id)
 
         if (local.gistLastSyncedAt && !isRemoteNewer(result.updatedAt, local.gistLastSyncedAt)) {
+            const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
+            lastSyncedPayload = syncPayloadHash(current)
             return
         }
 
@@ -74,6 +76,8 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         fadeOut()
     } catch (err) {
         console.warn('Auto sync on startup failed', err)
+        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        lastSyncedPayload = syncPayloadHash(current)
     } finally {
         syncLocked = false
     }
