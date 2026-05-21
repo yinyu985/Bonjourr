@@ -27,6 +27,7 @@ const urlsyncform = networkForm('f_urlsync')
 
 let syncLocked = false
 let autoUploadTimer = 0
+let lastSyncedPayload = ''
 const AUTO_UPLOAD_DEBOUNCE_MS = 5000
 
 export function synchronization(init?: Local, update?: SyncUpdate): void {
@@ -68,6 +69,7 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
 
         const data = await storage.sync.get()
         const next = await applyDownloadedSync(data, result.sync)
+        lastSyncedPayload = syncPayloadHash(next)
         storage.local.set({ gistLastSyncedAt: result.updatedAt })
         await renderLinksFromSync(next)
         notes(next)
@@ -116,7 +118,14 @@ async function doAutoUpload(): Promise<void> {
         }
 
         const latest = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        const payload = syncPayloadHash(latest)
+
+        if (payload === lastSyncedPayload) {
+            return
+        }
+
         const result = await sendGist(token, local.gistId, latest)
+        lastSyncedPayload = payload
         storage.local.set({ gistLastSyncedAt: result.updatedAt, gistId: result.id })
     } catch (err) {
         console.warn('Auto upload failed', err)
@@ -153,6 +162,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                     const token = local.gistToken ?? ''
                     const result = await retrieveGist(token, id)
                     const next = await applyDownloadedSync(data, result.sync)
+                    lastSyncedPayload = syncPayloadHash(next)
                     storage.local.set({ gistLastSyncedAt: result.updatedAt })
                     await renderLinksFromSync(next)
                     notes(next)
@@ -204,6 +214,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                     await bootstrapBookmarksFromConfig(await storage.sync.get())
 
                 const result = await sendGist(token, local.gistId, latest)
+                lastSyncedPayload = syncPayloadHash(latest)
 
                 gistsyncform.accept()
 
@@ -445,4 +456,10 @@ function getSettingsTextAreaSync(): Sync | undefined {
 
 function normalizeExternalSync(data: Partial<Sync>): Sync {
     return mergeImportedConfig(structuredClone(SYNC_DEFAULT), data)
+}
+
+function syncPayloadHash(data: Sync): string {
+    const { selectedFolder: _, ...links } = data.links
+    const notes = data.notes ? { records: data.notes.records } : undefined
+    return JSON.stringify({ ...data, links, notes })
 }
