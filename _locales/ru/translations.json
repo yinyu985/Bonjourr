@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "Удалённый Gist новее локального. Сначала скачайте его.",
     "Sync in progress, please wait.": "Идёт синхронизация, подождите.",
     "Confirm?": "Подтвердить?",
+    "Overwrite local?": "Перезаписать локальное?",
     "Settings file": "Файл настроек",
     "Import an existing settings file": "Импортировать существующий файл настроек",
     "Import": "Импорт",

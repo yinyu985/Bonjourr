@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "リモート Gist はローカルより新しいです。先にダウンロードしてください。",
     "Sync in progress, please wait.": "同期中です。しばらくお待ちください。",
     "Confirm?": "確認しますか？",
+    "Overwrite local?": "ローカルを上書きしますか？",
     "Settings file": "設定ファイル",
     "Import an existing settings file": "既存の設定ファイルをインポートする",
     "Import": "インポート",

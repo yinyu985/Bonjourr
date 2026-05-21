@@ -67,20 +67,14 @@ const DEFAULT_LANG = (() => {
 })()
 
 export const SYNC_DEFAULT: Sync = {
-    about: {
-        browser: PLATFORM,
-        version: CURRENT_VERSION,
-    },
-    showall: true,
     lang: DEFAULT_LANG,
     dark: 'system',
     favicon: '',
     tabtitle: '',
     time: true,
+    showall: true,
     dateformat: 'auto',
     textShadow: 0,
-    announcements: 'off',
-    review: 0,
     css: '',
     hide: {},
     clock: {
@@ -93,20 +87,16 @@ export const SYNC_DEFAULT: Sync = {
         family: 'Nunito',
         size: '7',
         system: false,
-        weightlist: ['200', '300', '400', '500', '600', '700', '800', '900'],
         weight: '400',
-        id: 'nunito',
     },
     backgrounds: {
         type: 'color',
-        fadein: 0,
         blur: 0,
         bright: 0.78,
         frequency: 'pause',
         color: '#222222',
         urls: '',
         images: '',
-        mute: true,
         queries: {},
         texture: {
             type: 'topographic',

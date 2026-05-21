@@ -351,7 +351,21 @@ export async function syncBookmarksUpdate(update: BookmarkLinksUpdate, data: Syn
 }
 
 export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
-    return await initBookmarkSync(data)
+    const treenode = await getBookmarkTree()
+
+    if (!treenode) {
+        return data
+    }
+
+    browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
+    let mutated = applySyncedFolders(data)
+    mutated = applyFavoritesFromToolbar(data) || mutated
+
+    if (mutated) {
+        await storage.sync.set(data)
+    }
+
+    return data
 }
 
 export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
@@ -664,17 +678,7 @@ function flattenLinks(items: LinkNode[]): LinkElem[] {
 }
 
 async function getRestorableRoot(): Promise<Treenode | undefined> {
-    let treenode = await getBookmarkTree()
-
-    if (!treenode) {
-        try {
-            await getPermissions('bookmarks')
-            treenode = await getBookmarkTree()
-        } catch (_error) {
-            settingsNotifications({ 'accept-permissions': true })
-        }
-    }
-
+    const treenode = await getBookmarkTree()
     return treenode?.[0]
 }
 

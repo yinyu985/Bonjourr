@@ -6,6 +6,7 @@ import { notes } from '../notes.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { tradThis } from '../../utils/translations.ts'
+import { fadeOut } from '../../shared/dom.ts'
 import { networkForm } from '../../shared/form.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
 import { storage } from '../../storage.ts'
@@ -70,9 +71,8 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         const data = await storage.sync.get()
         const next = await applyDownloadedSync(data, result.sync)
         lastSyncedPayload = syncPayloadHash(next)
-        storage.local.set({ gistLastSyncedAt: result.updatedAt })
-        await renderLinksFromSync(next)
-        notes(next)
+        await storage.local.set({ gistLastSyncedAt: result.updatedAt })
+        fadeOut()
     } catch (err) {
         console.warn('Auto sync on startup failed', err)
     } finally {
@@ -163,10 +163,9 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                     const result = await retrieveGist(token, id)
                     const next = await applyDownloadedSync(data, result.sync)
                     lastSyncedPayload = syncPayloadHash(next)
-                    storage.local.set({ gistLastSyncedAt: result.updatedAt })
-                    await renderLinksFromSync(next)
-                    notes(next)
+                    await storage.local.set({ gistLastSyncedAt: result.updatedAt })
                     gistsyncform.accept()
+                    fadeOut()
                 } catch (err) {
                     gistsyncform.warn(err as string)
                 }
@@ -177,10 +176,9 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
                 try {
                     const incoming = await receiveFromURL(local.distantUrl)
-                    const next = await applyDownloadedSync(data, incoming)
-                    await renderLinksFromSync(next)
-                    notes(next)
+                    await applyDownloadedSync(data, incoming)
                     urlsyncform.accept()
+                    fadeOut()
                 } catch (err) {
                     urlsyncform.warn(err as string)
                 }
@@ -444,7 +442,7 @@ function getSettingsTextAreaSync(): Sync | undefined {
     try {
         const parsed = JSON.parse(value) as Partial<Sync>
 
-        if (parsed?.about) {
+        if (parsed?.links) {
             return dedupeSyncLinks(normalizeExternalSync(parsed))
         }
 

@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "원격 Gist가 로컬보다 최신입니다. 먼저 다운로드하세요.",
     "Sync in progress, please wait.": "동기화 중입니다. 잠시 기다려 주세요.",
     "Confirm?": "확인할까요?",
+    "Overwrite local?": "로컬을 덮어쓸까요?",
     "Settings file": "설정 파일",
     "Import an existing settings file": "기존 설정 파일로 가져오기",
     "Import": "가져오기",

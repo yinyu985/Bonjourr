@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "Der entfernte Gist ist neuer als der lokale. Bitte zuerst herunterladen.",
     "Sync in progress, please wait.": "Synchronisierung läuft, bitte warten.",
     "Confirm?": "Bestätigen?",
+    "Overwrite local?": "Lokal überschreiben?",
     "Settings file": "Datei der Einstellungen",
     "Import an existing settings file": "Importieren einer vorhandenen Einstellungsdatei",
     "Import": "Importieren",

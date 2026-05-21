@@ -4,7 +4,6 @@
     --link-padding: 0.3em;
     --link-outer-radius: 0.6em;
 
-    --fade-in: 400ms;
     --blur: 15px;
     --brightness: 0.8;
     --load-time-transition: 0ms;
@@ -193,14 +192,12 @@ body.tabbing button.btn-red:focus-visible {
 body.loading #settings,
 body.loading #interface,
 body.loading #contextmenu,
-body.loading #show-settings,
-body.loading #credit-container {
+body.loading #show-settings {
     opacity: 0;
 }
 
 body.init #interface,
-body.init #show-settings,
-body.init #credit-container {
+body.init #show-settings {
     transition: opacity var(--load-time-transition);
 }
 

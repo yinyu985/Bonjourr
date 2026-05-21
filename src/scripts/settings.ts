@@ -18,7 +18,7 @@ import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
 import { initCustomSelects, refreshCustomSelects } from './shared/custom-select.ts'
-import { BROWSER, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
+import { BROWSER, CURRENT_VERSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
@@ -178,7 +178,6 @@ function initOptionsValues(data: Sync, local: Local): void {
 
     setInput('i_blur', data.backgrounds.blur ?? 15)
     setInput('i_bright', data.backgrounds.bright ?? 0.8)
-    setInput('i_fadein', data.backgrounds.fadein ?? 400)
     setInput('i_linkstyle', data.links.style || 'default')
     setInput('i_type', data.backgrounds.type || 'images')
     setInput('i_freq', data.backgrounds?.frequency || 'hour')
@@ -437,10 +436,6 @@ function initOptionsEvents(): void {
         backgroundUpdate({ bright: this.value })
     })
 
-    paramId('i_fadein').addEventListener('input', function (this: HTMLInputElement): void {
-        backgroundUpdate({ fadein: this.value })
-    })
-
     // Time and date
 
     onclickdown(paramId('i_time'), (_, target) => {
@@ -687,7 +682,7 @@ function settingsFooter(): void {
     }
 
     if (version) {
-        version.textContent = SYNC_DEFAULT.about.version
+        version.textContent = CURRENT_VERSION
     }
 }
 
@@ -856,7 +851,7 @@ async function saveImportFile(): Promise<void> {
 
     a.setAttribute('href', href)
     a.setAttribute('tabindex', '-1')
-    a.setAttribute('download', `bonjourr-${data?.about?.version} ${yyyymmdd} ${hhmmss}.json`)
+    a.setAttribute('download', `bonjourr-${CURRENT_VERSION} ${yyyymmdd} ${hhmmss}.json`)
     a.click()
 }
 
@@ -965,10 +960,8 @@ export async function updateSettingsJson(data?: Sync): Promise<void> {
     function updateTextArea(data: Sync): void {
         const pre = document.getElementById('settings-data') as HTMLTextAreaElement | null
 
-        if (pre && data.about) {
-            const orderedJson = stringify(data)
-            data.about.browser = PLATFORM
-            pre.value = orderedJson
+        if (pre && data.links) {
+            pre.value = stringify(data)
         }
     }
 }
@@ -1034,6 +1027,7 @@ function paramId(str: string): HTMLInputElement {
 function armConfirmOverwrite(button: HTMLInputElement, action: () => void): void {
     const CONFIRM_TIMEOUT_MS = 3000
     const span = button.querySelector('span')
+    const img = button.querySelector('img')
     let armed = false
     let timer = 0
     let savedText = ''
@@ -1045,6 +1039,9 @@ function armConfirmOverwrite(button: HTMLInputElement, action: () => void): void
         armed = false
         if (span) {
             span.textContent = savedText
+        }
+        if (img) {
+            img.style.display = ''
         }
         button.classList.remove('btn-red')
         if (timer) {
@@ -1067,7 +1064,10 @@ function armConfirmOverwrite(button: HTMLInputElement, action: () => void): void
         savedText = span?.textContent ?? ''
         armed = true
         if (span) {
-            span.textContent = tradThis('Confirm?')
+            span.textContent = tradThis('Overwrite local?')
+        }
+        if (img) {
+            img.style.display = 'none'
         }
         button.classList.add('btn-red')
         timer = setTimeout(disarm, CONFIRM_TIMEOUT_MS)

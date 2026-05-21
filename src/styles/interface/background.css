@@ -24,7 +24,7 @@
     min-height: 100lvh;
     overflow: hidden;
     z-index: -1;
-    transition: opacity var(--fade-in);
+    transition: none;
 }
 
 #background-wrapper .background-image.pixelated {

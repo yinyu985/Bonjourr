@@ -3,7 +3,6 @@ import { compressAsBlob, imageDimensions } from '../../shared/compress.ts'
 import { webkitRangeTrackColor } from '../../shared/dom.ts'
 import { needsChange } from '../../shared/time.ts'
 import { onclickdown } from 'clickdown/mod'
-import { VideoLooper } from './VideoLooper.ts'
 import { IS_MOBILE } from '../../defaults.ts'
 import { getCache } from '../../shared/cache.ts'
 import { hashcode } from '../../utils/hash.ts'
@@ -22,14 +21,10 @@ type LocalFileOption =
     | 'size'
     | 'vertical'
     | 'horizontal'
-    | 'video-zoom'
-    | 'playback-speed'
-    | 'loop-fade'
     | 'use-compressed'
 
 let thumbnailVisibilityObserver: IntersectionObserver
 let thumbnailSelectionObserver: MutationObserver
-let currentVideoLooper: VideoLooper
 
 // Update
 
@@ -74,7 +69,6 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
         for (let i = 0; i < newids.length; i++) {
             const file = filelist[i]
             const id = newids[i]
-            const format = file.type.includes('video') ? 'video' : 'image'
 
             // 2a. This finds a reasonable resolution for compression
 
@@ -86,55 +80,35 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
             const averagePixelHeight = short * ratio * density
 
             const isGif = file.type.includes('image/gif')
-            const isImage = file.type.includes('image/')
-            const isVideo = file.type.includes('video/')
             const isThumbnailSize = file.size < 80000 // 80 kb
             const isResonablySized = file.size < 300000 // 300 kb
 
             let full: Blob = file
             let small: Blob = file
 
-            if (isImage) {
-                if (!isThumbnailSize) {
-                    const objectUrl = URL.createObjectURL(file)
-                    const dimensions = await imageDimensions(objectUrl)
-                    const width = dimensions.width
-                    const height = dimensions.height
-                    const isHighRes = averagePixelHeight * 2 < width + height
-                    const isCompressible = !isGif && !isResonablySized && isHighRes
+            if (!isThumbnailSize) {
+                const objectUrl = URL.createObjectURL(file)
+                const dimensions = await imageDimensions(objectUrl)
+                const width = dimensions.width
+                const height = dimensions.height
+                const isHighRes = averagePixelHeight * 2 < width + height
+                const isCompressible = !isGif && !isResonablySized && isHighRes
 
-                    if (isCompressible) {
-                        full = await compressAsBlob(objectUrl, { size: averagePixelHeight, q: 0.8 })
-                    }
-
-                    small = await compressAsBlob(objectUrl, { size: 360, q: 0.4 })
+                if (isCompressible) {
+                    full = await compressAsBlob(objectUrl, { size: averagePixelHeight, q: 0.8 })
                 }
-            }
 
-            if (isVideo) {
-                const thumb = await generateImageFromVideo(file)
-                if (thumb) small = await compressAsBlob(thumb, { size: 360, q: 0.3 })
+                small = await compressAsBlob(objectUrl, { size: 360, q: 0.4 })
             }
 
             local.backgroundFiles[id] = {
                 format: 'image',
                 lastUsed: new Date().toString(),
-            }
-
-            if (format === 'video') {
-                local.backgroundFiles[id].format = 'video'
-                local.backgroundFiles[id].video = {
-                    playbackRate: 1,
-                    fade: 1,
-                    zoom: 1,
-                }
-            } else {
-                local.backgroundFiles[id].format = 'image'
-                local.backgroundFiles[id].position = {
+                position: {
                     size: 'cover',
                     x: '50%',
                     y: '50%',
-                }
+                },
             }
 
             filesData[id] = {
@@ -216,18 +190,15 @@ async function updateFileOptions(option: LocalFileOption, value: string): Promis
     const selection = getSelection()[0]
     const local = await storage.local.get('backgroundFiles')
     const file = local.backgroundFiles[selection]
-    const isVideo = file.format === 'video'
-    const isImage = !isVideo
 
     const backgroundImage = document.querySelector<HTMLElement>('#background-media div')
-    const videoContainer = document.querySelector<HTMLElement>('#background-media .video-looper')
 
     if (!file) {
         console.error('Cannot find file')
         return
     }
 
-    if (isImage && backgroundImage) {
+    if (backgroundImage) {
         if (!file.position) {
             file.position = {
                 size: 'cover',
@@ -253,36 +224,6 @@ async function updateFileOptions(option: LocalFileOption, value: string): Promis
         }
     }
 
-    if (isVideo && videoContainer) {
-        const video = getCurrentVideo()
-
-        if (!video) {
-            return
-        }
-
-        if (!file.video) {
-            file.video = {
-                playbackRate: 1,
-                fade: 4,
-                zoom: 1,
-            }
-        }
-
-        if (option === 'video-zoom') {
-            file.video.zoom = parseFloat(value)
-            videoContainer.style.transform = `scale(${file.video.zoom})`
-        }
-        if (option === 'playback-speed') {
-            file.video.playbackRate = parseFloat(value)
-            video.setPlaybackRate(parseFloat(value))
-            video.stop()
-            video.loop()
-        }
-        if (option === 'loop-fade') {
-            file.video.fade = parseInt(value)
-            video.setFadeTime(parseInt(value))
-        }
-    }
 
     local.backgroundFiles[selection] = file
     storage.local.set({ backgroundFiles: local.backgroundFiles })
@@ -307,9 +248,6 @@ export function initFilesSettingsOptions(local: Local): void {
     document.getElementById('i_background-vertical')?.addEventListener('input', fileOptionsEvent)
     document.getElementById('i_background-horizontal')?.addEventListener('input', fileOptionsEvent)
     document.getElementById('i_background-compress')?.addEventListener('change', fileOptionsEvent)
-    document.getElementById('i_background-loop-fade')?.addEventListener('input', fileOptionsEvent)
-    document.getElementById('i_background-video-zoom')?.addEventListener('input', fileOptionsEvent)
-    document.getElementById('i_background-playback-speed')?.addEventListener('input', fileOptionsEvent)
 
     thumbnailSelectionObserver = new MutationObserver(toggleFileButtons)
     thumbnailVisibilityObserver = new IntersectionObserver(renderThumbnailOnIntersection)
@@ -330,15 +268,6 @@ export function initFilesSettingsOptions(local: Local): void {
         }
         if (id === 'i_background-compress') {
             updateFileOptions('use-compressed', checked.toString())
-        }
-        if (id === 'i_background-video-zoom') {
-            updateFileOptions('video-zoom', value)
-        }
-        if (id === 'i_background-playback-speed') {
-            updateFileOptions('playback-speed', value)
-        }
-        if (id === 'i_background-loop-fade') {
-            updateFileOptions('loop-fade', value)
         }
     }
 
@@ -403,31 +332,11 @@ function handleFilesSettingsOptions(local: Local): void {
     const domSize = document.querySelector<HTMLInputElement>('#i_background-size')
     const domVertical = document.querySelector<HTMLInputElement>('#i_background-vertical')
     const domHorizontal = document.querySelector<HTMLInputElement>('#i_background-horizontal')
-    const domLoopFade = document.querySelector<HTMLInputElement>('#i_background-loop-fade')
-    const domVideoZoom = document.querySelector<HTMLInputElement>('#i_background-video-zoom')
-    const domPlaybackRate = document.querySelector<HTMLInputElement>('#i_background-playback-speed')
     const imageRangesExist = domSize && domVertical && domHorizontal
-    const videoRangesExist = domLoopFade && domVideoZoom && domPlaybackRate
-
-    const domFileImage = document.getElementById('background-file-image')
-    const domFileVideo = document.getElementById('background-file-video')
-    const groupsExist = domFileImage && domFileVideo
-    const isVideo = file.format === 'video'
-    const isImage = !isVideo
 
     const imageDefaults: BackgroundFile['position'] = { size: 'cover', x: '50%', y: '50%' }
-    const videoDefaults: BackgroundFile['video'] = { playbackRate: 1, fade: 4, zoom: 1 }
 
-    // 1. Toggle option groups based on file format
-
-    if (groupsExist) {
-        domFileImage.style.display = isVideo ? 'none' : 'block'
-        domFileVideo.style.display = isVideo ? 'block' : 'none'
-    }
-
-    // 2. Add correct values to inputs
-
-    if (imageRangesExist && isImage) {
+    if (imageRangesExist) {
         const pos = file.position ?? imageDefaults
 
         domSize.value = (pos.size === 'cover' ? '100' : pos.size).replace('%', '')
@@ -437,18 +346,6 @@ function handleFilesSettingsOptions(local: Local): void {
         webkitRangeTrackColor(domSize)
         webkitRangeTrackColor(domVertical)
         webkitRangeTrackColor(domHorizontal)
-    }
-
-    if (videoRangesExist && isVideo) {
-        const video = file.video ?? videoDefaults
-
-        domLoopFade.value = video.fade.toString()
-        domVideoZoom.value = video.zoom.toString()
-        domPlaybackRate.value = video.playbackRate.toString()
-
-        webkitRangeTrackColor(domLoopFade)
-        webkitRangeTrackColor(domVideoZoom)
-        webkitRangeTrackColor(domPlaybackRate)
     }
 
     toggleFileButtons()
@@ -658,66 +555,6 @@ function getSelection(): string[] {
     return ids
 }
 
-// Video
-
-export function setCurrentVideo(src: string, fade: number, playback: number): VideoLooper {
-    currentVideoLooper = new VideoLooper(src, fade, playback)
-    return currentVideoLooper
-}
-
-export function getCurrentVideo(): VideoLooper | undefined {
-    return currentVideoLooper
-}
-
-async function getLoadedVideo(blob: Blob): Promise<HTMLVideoElement> {
-    const video = document.createElement('video')
-
-    const url = URL.createObjectURL(blob)
-    video.src = url
-
-    await new Promise((r) => {
-        video.addEventListener('loadeddata', () => r(true))
-        video.load()
-    })
-
-    URL.revokeObjectURL(url)
-
-    return video
-}
-
-async function generateImageFromVideo(file: File): Promise<Blob | null> {
-    const video = await getLoadedVideo(file)
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-        throw new Error('Canvas context failed for ' + file.name)
-    }
-
-    ctx.canvas.width = video.videoWidth
-    ctx.canvas.height = video.videoHeight
-
-    document.body.append(video)
-    video.style.display = 'none'
-    video.play()
-    video.pause()
-
-    const blob = await new Promise<Blob>((resolve, reject) => {
-        const toBlobCallback: BlobCallback = (blob) => blob ? resolve(blob) : reject(true)
-
-        // <!> 300ms is completely arbitrary,
-        // <!> videos taking more than that to load will show a black thumbnail
-        setTimeout(() => {
-            ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-            ctx.canvas.toBlob(toBlobCallback, 'image/jpeg', 0.8)
-        }, 300)
-    })
-
-    video.remove()
-
-    return blob
-}
-
 export async function localFilesCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): Promise<void> {
     local = await sanitizeMetadatas(local)
 
@@ -808,12 +645,11 @@ async function sanitizeMetadatas(local: Local): Promise<Local> {
     for (const request of cacheKeys) {
         try {
             const key = new URL(request.url).pathname.split('/')[1]
-            const surelyVideo = request.url.includes('.mp4') || request.url.includes('.webm')
             let metadata = local.backgroundFiles[key]
 
             if (!metadata) {
                 metadata = {
-                    format: surelyVideo ? 'video' : 'image',
+                    format: 'image',
                     lastUsed: new Date('01/01/1971').toString(),
                     position: {
                         size: 'cover',

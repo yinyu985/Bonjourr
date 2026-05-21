@@ -185,12 +185,11 @@ export function customFont(init?: Font, event?: CustomFontUpdate): void {
 
     if (init) {
         try {
-            const font = migrateToNewFormat(init)
-            displayFont(font)
+            displayFont(init)
             displayInterface('fonts')
 
             onSettingsLoad(() => {
-                initFontSettings(font)
+                initFontSettings(init)
             })
         } catch (_) {
             // ...
@@ -241,7 +240,6 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
         system: true,
         size: data.font.size,
         weight: SYSTEM_OS === 'windows' ? '400' : '300',
-        weightlist: systemfont.weights,
     }
 
     switch (familyType) {
@@ -273,7 +271,7 @@ async function updateFontFamily(data: Sync, family: string): Promise<Font> {
     }
 
     clock(undefined, {})
-    setWeightSettings(font.weightlist)
+    setWeightSettings(getWeightsForFont(font.family))
     iWeight.value = font.weight
 
     return font
@@ -296,7 +294,6 @@ function handleLangSwitch(font: Font): void {
 
     font.family = newfont.family
     font.weight = newfont.weight
-    font.weightlist = newfont.weightlist
 
     displayFont(font)
     setAutocompleteSettings(true)
@@ -319,8 +316,6 @@ function getNewFont(font: Font, newfamily: string): Font | undefined {
         font.weight = '400'
         font.system = false
         font.family = newfont.family
-        font.id = newfont.id
-        font.weightlist = newfont.weights.map((w) => w.toString())
         return font
     }
 
@@ -329,13 +324,13 @@ function getNewFont(font: Font, newfamily: string): Font | undefined {
     return
 }
 
-function displayFont({ family, id, size, weight, system }: Font): void {
+function displayFont({ family, size, weight, system }: Font): void {
     // Weight: default bonjourr lowers font weight on clock (because we like it)
     const clockWeight = Number.parseInt(weight) > 100
         ? systemfont.weights[systemfont.weights.indexOf(weight) - 1]
         : weight
     const subset = getRequiredSubset()
-    const fontId = id ?? family.toLocaleLowerCase().replaceAll(' ', '-')
+    const fontId = family.toLocaleLowerCase().replaceAll(' ', '-')
     const fontfacedom = document.getElementById('fontface')
     const fontsource = FONT_CHOICES.find((item) => item.id === fontId || item.family === family)
 
@@ -372,16 +367,13 @@ function setFontSize(size: string): void {
 //
 
 function initFontSettings(font?: Font): void {
-    const hasCustomWeights = font && font.weightlist.length > 0
-    const weights = hasCustomWeights ? font.weightlist : systemfont.weights
-    setWeightSettings(weights)
-
-    // Set the select value after populating options
+    setWeightSettings(getWeightsForFont(font?.family ?? ''))
     setAutocompleteSettings()
 
     const selectFont = document.querySelector<HTMLSelectElement>('#i_customfont')
     if (selectFont && font?.family) {
         selectFont.value = font.family
+        refreshCustomSelects(selectFont.parentElement ?? document)
     }
 }
 
@@ -489,25 +481,8 @@ function getRequiredSubset(lang: string = getLang()): string {
     return subset
 }
 
-// 1.19 migration function
-function migrateToNewFormat(font: Font): Font {
-    if (font?.weightlist) {
-        return font
-    }
-
-    if (font.availWeights) {
-        font.weightlist = font.availWeights
-    }
-
-    font.system = systemFontChecker(font.family)
-
-    font.availWeights = undefined
-    font.url = undefined
-
-    storage.local.remove('fontface')
-    storage.local.remove('fonts')
-    storage.sync.remove('font')
-    setTimeout(() => storage.sync.set({ font }))
-
-    return font
+function getWeightsForFont(family: string): string[] {
+    const fontId = family.toLocaleLowerCase().replaceAll(' ', '-')
+    const source = FONT_CHOICES.find((item) => item.id === fontId || item.family === family)
+    return source ? source.weights.map((w) => w.toString()) : systemfont.weights
 }

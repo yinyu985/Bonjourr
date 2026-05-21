@@ -1,54 +1,19 @@
-#credit-container,
-#show-settings {
-    position: fixed;
-    pointer-events: all;
-    transition: opacity 0.1s;
+#background-credit.shown {
+    max-height: 30px;
 }
 
-/* Hide Unsplash photo author credits */
-#credit-container {
-    display: none !important;
+#background-credit .wrapper {
+    color: var(--color-light-text);
+    font-size: inherit;
 }
 
-#credit-container.shown {
-    opacity: 1;
-    pointer-events: all;
-}
-
-#credit-container.shown:hover .exif,
-#credit-container.shown:hover .save {
-    opacity: 1;
-}
-
-#credit.hidden {
-    display: none;
-}
-
-#credit {
-    visibility: hidden;
-    opacity: 0;
-    text-align: left;
-    font-size: 13px;
-    line-height: 18px;
-    color: #fff9;
-    transition: opacity 0.4s, visibility 0.4s;
-}
-
-#credit-container.shown:hover #credit {
-    visibility: visible;
-    opacity: 1;
-}
-
-#credit a {
-    color: #fff9;
+#background-credit a {
+    color: inherit;
     text-decoration: none;
+    opacity: 0.8;
 }
 
-#credit a:hover {
-    color: #fffe;
-}
-
-.exif {
-    opacity: 0;
-    transition: opacity 0.4s;
+#background-credit a:hover {
+    opacity: 1;
+    text-decoration: underline;
 }

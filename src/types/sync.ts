@@ -5,8 +5,6 @@ export interface Sync {
     time: boolean
     links: LinksState
     textShadow: number
-    review: number
-    announcements: 'major' | 'off'
     css: string
     lang: string
     favicon: string
@@ -18,10 +16,6 @@ export interface Sync {
     clock: Clock
     font: Font
     notes?: Notes
-    about: {
-        browser: string
-        version: string
-    }
     [key: string]: unknown
 }
 
@@ -56,13 +50,11 @@ export interface Hide {
 export interface Backgrounds {
     type: 'files' | 'urls' | 'images' | 'color'
     frequency: Frequency
-    fadein: number
     bright: number
     blur: number
     color: string
     urls: string
     images: string
-    mute: boolean
     pausedUrl?: string
     pausedImage?: BackgroundImage
     queries: Record<string, string>
@@ -103,14 +95,10 @@ export interface Clock {
 }
 
 export interface Font {
-    id?: string
     family: string
     size: string
     weight: string
-    weightlist: string[]
     system?: boolean
-    url?: string
-    availWeights?: string[]
 }
 
 export interface Notes {

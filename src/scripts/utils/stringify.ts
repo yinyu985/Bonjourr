@@ -26,7 +26,14 @@ export function stringify(data: Partial<Sync>): string {
     const compare = (a = '', b = '') => keys.indexOf(a) - keys.indexOf(b)
     const string = JSON.stringify(data, keys.sort(compare), 2)
 
-    return string
+    // 4. Collapse short primitive arrays onto a single line
+    return string.replace(/\[[\n\s]+"[^"]*"[\s\S]*?\]/g, (match) => {
+        const items = match.match(/"[^"]*"/g)
+        if (items && items.join(', ').length < 80) {
+            return `[${items.join(', ')}]`
+        }
+        return match
+    })
 }
 
 function flattenKeys(obj: object): string[] {

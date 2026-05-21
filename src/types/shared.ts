@@ -23,14 +23,6 @@ export interface BackgroundImage {
     city?: string
     country?: string
     download?: string
-    exif?: {
-        make: string
-        model: string
-        exposure_time: string
-        aperture: string
-        focal_length: string
-        iso: number
-    }
     file?: BackgroundFile
 }
 

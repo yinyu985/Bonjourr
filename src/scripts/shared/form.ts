@@ -46,7 +46,7 @@ export function networkForm(targetId: string): NetworkFormReturn {
 
     function load(): void {
         loadTimeout = setTimeout(() => {
-            form.classList.remove('warn')
+            form.classList.remove('warn', 'remove')
             form.classList.add('valid', 'load')
             button.setAttribute('disabled', 'disabled')
         }, 50)

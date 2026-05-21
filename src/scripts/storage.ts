@@ -339,7 +339,7 @@ async function init(): Promise<InitializedStorage> {
     }
 
     if (Object.keys(store.sync ?? {})?.length === 0) {
-        store.sync = await getSyncDefaults()
+        store.sync = structuredClone(SYNC_DEFAULT)
     }
 
     const sync = verifyDataAsSync(store.sync)
@@ -409,22 +409,8 @@ async function clearall(): Promise<void> {
 
 //	Helpers
 
-export async function getSyncDefaults(): Promise<Sync> {
-    try {
-        const json = await (await fetch('config.json')).json()
-        const sync = verifyDataAsSync(json)
-        normalizeLinksState(sync)
-        return sync
-    } catch (err) {
-        console.warn('Failed to load config.json defaults', err)
-    }
-
-    return SYNC_DEFAULT
-}
-
 export function isStorageDefault(data: Sync): boolean {
     const current = structuredClone(data)
-    current.review = SYNC_DEFAULT.review
     current.showall = SYNC_DEFAULT.showall
 
     return deepEqual(current, SYNC_DEFAULT)

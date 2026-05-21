@@ -43,7 +43,6 @@ interface BackgroundUpdate {
     query?: SubmitEvent
     files?: FileList | null
     bright?: string
-    fadein?: string
     refresh?: Event
     urlsapply?: true
     texture?: string
@@ -51,14 +50,10 @@ interface BackgroundUpdate {
     texturecolor?: string
     texturesize?: string
     textureopacity?: string
-    mute?: boolean
 }
 
 const propertiesUpdateDebounce = debounce(filtersUpdate, 600)
 const colorUpdateDebounce = debounce(solidUpdate, 600)
-const fadeinPreviewDebounce = debounce(previewFadein, 200)
-let fadeinTimeout = 0
-
 const formBackgroundUserColl = networkForm('f_background-user-coll')
 const formBackgroundUserSearch = networkForm('f_background-user-search')
 
@@ -67,10 +62,9 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
         // Rush background opacity to reduce black frames
         const type = sync.backgrounds.type
         const isColor = type === 'color'
-        const noFadeIn = sync.backgrounds.fadein === 0
         const wrapper = document.getElementById('background-wrapper')
 
-        if (isColor || noFadeIn) {
+        if (isColor) {
             wrapper?.classList.remove('hidden')
         }
 
@@ -134,13 +128,6 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
         return
     }
 
-    if (update.fadein !== undefined) {
-        applyFilters({ fadein: Number.parseInt(update.fadein) })
-        propertiesUpdateDebounce({ fadein: Number.parseFloat(update.fadein) })
-        fadeinPreviewDebounce(Number.parseFloat(update.fadein))
-        return
-    }
-
     if (isBackgroundType(update.type)) {
         data.backgrounds.type = update.type
         storage.sync.set({ backgrounds: data.backgrounds })
@@ -201,11 +188,6 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.files) {
         addLocalBackgrounds(update.files, local)
-    }
-
-    if (update.mute !== undefined) {
-        data.backgrounds.mute = update.mute
-        storage.sync.set({ backgrounds: data.backgrounds })
     }
 
     // Textures
@@ -310,7 +292,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     }
 }
 
-export async function filtersUpdate({ blur, bright, fadein, texture }: Partial<Backgrounds>): Promise<void> {
+export async function filtersUpdate({ blur, bright, texture }: Partial<Backgrounds>): Promise<void> {
     const data = await storage.sync.get('backgrounds')
 
     if (blur !== undefined) {
@@ -318,9 +300,6 @@ export async function filtersUpdate({ blur, bright, fadein, texture }: Partial<B
     }
     if (bright !== undefined) {
         data.backgrounds.bright = bright
-    }
-    if (fadein !== undefined) {
-        data.backgrounds.fadein = fadein
     }
     if (texture !== undefined) {
         data.backgrounds.texture = texture
@@ -333,15 +312,6 @@ async function solidUpdate(value: string): Promise<void> {
     const data = await storage.sync.get('backgrounds')
     data.backgrounds.color = value
     storage.sync.set({ backgrounds: data.backgrounds })
-}
-
-function previewFadein(ms: number): void {
-    const wrapper = document.getElementById('background-wrapper')
-    const setOpacity = (val: number) => wrapper?.setAttribute('style', `opacity: ${val}`)
-
-    clearTimeout(fadeinTimeout)
-    fadeinTimeout = setTimeout(() => setOpacity(1), ms)
-    setOpacity(0)
 }
 
 //	Cache & network
@@ -729,7 +699,7 @@ export function removeBackgrounds(): void {
     localStorage.removeItem('backgroundCache')
 }
 
-function applyFilters({ blur, bright, fadein }: Partial<Backgrounds>): void {
+function applyFilters({ blur, bright }: Partial<Backgrounds>): void {
     if (blur !== undefined) {
         document.documentElement.style.setProperty('--blur', `${blur}px`)
         document.body.classList.toggle('blurred', blur >= 15)
@@ -737,10 +707,6 @@ function applyFilters({ blur, bright, fadein }: Partial<Backgrounds>): void {
 
     if (bright !== undefined) {
         document.documentElement.style.setProperty('--brightness', `${bright}`)
-    }
-
-    if (fadein !== undefined) {
-        document.documentElement.style.setProperty('--fade-in', `${fadein}ms`)
     }
 }
 
@@ -942,13 +908,9 @@ function applyThemeColor(image: BackgroundImage, img: HTMLImageElement): void {
     }
 
     if (color) {
-        const fadein = Number.parseInt(document.documentElement.style.getPropertyValue('--fade-in'))
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
-
-        setTimeout(() => {
-            document.documentElement.style.setProperty('--average-color', color)
-            settingsBackgroundColor(color)
-        }, fadein)
+        document.documentElement.style.setProperty('--average-color', color)
+        settingsBackgroundColor(color)
     }
 }
 

@@ -1,103 +1,42 @@
-import { tradThis } from '../../utils/translations.ts'
-
 import type { Backgrounds } from '../../../types/sync.ts'
 import type { Background } from '../../../types/shared.ts'
 
 export function toggleCredits(backgrounds: Backgrounds): void {
-    const domcontainer = document.getElementById('credit-container')
-    const domcredit = document.getElementById('credit')
-    const domsave = document.getElementById('a_interface-background-download')
+    const container = document.getElementById('background-credit')
 
-    switch (backgrounds.type) {
-        case 'color': {
-            domcontainer?.classList.remove('shown')
-            return
-        }
-
-        case 'urls':
-        case 'files': {
-            domcontainer?.classList.add('shown')
-            domcredit?.classList.add('hidden')
-            domsave?.classList.add('hidden')
-            break
-        }
-
-        default: {
-            domcontainer?.classList.add('shown')
-            domcredit?.classList.remove('hidden')
-            domsave?.classList.remove('hidden')
-        }
-    }
-}
-
-export function updateCredits(image?: Background): void {
-    const domcontainer = document.getElementById('credit-container')
-    const domcredit = document.getElementById('credit')
-    const domsave = document.getElementById('download-background')
-
-    if (!(domcontainer && domcredit && image?.page && image?.username)) {
+    if (!container) {
         return
     }
 
-    const hasLocation = image.city || image.country
-    let exif = ''
-    let credits = ''
+    container.classList.toggle('shown', backgrounds.type === 'images')
+}
 
-    if (image.exif) {
-        const { iso, model, aperture, exposure_time, focal_length } = image.exif
+export function updateCredits(image?: Background): void {
+    const el = document.getElementById('credit-text')
 
-        // ⚠️ In this order !
-        if (model) {
-            exif += `${model} - `
-        }
-        if (aperture) {
-            exif += `f/${aperture} `
-        }
-        if (exposure_time) {
-            exif += `${exposure_time}s `
-        }
-        if (iso) {
-            exif += `${iso}ISO `
-        }
-        if (focal_length) {
-            exif += `${focal_length}mm`
-        }
+    if (!el || !image?.page || !image?.username) {
+        return
     }
 
-    if (hasLocation) {
-        const city = image.city || ''
-        const country = image.country || ''
-        const comma = city && country ? ', ' : ''
-        credits = `${city}${comma}${country} <name>`
-    } else {
-        credits = tradThis('Photo by <name>')
-    }
+    const author = image.name || image.username
+    const city = image.city || ''
+    const country = image.country || ''
+    const comma = city && country ? ', ' : ''
+    const location = `${city}${comma}${country}`
+    const text = [author, location].filter(Boolean).join(' · ')
 
-    const [location, rest] = credits.split(' <name>')
-    const domlocation = document.createElement('a')
-    const domspacer = document.createElement('span')
-    const domrest = document.createElement('span')
-    const domartist = document.createElement('a')
-    const domexif = document.createElement('p')
-
-    domexif.className = 'exif'
-    domexif.textContent = exif
-    domlocation.textContent = location
-    domartist.textContent = image.username.slice(0, 1).toUpperCase() + image.username.slice(1)
-    domspacer.textContent = hasLocation ? ' - ' : ' '
-    domrest.textContent = rest
+    const link = document.createElement('a')
+    link.textContent = text
 
     if (image.page.includes('unsplash')) {
-        domlocation.href = `${image.page}?utm_source=Bonjourr&utm_medium=referral`
-        domartist.href = `https://unsplash.com/@${image.username}?utm_source=Bonjourr&utm_medium=referral`
+        link.href = `https://unsplash.com/@${image.username}?utm_source=Bonjourr&utm_medium=referral`
     } else {
-        domlocation.href = image.page
+        link.href = image.page
     }
 
-    domcredit.textContent = ''
-    domcredit.append(domexif, domlocation, domspacer, domartist, domrest)
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
 
-    if (image.download && domsave) {
-        domsave.dataset.downloadUrl = image.download
-    }
+    el.textContent = ''
+    el.appendChild(link)
 }

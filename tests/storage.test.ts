@@ -1,7 +1,7 @@
 import './init.test.ts'
 
 import { assertEquals } from '@std/assert'
-import { getSyncDefaults, isStorageDefault, storage } from '../src/scripts/storage.ts'
+import { isStorageDefault, storage } from '../src/scripts/storage.ts'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 
 Deno.test({
@@ -37,8 +37,8 @@ Deno.test({
         localStorage.removeItem('bonjourr')
         const sync = await storage.sync.get()
 
-        assertEquals(sync.about.version, SYNC_DEFAULT.about.version)
         assertEquals(sync.time, SYNC_DEFAULT.time)
+        assertEquals(sync.lang, SYNC_DEFAULT.lang)
     },
 })
 
@@ -131,18 +131,6 @@ Deno.test({
     },
 })
 
-Deno.test({
-    name: 'getSyncDefaults returns valid Sync shape',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const defaults = await getSyncDefaults()
-
-        assertEquals(typeof defaults.lang, 'string')
-        assertEquals(typeof defaults.time, 'boolean')
-        assertEquals(typeof defaults.links.enabled, 'boolean')
-    },
-})
 
 Deno.test({
     name: 'verifyDataAsSync fills missing fields from defaults',

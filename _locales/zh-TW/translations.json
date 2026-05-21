@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "遠端 Gist 比本機更新，請先下載。",
     "Sync in progress, please wait.": "同步進行中，請稍候。",
     "Confirm?": "確認？",
+    "Overwrite local?": "用遠端覆蓋本地？",
     "Settings file": "設定檔",
     "Import an existing settings file": "匯入現有設定檔",
     "Import": "匯入",

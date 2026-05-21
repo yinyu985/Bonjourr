@@ -381,6 +381,7 @@
     "Remote Gist is newer than local. Please download first.": "Le Gist distant est plus récent que le local. Veuillez d'abord le télécharger.",
     "Sync in progress, please wait.": "Synchronisation en cours, veuillez patienter.",
     "Confirm?": "Confirmer ?",
+    "Overwrite local?": "Écraser le local ?",
     "Settings file": "Fichier de paramètres",
     "Import an existing settings file": "Importer un fichier de paramètres existant",
     "Import": "Importer",

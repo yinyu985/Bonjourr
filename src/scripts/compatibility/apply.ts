@@ -1,4 +1,4 @@
-import { CURRENT_VERSION, PLATFORM, SYNC_DEFAULT } from '../defaults.ts'
+import { SYNC_DEFAULT } from '../defaults.ts'
 import { normalizeLinksState } from '../features/links/model.ts'
 import { deepmergeAll } from '@victr/deepmerge'
 import type { Sync } from '../../types/sync.ts'
@@ -14,12 +14,21 @@ export function mergeImportedConfig(current: Sync, target: Partial<Sync>): Sync 
 
     const merged: Sync = isFullConfig ? (target as Sync) : (deepmergeAll(current, target) as Sync)
 
-    merged.about = {
-        browser: PLATFORM,
-        version: CURRENT_VERSION,
-    }
-
     normalizeLinksState(merged as Sync & Record<string, unknown>)
+    removeDeprecatedFields(merged)
 
     return merged
+}
+
+function removeDeprecatedFields(data: Sync): void {
+    delete (data.clock as unknown as Record<string, unknown>).analog
+    delete (data.backgrounds as unknown as Record<string, unknown>).mute
+    delete (data.backgrounds as unknown as Record<string, unknown>).fadein
+
+    const images = [data.backgrounds.pausedImage, ...Object.values(data.backgrounds.queries).flat()]
+    for (const img of images) {
+        if (img && typeof img === 'object' && 'exif' in img) {
+            delete (img as Record<string, unknown>).exif
+        }
+    }
 }

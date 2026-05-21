@@ -123,23 +123,6 @@
         width: 85%;
         padding-bottom: 13vh;
     }
-
-    #credit-container {
-        width: 100%;
-        padding-right: 7em;
-        padding-left: 1.5em;
-    }
-
-    #credit {
-        display: block;
-        line-height: 14px;
-    }
-
-    #credit a,
-    #credit p,
-    #credit span {
-        font-size: 11px;
-    }
 }
 
 /* fix iPhone notch in landscape */

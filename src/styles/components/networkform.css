@@ -22,6 +22,7 @@
 }
 
 .network-form.load span::after {
+    content: '';
     animation: spin 600ms linear infinite;
     background-image: url('../../assets/labels/spinner.svg');
 }
