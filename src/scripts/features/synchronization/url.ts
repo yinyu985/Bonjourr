@@ -2,7 +2,7 @@ import { tradThis } from '../../utils/translations.ts'
 import type { Sync } from '../../../types/sync.ts'
 
 export async function receiveFromURL(url = ''): Promise<Sync> {
-    let resp: Response
+    let resp: Response | undefined
 
     try {
         new URL(url)
@@ -10,6 +10,8 @@ export async function receiveFromURL(url = ''): Promise<Sync> {
         throw new Error(DISTANT_ERROR.URL)
     }
 
+    // 仅在网络层失败（CORS / DNS / 离线）时才走代理；HTTP 4xx/5xx 是用户填错或
+    // 远端真挂了，再绕代理拿同样的错误只是浪费带宽。
     try {
         resp = await fetch(url)
     } catch (_) {
@@ -21,6 +23,10 @@ export async function receiveFromURL(url = ''): Promise<Sync> {
         } catch (_) {
             throw new Error(DISTANT_ERROR.PROXY)
         }
+    }
+
+    if (!resp.ok) {
+        throw new Error(DISTANT_ERROR.FAIL)
     }
 
     try {

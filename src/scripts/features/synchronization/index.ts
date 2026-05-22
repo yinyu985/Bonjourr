@@ -29,6 +29,9 @@ let syncLocked = false
 let autoUploadTimer = 0
 let lastSyncedPayload = ''
 const AUTO_UPLOAD_DEBOUNCE_MS = 30000
+// 启动期间每开一个新标签页都会调一次 autoSyncOnStartup 拉 Gist。
+// 频繁开标签页 = 短时间内打几十次 GitHub。同一会话 60s 内只查一次远端。
+const STARTUP_FETCH_THROTTLE_MS = 60_000
 
 export function synchronization(init?: Local, update?: SyncUpdate): void {
     if (init) {
@@ -58,10 +61,22 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         return
     }
 
+    // 节流：60s 内已经查过远端就不再请求，直接信任本地 hash。
+    // 否则每开一个新标签页都打 GitHub 一次，几秒钟开几个标签 = 暴打 API。
+    const lastFetchedAt = local.gistLastFetchedAt ? new Date(local.gistLastFetchedAt).getTime() : 0
+    const fetchedRecently = lastFetchedAt && Date.now() - lastFetchedAt < STARTUP_FETCH_THROTTLE_MS
+
+    if (fetchedRecently) {
+        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        lastSyncedPayload = syncPayloadHash(current)
+        return
+    }
+
     syncLocked = true
 
     try {
         const result = await retrieveGist(token, id)
+        await storage.local.set({ gistLastFetchedAt: new Date().toISOString() })
 
         if (local.gistLastSyncedAt && !isRemoteNewer(result.updatedAt, local.gistLastSyncedAt)) {
             const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
@@ -391,6 +406,8 @@ function isSyncType(val = ''): val is SyncType {
     return ['browser', 'gist', 'url', 'off'].includes(val)
 }
 
+const ARCHIVE_PRE_SYNC_KEY = 'bonjourr-archive-pre-sync'
+
 async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Promise<Sync> {
     const normalized = normalizeExternalSync(incoming)
     let next = dedupeSyncLinks(structuredClone(normalized))
@@ -401,7 +418,7 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
     try {
         const snapshot = JSON.stringify(current)
         if (snapshot.length < 2_000_000) {
-            localStorage.setItem('bonjourr-archive-pre-sync', snapshot)
+            localStorage.setItem(ARCHIVE_PRE_SYNC_KEY, snapshot)
         }
     } catch (_) {
         // localStorage might be full; the sync still proceeds.
@@ -417,6 +434,14 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
 
     next = await bootstrapBookmarksFromConfig(next)
     await storage.sync.set(next)
+
+    // 走到这里说明覆盖成功，快照不再需要；不清的话每次同步都会留一份 ≤2MB 的旧 config
+    // 占着 localStorage（在线模式 5MB 配额、与正在用的 config 共享），积累下来会触发 quota。
+    try {
+        localStorage.removeItem(ARCHIVE_PRE_SYNC_KEY)
+    } catch (_) {
+        //
+    }
 
     return next
 }
@@ -462,5 +487,16 @@ function normalizeExternalSync(data: Partial<Sync>): Sync {
 function syncPayloadHash(data: Sync): string {
     const { selectedFolder: _, ...links } = data.links
     const notes = data.notes ? { records: data.notes.records } : undefined
+    // 不用 utils/stringify：它走 JSON.stringify 的 replacer 数组、只让 SYNC_DEFAULT
+    // 扁平键通过，会把 notes.records 里 {id,title,content,updatedAt} 全过滤成 {}，
+    // 导致改笔记内容 hash 不变、不触发上传。裸 JSON.stringify 在同一段代码路径下
+    // V8 会保持插入顺序，hash 足够稳定。
     return JSON.stringify({ ...data, links, notes })
+}
+
+// 仅供集成测试访问内部函数；不要在生产代码中使用。
+export const __testing = {
+    applyDownloadedSync,
+    syncPayloadHash,
+    ARCHIVE_PRE_SYNC_KEY,
 }

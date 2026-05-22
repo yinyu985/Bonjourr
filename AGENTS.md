@@ -49,8 +49,9 @@ Boot sequence is fixed and order-sensitive:
 
 1. `restoreBackgroundCache()` paints the cached background from `localStorage` synchronously to avoid a flash.
 2. `storage.init()` resolves both `sync` (user settings) and `local` (caches/state) state. If absent, defaults from `defaults.ts` are cloned.
-3. Version migration: when `sync.about.version !== CURRENT_VERSION`, the previous sync is archived to `localStorage` (`update-archive`), `filterData('update', sync)` from `compatibility/apply.ts` rewrites the shape, then `storage.sync.clear()` + `set(sync)` is called **in that order** (comment in code: "must delete old keys before upgrading storage").
-4. Each feature's entry function is invoked once with `(sync, local?)`.
+3. Each feature's entry function is invoked once with `(sync, local?)` — see the `startup()` body for the order. `synchronization(local)` runs last, kicking off the Gist auto-fetch (throttled by `gistLastFetchedAt`).
+
+> There is **no** version-migration step. The fork is single-user; old victrme schemas aren't supported. `compatibility/apply.ts` only does `mergeImportedConfig` (used when restoring a backup or pasting JSON in settings) and strips a few hardcoded deprecated fields. If you need to evolve the `Sync` shape, edit `defaults.ts` and `types/sync.ts` directly and update tests.
 
 ### Storage abstraction (`src/scripts/storage.ts`)
 
@@ -73,9 +74,9 @@ export function feature(init?: FeatureSync, update?: FeatureUpdate): void {
 
 `sync.ts` (synced user settings, the `Sync` type), `local.ts` (browser-local caches incl. backgrounds, the `Local` type), `shared.ts` (cross-cutting types like `Langs`, `Navigator`). Adding a new feature setting almost always means updating `Sync` in `sync.ts` and the corresponding default in `defaults.ts` `SYNC_DEFAULT`.
 
-### Compatibility / migrations (`src/scripts/compatibility/`)
+### Compatibility (`src/scripts/compatibility/apply.ts`)
 
-`versions.ts` lists per-version migration filters; `apply.ts` `filterData(stage, sync)` runs them. When changing the shape of stored settings, add the migration here — old user data must remain loadable.
+Only `mergeImportedConfig(current, target)` and `removeDeprecatedFields(data)` live here. Used by the import-JSON / restore-backup paths, not by startup. No per-version migration table — the fork doesn't carry that baggage.
 
 ### Styles (`src/styles/`)
 

@@ -52,10 +52,13 @@ function retrieveCache(event) {
                 return cachedResponse
             }
 
+            // 原本写法是 `cache.add(url)` + `fetch(request)`，两次独立网络请求；
+            // cache.add 内部会按 url 重新发起 GET，跟下面 fetch 拿不到的同一份数据
+            // 重复下载一次。复用同一 response（clone 一份给 cache）即可。
+            const response = await fetch(event.request)
             const cache = await caches.open(CACHE_KEY)
-            cache.add(event.request.url)
-
-            return fetch(event.request)
+            cache.put(event.request, response.clone())
+            return response
         })(),
     )
 }

@@ -12,10 +12,6 @@ const mobileUA = 'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini'
 
 export const ENVIRONNEMENT: 'PROD' | 'DEV' | 'TEST' = globalThis.ENV ?? 'TEST'
 
-// attributes an ID to this tab to keep track of them
-export const TAB_ID = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
-export const tabsBc = new BroadcastChannel('bonjourr_tabs')
-
 export const SYSTEM_OS = iosUA.includes(navigator.platform) ||
         (navigator.userAgent?.includes('Mac') && 'ontouchend' in document)
     ? 'ios'

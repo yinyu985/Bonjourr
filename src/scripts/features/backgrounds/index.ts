@@ -329,7 +329,7 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
 
     const lastTime = new Date(local.backgroundLastChange ?? '01/01/1971').getTime()
     const isPaused = backgrounds.frequency === 'pause'
-    const isPreloading = localStorage.backgroundPreloading === 'true'
+    const isPreloading = isPreloadingActive()
 
     needNew ??= needsChange(backgrounds.frequency, lastTime)
 
@@ -667,12 +667,29 @@ function createImageItem(src: string, media: BackgroundImage, callback?: () => v
     return div
 }
 
+// 写时间戳而不是裸布尔：用户在 preload 中途关掉 tab 时，原本的 'true'
+// 标志会永远卡死，后续每个新 tab 都会跳过 needsChange 判断、永远不切图。
+// 改成时间戳后，超过 PRELOAD_FLAG_TTL_MS 视为 stale 自动失效。
+const PRELOAD_FLAG_KEY = 'backgroundPreloadingAt'
+const PRELOAD_FLAG_TTL_MS = 30_000
+
+function isPreloadingActive(): boolean {
+    const raw = localStorage.getItem(PRELOAD_FLAG_KEY)
+    if (!raw) return false
+    const ts = Number(raw)
+    if (!Number.isFinite(ts) || Date.now() - ts > PRELOAD_FLAG_TTL_MS) {
+        localStorage.removeItem(PRELOAD_FLAG_KEY)
+        return false
+    }
+    return true
+}
+
 function preloadBackground(media: Background | undefined, res?: BackgroundSize): void | Promise<unknown> {
     if (!media) {
         return
     }
 
-    localStorage.setItem('backgroundPreloading', 'true')
+    localStorage.setItem(PRELOAD_FLAG_KEY, Date.now().toString())
 
     const resolution = res ? res : detectBackgroundSize()
     const src = media.urls[resolution]
@@ -681,7 +698,7 @@ function preloadBackground(media: Background | undefined, res?: BackgroundSize):
 
     return new Promise((resolve) => {
         const cleanup = () => {
-            localStorage.removeItem('backgroundPreloading')
+            localStorage.removeItem(PRELOAD_FLAG_KEY)
             img.remove()
             resolve(true)
         }
@@ -904,6 +921,9 @@ function applyThemeColor(image: BackgroundImage, img: HTMLImageElement): void {
     let color = image.color
 
     if (!color) {
+        // 跨域图未声明 crossOrigin 时 canvas 会被 taint，getAverageColor 内的
+        // getImageData 抛 SecurityError 被吞掉。这里就当主题色提取失败，跳过；
+        // 强行加 crossOrigin 反而会让没返回 ACAO 的图源直接加载失败。
         color = getAverageColor(img)
     }
 

@@ -92,12 +92,12 @@ export async function imageDimensions(src: string): Promise<{ width: number; hei
 export async function compressAsBlob(elem: Blob | string, options: CompressOptions): Promise<Blob> {
     const type = options.type ?? 'jpeg'
     const q = options.q ?? 0.9
+    const ownsUrl = typeof elem === 'object'
+    const url = ownsUrl ? URL.createObjectURL(elem) : elem
 
-    if (typeof elem === 'object') {
-        elem = URL.createObjectURL(elem)
-    }
+    const canvas = await loadOnCanvas(url, options)
+    if (ownsUrl) URL.revokeObjectURL(url)
 
-    const canvas = await loadOnCanvas(elem, options)
     const ctx = canvas.getContext('2d')
     const newBlob = await new Promise((resolve) => {
         ctx?.canvas.toBlob(resolve, `image/${type}`, q)
@@ -109,15 +109,13 @@ export async function compressAsBlob(elem: Blob | string, options: CompressOptio
 export async function compressAsDataUri(elem: Blob | string, options: CompressOptions): Promise<string> {
     const type = options.type ?? 'jpeg'
     const q = options.q ?? 1.0
+    const ownsUrl = typeof elem === 'object'
+    const url = ownsUrl ? URL.createObjectURL(elem) : elem
 
-    if (typeof elem === 'object') {
-        elem = URL.createObjectURL(elem)
-    }
+    const canvas = await loadOnCanvas(url, options)
+    if (ownsUrl) URL.revokeObjectURL(url)
 
-    const canvas = await loadOnCanvas(elem, options)
-    const uri = canvas.toDataURL(`image/${type}`, q)
-
-    return uri
+    return canvas.toDataURL(`image/${type}`, q)
 }
 
 export async function svgToText(file: File): Promise<string> {

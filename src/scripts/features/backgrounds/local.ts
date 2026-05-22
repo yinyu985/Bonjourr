@@ -102,7 +102,6 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
             }
 
             local.backgroundFiles[id] = {
-                format: 'image',
                 lastUsed: new Date().toString(),
                 position: {
                     size: 'cover',
@@ -223,7 +222,6 @@ async function updateFileOptions(option: LocalFileOption, value: string): Promis
             applyBackground(await mediaFromFiles(selection, local, undefined, file))
         }
     }
-
 
     local.backgroundFiles[selection] = file
     storage.local.set({ backgroundFiles: local.backgroundFiles })
@@ -374,7 +372,6 @@ function toggleFileButtons(): void {
 function createThumbnail(id: string): HTMLButtonElement {
     const thb = document.createElement('button')
     const thbimg = document.createElement('img')
-    const formatIcon = document.createElement('span')
 
     thb.id = id
     thb.className = 'thumbnail loading'
@@ -384,10 +381,7 @@ function createThumbnail(id: string): HTMLButtonElement {
     thbimg.setAttribute('alt', '')
     thbimg.setAttribute('draggable', 'false')
 
-    formatIcon.className = 'thumbnail-format-icon'
-
     thb.appendChild(thbimg)
-    thb.appendChild(formatIcon)
     thb.addEventListener('click', handleThumbnailClick)
 
     return thb
@@ -408,11 +402,7 @@ function addThumbnailImage(id: string, local: Local, data: LocalFileData): void 
     })
 
     mediaFromFiles(id, local, data).then((image) => {
-        const { format, urls } = image
-
-        btn.dataset.format = format
-
-        img.src = urls.small
+        img.src = image.urls.small
     })
 }
 
@@ -649,7 +639,6 @@ async function sanitizeMetadatas(local: Local): Promise<Local> {
 
             if (!metadata) {
                 metadata = {
-                    format: 'image',
                     lastUsed: new Date('01/01/1971').toString(),
                     position: {
                         size: 'cover',

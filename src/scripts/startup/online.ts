@@ -25,7 +25,7 @@ export function onlineAndMobile(): void {
 
         // Fix for opening tabs Firefox iOS
         if (SYSTEM_OS === 'ios') {
-            globalThis.requestAnimationFrame(triggerAnimationFrame)
+            firefoxRafTimeout = globalThis.requestAnimationFrame(triggerAnimationFrame)
             setTimeout(() => cancelAnimationFrame(firefoxRafTimeout), 500)
         }
     }

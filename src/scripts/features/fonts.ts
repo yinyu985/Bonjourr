@@ -334,20 +334,24 @@ function displayFont({ family, size, weight, system }: Font): void {
     const fontfacedom = document.getElementById('fontface')
     const fontsource = FONT_CHOICES.find((item) => item.id === fontId || item.family === family)
 
-    if (!system) {
-        let fontface = `
-			@font-face {font-family: "${family}";
-				font-display: swap;
-				src: url(${FONTS_CDN}/${fontId}@latest/latin-${weight}-normal.woff2) format('woff2');
-			}
-		`
+    // 切字体/语言时**替换**而不是追加；否则 <style id="fontface"> 会越来越胖，
+    // 累积所有曾经选过的 @font-face 规则。切到 system 字体也清空。
+    if (fontfacedom) {
+        if (system) {
+            fontfacedom.textContent = ''
+        } else {
+            let fontface = `
+				@font-face {font-family: "${family}";
+					font-display: swap;
+					src: url(${FONTS_CDN}/${fontId}@latest/latin-${weight}-normal.woff2) format('woff2');
+				}
+			`
 
-        if (subset !== 'latin' && fontsource?.subsets.includes(subset)) {
-            fontface += fontface.replace('latin', subset)
-        }
+            if (subset !== 'latin' && fontsource?.subsets.includes(subset)) {
+                fontface += fontface.replace('latin', subset)
+            }
 
-        if (fontfacedom) {
-            fontfacedom.textContent += fontface
+            fontfacedom.textContent = fontface
         }
     }
 
@@ -454,21 +458,19 @@ function systemFontChecker(family: string): boolean {
     return hasLoadedFont
 }
 
-function waitForFontLoad(family: string): Promise<boolean> {
-    return new Promise((resolve) => {
-        let limitcounter = 0
-        let hasLoadedFont = systemFontChecker(family)
-
-        const interval = setInterval(() => {
-            if (hasLoadedFont || limitcounter === 100) {
-                clearInterval(interval)
-                return resolve(true)
-            }
-
-            hasLoadedFont = systemFontChecker(family)
-            limitcounter++
-        }, 100)
-    })
+async function waitForFontLoad(family: string): Promise<boolean> {
+    // 浏览器原生 FontFaceSet API：直接告诉它"我要用这个字体"，
+    // 浏览器加载完成 resolve；失败也 resolve（catch 内部），10s 超时兜底。
+    // 比原来的 setInterval 每 100ms 创建/测量/删 <p> 元素轻得多。
+    try {
+        await Promise.race([
+            document.fonts.load(`16px "${family}"`),
+            new Promise((resolve) => setTimeout(resolve, 10_000)),
+        ])
+    } catch (_) {
+        // 字体加载失败也继续，让调用方走默认渲染路径。
+    }
+    return true
 }
 
 function getRequiredSubset(lang: string = getLang()): string {

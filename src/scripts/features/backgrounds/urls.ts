@@ -10,9 +10,6 @@ import type { Backgrounds } from '../../../types/sync.ts'
 
 type UrlInfos = {
     state: BackgroundUrlState
-    format: 'image' | 'video'
-    duration?: number
-    needsProxy: boolean
 }
 
 let globalUrlValue = ''
@@ -161,7 +158,6 @@ export function applyUrls(backgrounds: Backgrounds): void {
         if (url.startsWith('http')) {
             backgroundUrls[url] = {
                 lastUsed: new Date().toString(),
-                format: formatFromFileExt(url),
                 state: 'NONE',
             }
         }
@@ -184,108 +180,38 @@ async function checkUrlInfos(backgroundUrls: Local['backgroundUrls']): Promise<v
 
     for (const [url, item] of entries) {
         const infos = await getUrlInfos(url)
-
         item.state = infos.state
-        item.format = infos.format
-        item.duration = infos.duration
-        backgroundUrls[url] = item
-
         highlightUrlsEditorLine(url, item.state)
-        storage.local.set({ backgroundUrls: backgroundUrls })
     }
+
+    // 攒到最后一次写入，避免 N 个 URL = N 次 storage.local.set。
+    storage.local.set({ backgroundUrls })
 }
 
 async function getUrlInfos(item: string): Promise<UrlInfos> {
-    const isVideo = () => type.includes('video/')
-    const isMedia = () => type.startsWith('video/') || type.startsWith('image/')
-
-    const infos: UrlInfos = {
-        'format': formatFromFileExt(item),
-        'state': 'NONE',
-        'needsProxy': false,
-    }
-
-    let type = ''
-    let resp: Response
     let url: URL
 
-    // 1. Check URL validity first
-
+    // 1. URL 合法性
     try {
         url = new URL(item)
     } catch (_) {
-        infos.state = 'NOT_URL'
-        return infos
+        return { state: 'NOT_URL' }
     }
 
-    // 2a. Try to load content as is
+    // 2. 直连或走代理拉一次，看 content-type 是不是图片
+    const ok = (resp: Response) => resp.ok && (resp.headers.get('content-type') ?? '').startsWith('image/')
 
     try {
-        resp = await fetch(url)
-        type = resp.headers.get('content-type') ?? ''
-
-        if (isMedia()) {
-            infos.state = 'OK'
-        } else {
-            infos.state = 'NOT_MEDIA'
-            return infos
-        }
+        const resp = await fetch(url)
+        return { state: ok(resp) ? 'OK' : 'NOT_MEDIA' }
     } catch (_) {
-        // 2b. Load content using Bonjourr proxy (removes CORS)
-
-        try {
-            infos.needsProxy = true
-            resp = await fetch(`https://services.bonjourr.fr/backgrounds/proxy/${url}`)
-            type = resp.headers.get('content-type') ?? ''
-
-            if (isMedia()) {
-                infos.state = 'OK'
-            } else {
-                infos.state = 'NOT_MEDIA'
-                return infos
-            }
-        } catch (_) {
-            infos.state = 'CANT_REACH'
-            return infos
-        }
+        // 直连失败（CORS / DNS / 离线）才走代理
     }
 
-    // 3. Find correct media format
-
-    if (isVideo()) {
-        infos.format = 'video'
-    } else {
-        infos.format = 'image'
-    }
-
-    // 4. If video detected, retrieve duration
-
-    if (infos.format === 'video') {
-        const video = document.createElement('video')
-
-        infos.duration = await new Promise((resolve, reject) => {
-            setTimeout(() => reject(), 5000)
-            video.onloadedmetadata = () => resolve(Math.floor(video.duration))
-            video.src = item
-        })
-
-        if (!infos.duration) {
-            infos.state = 'LOADING'
-            return infos
-        }
-    }
-
-    // 4. Return infos
-
-    return infos
-}
-
-function formatFromFileExt(url: string): 'image' | 'video' {
-    url = url.trimEnd()
-
-    if (url.endsWith('mp4') || url.endsWith('webm')) {
-        return 'video'
-    } else {
-        return 'image'
+    try {
+        const resp = await fetch(`https://services.bonjourr.fr/backgrounds/proxy/${url}`)
+        return { state: ok(resp) ? 'OK' : 'NOT_MEDIA' }
+    } catch (_) {
+        return { state: 'CANT_REACH' }
     }
 }

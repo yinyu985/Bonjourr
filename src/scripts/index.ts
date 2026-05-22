@@ -10,12 +10,12 @@ import './features/contextmenu.ts'
 
 import { displayInterface, onInterfaceDisplay } from './shared/display.ts'
 import { setTranslationCache, traduction } from './utils/translations.ts'
+import { settingsNotifications } from './utils/notifications.ts'
 import { operaExtensionExplainer } from './startup/opera.ts'
 import { setPotatoComputerMode } from './startup/potato.ts'
 import { userDate } from './shared/time.ts'
 import { onlineAndMobile } from './startup/online.ts'
 import { serviceWorker } from './startup/serviceworker.ts'
-import { tabsTracking } from './startup/tabstracking.ts'
 import { settingsInit } from './settings.ts'
 import { userActions } from './events.ts'
 import { storage } from './storage.ts'
@@ -23,6 +23,12 @@ import { storage } from './storage.ts'
 import { BROWSER, PLATFORM, SYSTEM_OS } from './defaults.ts'
 
 restoreBackgroundCache()
+
+// storage 写失败时显示 settings 顶部的 banner（永久显示直到用户重启或下次成功）。
+// 对应触发：localStorage 配额满、Safari 私密模式 quota=0、扩展存储被禁等。
+globalThis.addEventListener('bonjourr-storage-error', () => {
+    settingsNotifications({ 'storage-error': true })
+})
 
 function restoreBackgroundCache(): void {
     const src = localStorage.getItem('backgroundCache')
@@ -72,7 +78,6 @@ async function startup(): Promise<void> {
     synchronization(local)
     settingsInit(sync, local)
     operaExtensionExplainer(local.operaExplained)
-    tabsTracking()
 
     document.documentElement.dataset.system = SYSTEM_OS as string
     document.documentElement.dataset.browser = BROWSER as string

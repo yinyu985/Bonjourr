@@ -116,21 +116,19 @@ const INTERNAL_URL_SCHEMES = [
     'arc://',
 ]
 
-domlinkblocks.addEventListener('click', async (event: MouseEvent) => {
+domlinkblocks.addEventListener('click', (event: MouseEvent) => {
     const anchor = (event.target as HTMLElement).closest('a')
     if (!anchor) {
         return
     }
 
+    // Chrome 阻止顶层导航到 data:，但扩展上下文可以通过 tabs.create 直达，
+    // 地址栏保留原始 data: URL，无需 blob 兜底（也就没有 createObjectURL 泄漏）。
     if (anchor.href.startsWith('data:')) {
-        event.preventDefault()
-        try {
-            const response = await fetch(anchor.href)
-            const blob = await response.blob()
-            const blobUrl = URL.createObjectURL(blob)
-            globalThis.open(blobUrl, '_blank')
-        } catch {
-            globalThis.open(anchor.href, '_blank')
+        const tabs = EXTENSION?.tabs as typeof chrome.tabs | undefined
+        if (tabs) {
+            event.preventDefault()
+            tabs.create({ url: anchor.href })
         }
         return
     }
@@ -363,6 +361,12 @@ function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
 // storage.local.linkIconResolutions on page load — once a host has been
 // resolved, all future renders (including across reloads) hit this map and
 // skip every fetch / Chrome API call.
+//
+// Map 自带插入顺序 → 拿来当 LRU 用：命中即"删后重 set"把它移到末尾，写入时
+// 超过 cap 就从头删。否则用户长期使用后此处会无界增长（每个值是 ~2KB base64
+// favicon，1000 个 host 就 ~2MB 常驻），且 storage.local.set 序列化整张表
+// 也越来越慢。
+const ICON_CACHE_CAP = 500
 const iconResolvedByHost = new Map<string, string>()
 
 // In-flight resolution promises, keyed by host, to dedupe concurrent
@@ -375,7 +379,9 @@ function createIcons(local: Local): void {
     if (!resolutionsHydrated) {
         resolutionsHydrated = true
         const stored = local.linkIconResolutions ?? {}
-        for (const [host, value] of Object.entries(stored)) {
+        // 启动时只灌入末尾 cap 项；超出的当作"最久没访问到"丢弃。
+        const entries = Object.entries(stored)
+        for (const [host, value] of entries.slice(-ICON_CACHE_CAP)) {
             iconResolvedByHost.set(host, value)
         }
     }
@@ -388,11 +394,41 @@ function createIcons(local: Local): void {
     }
 }
 
-function persistResolution(host: string, value: string): void {
-    storage.local.get('linkIconResolutions').then((local) => {
-        const next = { ...(local.linkIconResolutions ?? {}), [host]: value }
-        storage.local.set({ linkIconResolutions: next })
-    })
+function touchIconCache(host: string, value: string): void {
+    // 删后再 set，让 host 落到 Map 末尾（最近使用）。
+    iconResolvedByHost.delete(host)
+    iconResolvedByHost.set(host, value)
+
+    while (iconResolvedByHost.size > ICON_CACHE_CAP) {
+        const oldest = iconResolvedByHost.keys().next().value
+        if (oldest === undefined) break
+        iconResolvedByHost.delete(oldest)
+    }
+}
+
+function getCachedIcon(host: string): string | undefined {
+    const value = iconResolvedByHost.get(host)
+    if (value !== undefined) {
+        // 命中也算一次访问，搬到末尾。
+        iconResolvedByHost.delete(host)
+        iconResolvedByHost.set(host, value)
+    }
+    return value
+}
+
+// 节流落盘：连续解析多个 favicon 时不要每个都序列化整张表落盘一次。
+// 直接 dump 当前 Map，不再 spread 老 storage —— Map 已经是事实来源，
+// 而且按 LRU 顺序输出能让下次启动也按相同顺序 hydrate。
+let persistTimer = 0
+
+function persistResolutions(): void {
+    if (persistTimer) {
+        return
+    }
+    persistTimer = setTimeout(() => {
+        persistTimer = 0
+        storage.local.set({ linkIconResolutions: Object.fromEntries(iconResolvedByHost) })
+    }, 1000)
 }
 
 function hostFromDdgUrl(ddgUrl: string): string | undefined {
@@ -421,7 +457,7 @@ function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): void {
         return
     }
 
-    const cached = iconResolvedByHost.get(host)
+    const cached = getCachedIcon(host)
     if (cached) {
         img.src = cached
         return
@@ -440,8 +476,8 @@ function resolveHostIcon(host: string, ddgUrl: string): Promise<string> {
     }
 
     const promise = resolveHostIconInner(host, ddgUrl).then((value) => {
-        iconResolvedByHost.set(host, value)
-        persistResolution(host, value)
+        touchIconCache(host, value)
+        persistResolutions()
         return value
     }).finally(() => {
         iconInflightByHost.delete(host)

@@ -1,5 +1,5 @@
 import { getLang, tradThis } from '../../utils/translations.ts'
-import { isStorageDefault } from '../../storage.ts'
+import { isStorageDefault, storage } from '../../storage.ts'
 
 import type { Sync } from '../../../types/sync.ts'
 
@@ -47,6 +47,12 @@ export function setGistStatusNow(): void {
     base.textContent = tradThis('Last update')
 }
 
+// 节流：toggleSyncSettingsOption 在多处调用（settings 加载、改 token/url、切 syncType …），
+// 每次都打一次 GitHub。短时间内反复点设置面板的人会暴打 API。
+// 60s 内复用上次成功结果，不再 fetch。
+const STATUS_FETCH_THROTTLE_MS = 60_000
+let cachedStatus: { at: number; updatedAt: string; htmlUrl: string; key: string } | undefined
+
 export async function setGistStatus(token?: string, id?: string): Promise<boolean> {
     const wrapper = document.getElementById('gist-sync-status-wrapper') as HTMLElement
     const base = document.getElementById('gist-sync-status-base') as HTMLSpanElement
@@ -61,6 +67,25 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
         document.querySelector('#gist-sync-status')?.remove()
         base.textContent = tradThis('No saved data yet')
         return false
+    }
+
+    const cacheKey = `${token}:${id}`
+    const now = Date.now()
+
+    if (cachedStatus && cachedStatus.key === cacheKey && now - cachedStatus.at < STATUS_FETCH_THROTTLE_MS) {
+        renderStatus(wrapper, base, cachedStatus.updatedAt, cachedStatus.htmlUrl)
+        return true
+    }
+
+    // autoSyncOnStartup 已经记过 gistLastFetchedAt + gistLastSyncedAt。
+    // 用它们当 fallback 渲染：跨标签页打开 settings 也不需要再 fetch。
+    const local = await storage.local.get(['gistLastFetchedAt', 'gistLastSyncedAt'])
+    const lastFetchedAt = local.gistLastFetchedAt ? new Date(local.gistLastFetchedAt).getTime() : 0
+    const persistedHit = lastFetchedAt && now - lastFetchedAt < STATUS_FETCH_THROTTLE_MS
+
+    if (persistedHit && local.gistLastSyncedAt) {
+        renderStatus(wrapper, base, local.gistLastSyncedAt, `https://gist.github.com/${id}`)
+        return true
     }
 
     let resp: Response
@@ -79,8 +104,14 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
         return false
     }
 
-    const json = await resp.json()
-    const isoDate = json.updated_at
+    const json = await resp.json() as { updated_at: string; html_url: string }
+    cachedStatus = { at: now, updatedAt: json.updated_at, htmlUrl: json.html_url, key: cacheKey }
+    storage.local.set({ gistLastFetchedAt: new Date(now).toISOString() })
+    renderStatus(wrapper, base, json.updated_at, json.html_url)
+    return true
+}
+
+function renderStatus(wrapper: HTMLElement, base: HTMLSpanElement, isoDate: string, htmlUrl: string): void {
     const dateString = new Date(isoDate).toLocaleString(getLang(), {
         day: '2-digit',
         month: '2-digit',
@@ -94,14 +125,11 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
 
     const link = document.createElement('a')
     link.id = 'gist-sync-status'
-    link.href = json.html_url
+    link.href = htmlUrl
     link.textContent = dateString
 
     wrapper?.appendChild(link)
-
     base.textContent = tradThis('Last update')
-
-    return true
 }
 
 export interface GistRetrieveResult {
@@ -148,15 +176,13 @@ export async function fetchGistUpdatedAt(token: string, id: string): Promise<str
         return
     }
 
+    // 复用 gistFetch 的重试 + 超时逻辑，与 retrieveGist 一致；
+    // 否则瞬时网络错误下这个函数会直接返回 undefined，
+    // 调用方误以为远端没更新，紧接着 PATCH 上去覆盖远端。
     try {
-        const resp = await fetchGistWithTimeout(`https://api.github.com/gists/${id}`, {
+        const resp = await gistFetch(`https://api.github.com/gists/${id}`, {
             headers: gistHeaders(token),
         })
-
-        if (!resp.ok) {
-            return
-        }
-
         const json = await resp.json() as { updated_at?: string }
         return json.updated_at
     } catch (_) {

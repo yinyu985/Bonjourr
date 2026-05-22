@@ -14,6 +14,7 @@ export interface Local {
     gistId?: string
     gistToken?: string
     gistLastSyncedAt?: string
+    gistLastFetchedAt?: string
     distantUrl?: string
     syncType?: SyncType
 
@@ -34,26 +35,12 @@ export interface Local {
 
 export interface BackgroundUrl {
     lastUsed: string
-    format: 'image' | 'video'
     state: BackgroundUrlState
-    duration?: number
 }
 
-/**
- * Bad planning in version 21: interface structure is image only.
- *
- * Video options "zoom, fade, playbackRate" have been added separately
- * "position" remains image only...
- */
 export interface BackgroundFile {
-    format: 'image' | 'video'
     lastUsed: string
     selected?: boolean
-    video?: {
-        playbackRate: number
-        fade: number
-        zoom: number
-    }
     position?: {
         size: string
         x: string

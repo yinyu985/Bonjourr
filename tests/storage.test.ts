@@ -131,7 +131,6 @@ Deno.test({
     },
 })
 
-
 Deno.test({
     name: 'verifyDataAsSync fills missing fields from defaults',
     sanitizeOps: false,

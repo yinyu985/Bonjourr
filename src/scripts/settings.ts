@@ -540,8 +540,11 @@ function initOptionsEvents(): void {
         copySettings()
     })
 
-    paramId('settings-data').addEventListener('input', (event) => {
-        toggleSettingsChangesButtons(event.type)
+    // input 触发的 'input' 分支会跑 chrome.bookmarks.getTree + 全表 stringify。
+    // 不防抖的话粘贴 JSON 时会触发几十次 bookmarks API 调用。
+    const debouncedToggle = debounce(() => toggleSettingsChangesButtons('input'), 200)
+    paramId('settings-data').addEventListener('input', () => {
+        debouncedToggle()
     })
 
     paramId('settings-data').addEventListener('focus', (event) => {

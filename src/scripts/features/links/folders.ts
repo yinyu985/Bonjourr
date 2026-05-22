@@ -128,7 +128,4 @@ function openAllLinks(data: Sync, li: HTMLLIElement): void {
     for (const link of linksInFolder) {
         globalThis.open(link.url, '_blank')?.focus()
     }
-
-    globalThis.open(globalThis.location.href, '_blank')?.focus()
-    globalThis.close()
 }
