@@ -41,7 +41,7 @@ export interface LinkIcon {
 export interface LinkSubfolder {
     id: string
     title: string
-    items: LinkElem[]
+    items: LinkNode[]
 }
 
 // Globals

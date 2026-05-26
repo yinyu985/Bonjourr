@@ -70,6 +70,35 @@
     font-size: 13px;
 }
 
+/*  Config Snapshots  */
+
+#config-snapshots:has(#snapshots-list:empty) {
+    display: none;
+}
+
+#snapshots-list .snapshot-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4em 0;
+}
+
+#snapshots-list .snapshot-item + .snapshot-item {
+    border-top: 1px solid var(--color-areas);
+}
+
+#snapshots-list .snapshot-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+}
+
+#snapshots-list .snapshot-detail {
+    color: var(--color-light-text);
+    font-size: 12px;
+}
+
 /*  Reset  */
 
 #reset-settings {

@@ -1,7 +1,7 @@
 import { randomString, stringMaxSize } from '../../shared/generic.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
-import type { LinkFolder, LinkFolderSource, LinksState, Sync } from '../../../types/sync.ts'
+import type { LinkFolder, LinksState, Sync } from '../../../types/sync.ts'
 
 export const FAVORITES_FOLDER = '__favorites'
 
@@ -32,7 +32,6 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
         folders: [{
             id: 'default',
             title: 'default',
-            source: 'local',
             items: [],
         }],
         favorites: [],
@@ -57,7 +56,7 @@ export function createLink(title: string, url: string, id?: string): LinkElem {
     }
 }
 
-export function createSubfolder(title: string, items: LinkElem[] = []): LinkSubfolder {
+export function createSubfolder(title: string, items: LinkNode[] = []): LinkSubfolder {
     return {
         id: newLinkId(),
         title: stringMaxSize(title, 64),
@@ -71,10 +70,6 @@ export function getFolder(data: Sync, id?: string): LinkFolder | undefined {
 
 export function getFolderByTitle(data: Sync, title: string): LinkFolder | undefined {
     return data.links.folders.find((folder) => folder.title === title)
-}
-
-export function getFolderByBookmarkSource(data: Sync, folderId: string): LinkFolder | undefined {
-    return data.links.folders.find((folder) => folder.source === 'bookmarks' && folder.id === folderId)
 }
 
 export function getNode(data: Sync, id: string): LinkNode | undefined {
@@ -109,7 +104,7 @@ export function findNode(data: Sync, id: string): LinkLocation | undefined {
     }
 }
 
-export function getLinksInSubfolder(data: Sync, id: string): LinkElem[] {
+export function getLinksInSubfolder(data: Sync, id: string): LinkNode[] {
     return getSubfolder(data, id)?.items ?? []
 }
 
@@ -161,7 +156,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
     for (const folder of links.folders) {
         folder.id ||= newFolderId()
         folder.title ||= 'default'
-        folder.source = normalizeFolderSource(folder.source)
         folder.items = normalizeItems(folder.items)
     }
 
@@ -169,7 +163,6 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
         links.folders.push({
             id: 'default',
             title: 'default',
-            source: 'local',
             items: [],
         })
     }
@@ -193,7 +186,7 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
 function normalizeItems(items: LinkNode[] = []): LinkNode[] {
     return items.filter(isLink).map((node) => {
         if (isSubfolder(node)) {
-            node.items = normalizeItems(node.items).filter(isElem)
+            node.items = normalizeItems(node.items)
         }
         return node
     })
@@ -202,18 +195,6 @@ function normalizeItems(items: LinkNode[] = []): LinkNode[] {
 function isLinksState(value: unknown): value is LinksState {
     const links = value as LinksState | undefined
     return !!links && Array.isArray(links.folders) && Array.isArray(links.favorites)
-}
-
-function isFolderSource(source: unknown): source is LinkFolderSource {
-    return source === 'local' || source === 'bookmarks'
-}
-
-function normalizeFolderSource(source: unknown): LinkFolderSource {
-    if (isFolderSource(source)) {
-        return source
-    }
-
-    return 'local'
 }
 
 function findNodeInItems(
@@ -237,14 +218,13 @@ function findNodeInItems(
 }
 
 function flattenNodes(items: LinkNode[]): LinkNode[] {
-    return items.flatMap((item) => isSubfolder(item) ? [item, ...item.items] : [item])
+    return items.flatMap((item) => isSubfolder(item) ? [item, ...flattenNodes(item.items)] : [item])
 }
 
 function favoritesFolder(): LinkFolder {
     return {
         id: FAVORITES_FOLDER,
         title: FAVORITES_FOLDER,
-        source: 'bookmarks',
         items: [],
     }
 }

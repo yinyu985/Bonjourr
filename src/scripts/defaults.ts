@@ -118,7 +118,6 @@ export const SYNC_DEFAULT: Sync = {
         folders: [{
             id: 'default',
             title: 'default',
-            source: 'local',
             items: [],
         }],
         favorites: [],

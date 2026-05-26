@@ -4,10 +4,12 @@ import { assertEquals, assertNotEquals } from '@std/assert'
 import { storage } from '../src/scripts/storage.ts'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { __testing } from '../src/scripts/features/synchronization/index.ts'
+import { getConfigSnapshots } from '../src/scripts/features/synchronization/backup.ts'
 
 import type { Sync } from '../src/types/sync.ts'
 
-const { applyDownloadedSync, syncPayloadHash, ARCHIVE_PRE_SYNC_KEY } = __testing
+const { applyDownloadedSync, syncPayloadHash } = __testing
+const SNAPSHOTS_KEY = 'bonjourr-config-snapshots'
 
 // 这一组测试是为了挡住几次踩过的同步坑：
 //   - syncPayloadHash 对 notes 内容必须敏感（曾经被 stringify replacer 过滤掉过）
@@ -79,7 +81,7 @@ Deno.test({
     sanitizeResources: false,
     fn: async () => {
         await storage.sync.clear()
-        localStorage.removeItem(ARCHIVE_PRE_SYNC_KEY)
+        localStorage.removeItem(SNAPSHOTS_KEY)
 
         const current = structuredClone(SYNC_DEFAULT)
         current.lang = 'fr'
@@ -88,7 +90,6 @@ Deno.test({
 
         const incoming: Partial<Sync> = structuredClone(SYNC_DEFAULT)
         incoming.lang = 'ja'
-        // tabtitle missing on purpose: download must reset it to default
 
         const next = await applyDownloadedSync(current, incoming)
         const saved = await storage.sync.get()
@@ -100,12 +101,12 @@ Deno.test({
 })
 
 Deno.test({
-    name: 'applyDownloadedSync clears the pre-sync archive on success',
+    name: 'applyDownloadedSync saves a snapshot before overwriting',
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
         await storage.sync.clear()
-        localStorage.removeItem(ARCHIVE_PRE_SYNC_KEY)
+        localStorage.removeItem(SNAPSHOTS_KEY)
 
         const current = structuredClone(SYNC_DEFAULT)
         current.lang = 'fr'
@@ -114,14 +115,12 @@ Deno.test({
         const incoming = structuredClone(SYNC_DEFAULT)
         incoming.lang = 'ja'
 
-        // 先确认走过 set 路径会写过 archive
         await applyDownloadedSync(current, incoming)
 
-        assertEquals(
-            localStorage.getItem(ARCHIVE_PRE_SYNC_KEY),
-            null,
-            '快照应在同步成功后被清掉，否则会逐步占满 localStorage 配额',
-        )
+        const snapshots = getConfigSnapshots()
+        assertEquals(snapshots.length, 1)
+        assertEquals(snapshots[0].reason, 'sync-download')
+        assertEquals(snapshots[0].config.lang, 'fr')
     },
 })
 
@@ -130,10 +129,8 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
-        // doAutoUpload 用 lastSyncedPayload === payload 短路。
-        // 如果 applyDownloadedSync 返回的 sync 跟它自己再 hash 一次结果不同，
-        // 那么下载完成后会立刻又触发一次"内容变了"的上传，循环烧 GitHub API 配额。
         await storage.sync.clear()
+        localStorage.removeItem(SNAPSHOTS_KEY)
         const current = structuredClone(SYNC_DEFAULT)
         const incoming = structuredClone(SYNC_DEFAULT)
         incoming.lang = 'de'

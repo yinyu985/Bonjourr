@@ -190,10 +190,12 @@
     justify-content: flex-start;
     align-items: flex-start;
     width: max-content;
+    /* override .link-list's default 6rem floor — the popup must hug content. */
+    min-width: 0;
     max-width: min(36rem, calc(100vw - 2em));
     max-height: calc(100dvh - 9rem);
     margin: 0;
-    padding: 14px 16px;
+    padding: 8px 10px;
     row-gap: calc(var(--row-gap) * 0.5);
     overflow: auto;
     scrollbar-width: none;
@@ -260,12 +262,18 @@
 #linkblocks > .link-group .link-folder {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     column-gap: 0.6em; /* scale gap between icon and text with font-size */
     width: max-content;
     max-width: none;
 }
 
 #linkblocks > .link-group .link div {
+    /* Override .link div { margin: auto } from the legacy square-card layout.
+     * In the popup, link-folder li is itself the flex container and is
+     * stretched to min-width: 100%, so auto margins on the icon would absorb
+     * all free space and push the title to the right edge. */
+    margin: 0;
     width: max(14px, 1.4em);
     height: max(14px, 1.4em);
 }
@@ -527,39 +535,74 @@ body.group-focus #linkblocks > .link-group {
     }
 }
 
-.link-folder > div {
-    display: grid;
-    column-gap: 4px;
-    height: var(--icon-size);
-    grid-template-columns: 1fr 1fr;
-    border: 1px solid transparent;
-    box-sizing: border-box;
-    backdrop-filter: blur(1em);
-    -webkit-backdrop-filter: blur(1em);
+.link-folder {
+    cursor: pointer;
+    opacity: 0.8;
 }
 
-.link-folder img[src] {
-    display: block;
+.link-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5em;
+}
+
+/*
+ * Subfolder popover. Sits absolutely inside the active .link-group (which is
+ * itself position: absolute), so coordinates are computed in JS relative to
+ * that group. Width matches the longest item — same rule as .link-list — so
+ * the popover doesn't balloon out wider than its content. .link layout is
+ * inherited from the existing `#linkblocks > .link-group .link` rules above
+ * because the panel is a descendant of .link-group.
+ */
+.link-subfolder-panel {
+    position: absolute;
+    isolation: isolate;
+    list-style: none;
+    margin: 0;
+    padding: 8px 10px;
+    width: max-content;
+    min-width: 0;
+    max-width: min(24rem, calc(100vw - 2em));
+    max-height: calc(100dvh - 9rem);
+    overflow: auto;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    row-gap: calc(var(--row-gap) * 0.5);
+    border-radius: var(--glass-radius);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    pointer-events: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.link-subfolder-panel::-webkit-scrollbar {
+    display: none;
+}
+
+.link-folder.expanded {
+    opacity: 1;
+}
+
+.link-subfolder-panel .link-folder.expanded {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+}
+
+/* Folder icon is rectangular, so don't apply the round-favicon crop that
+ * .link div / .link img use for circular favicons — it would clip the
+ * folder shape's corners and cap how big the glyph can be. */
+.link-folder div {
+    overflow: visible;
+    border-radius: 0;
 }
 
 .link-folder img {
-    display: none;
-    /* border-radius: 4px; */
-    /* padding: 2px; */
-    user-select: none;
-    object-fit: contain;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-}
-
-#linkblocks .link-folder > div,
-#linkblocks.backgrounds .link-folder > div {
-    background-color: #fff3;
-    border-color: #fff4;
-}
-
-#linkblocks.backgrounds .link-folder img {
-    background-color: transparent;
+    border-radius: 0;
 }
 
 /* Link styles */
@@ -592,19 +635,6 @@ dialog a {
     --icon-size: max(14px, 1.6em);
     --folder-padding: 16px;
     justify-content: flex-start;
-}
-
-.inline .link-folder div {
-    display: block;
-    padding: max(1px, 0.25em);
-}
-
-.inline .link-folder img {
-    box-sizing: border-box;
-}
-
-.inline .link-folder img:not(:first-child) {
-    display: none;
 }
 
 .inline .link span {

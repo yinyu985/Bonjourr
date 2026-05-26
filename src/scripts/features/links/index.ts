@@ -2,10 +2,11 @@ import { changeFolderTitle, deleteFolder, initFolders, toggleFolders, updateSele
 import { initBookmarkSync, syncBookmarksUpdate } from './bookmarks.ts'
 import { openContextMenu } from '../contextmenu.ts'
 import { storeIconFile } from './fileicons.ts'
-import { folderClick } from './folders.ts'
+import { collapseAllPanels, folderClick } from './folders.ts'
 import {
     createTitle,
     DEFAULT_FAVICON,
+    FOLDER_ICON,
     getDefaultIcon,
     getLiFromEvent,
     getLinksInSubfolder,
@@ -89,7 +90,6 @@ export type LinksUpdate = {
 type RenderFolder = {
     folder: LinkFolder
     items: LinkNode[]
-    synced: boolean
     div: HTMLDivElement | null
     lis: HTMLLIElement[]
 }
@@ -183,16 +183,18 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
 }
 
 export function initblocks(sync: Sync, local?: Local): true {
+    // Re-render destroys/reorders the <li> nodes the open panels point to.
+    // Drop any open subfolder popovers before rebuilding so we don't keep
+    // stale openers in the panel stack.
+    collapseAllPanels()
+
     initIconList = []
     const activeFolders: RenderFolder[] = getVisibleRenderFolders(sync)
 
     for (const folder of activeFolders) {
         const div = document.querySelector<HTMLDivElement>(`.link-group[data-group="${folder.folder.id}"]`)
-        const subfolderId = div?.dataset.folder
-        const items = subfolderId ? getLinksInSubfolder(sync, subfolderId) : folder.folder.items
-
         folder.div = div
-        folder.items = items
+        folder.items = folder.folder.items
     }
 
     const divs = activeFolders.map((folder) => folder.div)
@@ -208,7 +210,6 @@ export function initblocks(sync: Sync, local?: Local): true {
         const linklist = linkgroup.querySelector<HTMLUListElement>('ul')
         const linktitle = linkgroup.querySelector<HTMLButtonElement>('button')
         const fragment = document.createDocumentFragment()
-        const subfolderId = linkgroup.dataset.folder
 
         if (!(linklist && linktitle)) {
             throw new Error('Template not found')
@@ -216,7 +217,11 @@ export function initblocks(sync: Sync, local?: Local): true {
 
         const existingItems = [...linklist.querySelectorAll<HTMLLIElement>('li')]
 
-        for (const item of activeFolder.items) {
+        const sortedItems = [...activeFolder.items].sort((a, b) => {
+            return (isSubfolder(a) ? 1 : 0) - (isSubfolder(b) ? 1 : 0)
+        })
+
+        for (const item of sortedItems) {
             let li = existingItems.find((existing) => existing.id === item.id)
 
             if (li) {
@@ -229,20 +234,17 @@ export function initblocks(sync: Sync, local?: Local): true {
 
             fragment.appendChild(li)
 
-            if (!activeFolder.synced) {
-                li.addEventListener('keyup', openContextMenu)
-                li.addEventListener('click', selectAll)
-                li.addEventListener('pointerdown', selectAll)
-            }
+            li.addEventListener('keyup', openContextMenu)
+            li.addEventListener('click', selectAll)
+            li.addEventListener('pointerdown', selectAll)
         }
 
         linklist.innerHTML = ''
         linklist.appendChild(fragment)
 
-        const subfolder = subfolderId ? getNode(sync, subfolderId) : undefined
-        linktitle.textContent = isSubfolder(subfolder) ? subfolder.title : activeFolder.folder.title
+        linktitle.textContent = activeFolder.folder.title
         linkgroup.dataset.group = activeFolder.folder.id
-        linkgroup.classList.toggle('synced', activeFolder.synced)
+        linkgroup.classList.remove('synced')
         domlinkblocks.insertBefore(linkgroup, domlinkmini)
     }
 
@@ -270,7 +272,6 @@ function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
     return [{
         folder,
         items: folder.items,
-        synced: folder.source === 'bookmarks',
         div: null,
         lis: [],
     }]
@@ -311,31 +312,26 @@ export function initFavorites(sync: Sync): void {
 
 export function createSubfolderElement(link: LinkSubfolder): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-folder-template', 'li')
-    const imgs = li.querySelectorAll('img')
     const span = li.querySelector('span')
+    const img = li.querySelector('img')
 
-    if (!(li && imgs && span)) {
+    if (!(span && img)) {
         throw new Error('Template not found')
     }
 
     li.id = link.id
     span.textContent = createTitle(link)
+    // Static folder glyph — same gray tone as DEFAULT_FAVICON so subfolder
+    // rows align horizontally with link rows in the same list and look like
+    // the same family of icon.
+    img.src = FOLDER_ICON
     li.addEventListener('mouseup', folderClick)
     li.addEventListener('keydown', folderClick)
-
-    for (let index = 0; index < link.items.length; index++) {
-        const img = imgs[index]
-        const elem = link.items[index]
-
-        if (img && elem) {
-            initIconList.push([img, getIconFromLinkElem(elem)])
-        }
-    }
 
     return li
 }
 
-function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
+export function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-elem-template', 'li')
     const span = li.querySelector('span')
     const anchor = li.querySelector('a')
@@ -375,7 +371,7 @@ const iconInflightByHost = new Map<string, Promise<string>>()
 
 let resolutionsHydrated = false
 
-function createIcons(local: Local): void {
+export function createIcons(local: Local): void {
     if (!resolutionsHydrated) {
         resolutionsHydrated = true
         const stored = local.linkIconResolutions ?? {}
@@ -849,7 +845,7 @@ function deleteLinks(ids: string[], data: Sync): Sync {
 
         if (isSubfolder(node)) {
             for (const child of node.items) {
-                if (child.icon?.type === 'file') storage.local.remove(`x-icon-${child.id}`)
+                if (isElem(child) && child.icon?.type === 'file') storage.local.remove(`x-icon-${child.id}`)
             }
         }
 
@@ -927,17 +923,7 @@ function refreshIcons(ids: string[], data: Sync): Sync {
     return data
 }
 
-function unsyncFolder(folderId: string, data: Sync): Sync {
-    const folder = getFolder(data, folderId) ?? data.links.folders.find((item) => item.title === folderId)
-
-    if (!folder || folder.source !== 'bookmarks') {
-        return data
-    }
-
-    folder.source = 'local'
-    const folderDiv = document.querySelector<HTMLDivElement>(`.link-group[data-group="${folder.id}"]`)
-    folderDiv?.classList.remove('synced')
-
+function unsyncFolder(_folderId: string, data: Sync): Sync {
     return data
 }
 
@@ -1063,7 +1049,6 @@ function getFolderByTitleOrDefault(data: Sync, idOrTitle?: string): LinkFolder {
     const created: LinkFolder = {
         id: idOrTitle && idOrTitle !== '+' ? idOrTitle : newFolderId(),
         title: idOrTitle && idOrTitle !== '+' ? idOrTitle : 'default',
-        source: 'local',
         items: [],
     }
     data.links.folders.push(created)

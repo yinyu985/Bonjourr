@@ -662,7 +662,6 @@
 
             <select id="i_synctype">
                 <option value="gist" selected>Github Gist</option>
-                <option class="trn not-online" value="browser">Browser</option>
                 <option class="trn" value="url">Distant URL</option>
                 <option class="trn" value="off">Disabled</option>
             </select>
@@ -838,21 +837,8 @@
     </div>
 </div>
 
-<div class="as as_css dropdown cssEditor">
-    <div class="settings-title" id="css_title">
-        <h2 id="lbl-css" class="trn">Custom Style</h2>
-
-        <button class="tooltip ttcss" title="Tips on Custom styles" aria-label="Tips on Custom styles">?</button>
-
-        <p class="tooltiptext dropdown ttcss">
-            <span class="trn">Make cool things happen with CSS.</span>
-            <span class="trn">Check out our</span>
-            <a class="trn" href="https://github.com/yinyu985/Bonjourr" rel="noreferrer noopener" target="_blank"
-            >CSS snippets.</a>
-        </p>
-    </div>
-
-    <div class="param" id="css-editor"></div>
+<div class="param" id="config-snapshots">
+    <div id="snapshots-list"></div>
 </div>
 
 <div class="param" id="reset-settings">
@@ -874,6 +860,23 @@
             <button id="b_reset-cancel" class="param-btn trn">No, go back</button>
         </div>
     </div>
+</div>
+
+<div class="as as_css dropdown cssEditor">
+    <div class="settings-title" id="css_title">
+        <h2 id="lbl-css" class="trn">Custom Style</h2>
+
+        <button class="tooltip ttcss" title="Tips on Custom styles" aria-label="Tips on Custom styles">?</button>
+
+        <p class="tooltiptext dropdown ttcss">
+            <span class="trn">Make cool things happen with CSS.</span>
+            <span class="trn">Check out our</span>
+            <a class="trn" href="https://github.com/yinyu985/Bonjourr" rel="noreferrer noopener" target="_blank"
+            >CSS snippets.</a>
+        </p>
+    </div>
+
+    <div class="param" id="css-editor"></div>
 </div>
 
 <div id="settings-footer">

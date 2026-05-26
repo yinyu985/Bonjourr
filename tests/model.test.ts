@@ -40,7 +40,7 @@ function makeSubfolder(id: string, title: string, items: LinkElem[]): LinkSubfol
 }
 
 function makeFolder(id: string, title: string, items: (LinkElem | LinkSubfolder)[]): LinkFolder {
-    return { id, title, source: 'local', items }
+    return { id, title, items }
 }
 
 // Type guards
@@ -295,7 +295,6 @@ Deno.test('normalizeLinksState filters invalid items from folders', () => {
             folders: [{
                 id: 'f1',
                 title: 'F',
-                source: 'local',
                 // deno-lint-ignore no-explicit-any
                 items: items as any,
             }],

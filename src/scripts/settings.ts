@@ -3,12 +3,12 @@ import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/index.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
-import { dedupeSyncLinks, mergeSyncAppend } from './features/synchronization/merge.ts'
+import { mergeSyncAppend } from './features/synchronization/merge.ts'
+import { getConfigSnapshots, restoreConfigSnapshot, saveConfigSnapshot } from './features/synchronization/backup.ts'
 import { hideElements } from './features/hide.ts'
 import {
     bootstrapBookmarksFromConfig,
     linksImport,
-    renderLinksFromSync,
     replaceBookmarksFromConfig,
     restoreBookmarksFromConfig,
 } from './features/links/bookmarks.ts'
@@ -18,7 +18,7 @@ import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
 import { initCustomSelects, refreshCustomSelects } from './shared/custom-select.ts'
-import { BROWSER, CURRENT_VERSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
+import { CURRENT_VERSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
@@ -131,6 +131,7 @@ function settingsInitEvent(event: Event): void {
         updateSettingsEvent()
         translateAriaLabels()
         settingsDrawerBar()
+        renderSnapshotsList()
         loadCallbacks()
 
         settings?.classList.remove('init')
@@ -258,23 +259,6 @@ function initOptionsValues(data: Sync, local: Local): void {
             input.addEventListener('input', () => {
                 form.classList.toggle('valid', form.checkValidity())
             })
-        }
-    }
-
-    // Change Sync name based on browser
-    const browserSyncOption = document.querySelector<HTMLElement>("#i_synctype option[value='browser']")
-
-    if (browserSyncOption) {
-        if (PLATFORM === 'firefox') {
-            browserSyncOption.textContent = 'Firefox Sync'
-        } else if (PLATFORM === 'chrome' && BROWSER === 'edge') {
-            browserSyncOption.textContent = 'Edge Sync'
-        } else if (PLATFORM === 'chrome') {
-            browserSyncOption.textContent = 'Chrome Sync'
-        } else if (PLATFORM === 'safari') {
-            browserSyncOption.textContent = 'Safari'
-        } else {
-            browserSyncOption.textContent = tradThis('Automatic')
         }
     }
 
@@ -832,7 +816,7 @@ async function copySettings(): Promise<void> {
 }
 
 async function getLatestExportData(): Promise<Sync> {
-    return dedupeSyncLinks(await bootstrapBookmarksFromConfig(await storage.sync.get()))
+    return await bootstrapBookmarksFromConfig(await storage.sync.get())
 }
 
 async function saveImportFile(): Promise<void> {
@@ -915,22 +899,22 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
             }
         }
 
-        const importedData = dedupeSyncLinks(mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported))
+        const importedData = mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported)
         let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
 
         if (mode === 'replace') {
+            saveConfigSnapshot(current, 'import-replace')
             await replaceBookmarksFromConfig(current, importedData)
         }
+
         await storage.sync.clear()
         await storage.sync.set(data)
-        if (mode === 'replace') {
-            data = await bootstrapBookmarksFromConfig(data)
-            await storage.sync.set(data)
-            await renderLinksFromSync(data)
-        } else if (await restoreBookmarksFromConfig(importedData)) {
+
+        if (mode !== 'replace' && await restoreBookmarksFromConfig(importedData)) {
             data = await bootstrapBookmarksFromConfig(data)
             await storage.sync.set(data)
         }
+
         fadeOut()
     } catch (err) {
         console.warn('Import settings failed', err)
@@ -1102,4 +1086,75 @@ function setFormInput(id: string, defaults: string, value?: string): void {
 
 function clampFontSize(size: string): string {
     return Math.min(15, Math.max(7, Number.parseFloat(size))).toString()
+}
+
+function renderSnapshotsList(): void {
+    const container = document.getElementById('snapshots-list')
+    if (!container) return
+
+    const snapshots = getConfigSnapshots()
+    container.innerHTML = ''
+
+    if (snapshots.length === 0) return
+
+    for (let i = 0; i < snapshots.length; i++) {
+        const snapshot = snapshots[i]
+        const date = new Date(snapshot.timestamp)
+        const timeStr = date.toLocaleString()
+        const stats = snapshotStats(snapshot.config)
+
+        const item = document.createElement('div')
+        item.className = 'snapshot-item'
+
+        const info = document.createElement('div')
+        info.className = 'snapshot-info'
+
+        const time = document.createElement('span')
+        time.textContent = timeStr
+
+        const detail = document.createElement('span')
+        detail.className = 'snapshot-detail'
+        detail.textContent = `${stats.folders} folders · ${stats.urls} links`
+
+        info.appendChild(time)
+        info.appendChild(detail)
+
+        const btn = document.createElement('button')
+        btn.className = 'param-btn'
+        btn.textContent = tradThis('Restore')
+        btn.dataset.index = String(i)
+
+        onclickdown(btn as HTMLInputElement, async () => {
+            const idx = Number.parseInt(btn.dataset.index ?? '0', 10)
+            await restoreConfigSnapshot(idx)
+        })
+
+        item.appendChild(info)
+        item.appendChild(btn)
+        container.appendChild(item)
+    }
+}
+
+function snapshotStats(config: Sync): { folders: number; urls: number } {
+    const folders = config.links?.folders?.length ?? 0
+    let urls = 0
+
+    for (const folder of config.links?.folders ?? []) {
+        urls += countLinks(folder.items)
+    }
+
+    urls += config.links?.favorites?.length ?? 0
+    return { folders, urls }
+}
+
+function countLinks(items: { id: string }[]): number {
+    let count = 0
+    for (const item of items) {
+        if ('items' in item && Array.isArray((item as Record<string, unknown>).items)) {
+            count += countLinks((item as Record<string, unknown>).items as { id: string }[])
+        } else {
+            count++
+        }
+    }
+    return count
 }

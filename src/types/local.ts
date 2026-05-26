@@ -2,7 +2,7 @@ import type { Background } from './shared.ts'
 import type { Sync } from './sync.ts'
 
 export type BackgroundUrlState = 'NONE' | 'LOADING' | 'OK' | 'NOT_URL' | 'CANT_REACH' | 'NOT_MEDIA'
-export type SyncType = 'browser' | 'gist' | 'url' | 'off'
+export type SyncType = 'gist' | 'url' | 'off'
 
 export interface Local {
     fonts?: FontListItem[]

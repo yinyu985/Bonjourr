@@ -2,7 +2,6 @@ import { stringMaxSize } from '../../shared/generic.ts'
 import { tradThis } from '../../utils/translations.ts'
 export {
     getFolder,
-    getFolderByBookmarkSource,
     getFolderByTitle,
     getLink,
     getLinksInSubfolder,
@@ -18,6 +17,7 @@ import { isElem } from './model.ts'
 import type { LinkNode } from '../../../types/shared.ts'
 
 export const DEFAULT_FAVICON = 'src/assets/interface/default-favicon.png'
+export const FOLDER_ICON = 'src/assets/interface/folder.svg'
 
 export function getDefaultIcon(url: string, refresh?: number): string {
     return getRemoteFaviconUrl(url, refresh) ?? DEFAULT_FAVICON

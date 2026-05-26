@@ -58,7 +58,6 @@ Deno.test({
         incoming.links.folders.push({
             id: 'work',
             title: 'Work',
-            source: 'bookmarks',
             items: [
                 bookmarkLink('Remote work', 'https://example.com/work', 'bm-work'),
             ],
@@ -69,7 +68,6 @@ Deno.test({
         const work = merged.links.folders.find((group) => group.id === 'work')
 
         assert(work)
-        assertEquals(work.source, 'local')
         assert(
             work.items.some((link) => isElem(link) && link.url === 'https://example.com/work' && link.id !== 'bm-work'),
         )
@@ -138,8 +136,10 @@ Deno.test({
         const docs = getSubfolder(merged, 'docs-local')
 
         assert(docs)
-        assertEquals(docs.items.filter((link) => link.url === 'https://example.com/design').length, 1)
-        assert(docs.items.some((link) => link.url === 'https://example.com/spec' && link.id !== 'bm-spec'))
+        assertEquals(docs.items.filter((link) => isElem(link) && link.url === 'https://example.com/design').length, 1)
+        assert(
+            docs.items.some((link) => isElem(link) && link.url === 'https://example.com/spec' && link.id !== 'bm-spec'),
+        )
     },
 })
 
@@ -214,6 +214,35 @@ Deno.test({
 })
 
 Deno.test({
+    name: 'downloaded sync preserves duplicate URLs verbatim (no dedupe)',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: () => {
+        // Gist is the source of truth on download. If the remote stored two
+        // identical URLs in the same folder (because that's what the user's
+        // Chrome had), they must round-trip back unchanged — we are not
+        // allowed to silently dedupe here.
+        const incoming = structuredClone(SYNC_DEFAULT)
+        incoming.links.folders = [
+            group('work', 'Work', [
+                plainLink('Docs', 'https://example.com/docs'),
+                plainLink('Docs again', 'https://example.com/docs'),
+            ]),
+        ]
+
+        const next = computeDownloadedSync(incoming)
+        const work = next.links.folders.find((folder) => folder.id === 'work')
+
+        assert(work)
+        assertEquals(
+            work.items.filter((item) => isElem(item) && item.url === 'https://example.com/docs').length,
+            2,
+            'download must not collapse duplicates — Gist is the source of truth',
+        )
+    },
+})
+
+Deno.test({
     name: 'merge import (legacy append behavior) keeps locally-only links',
     sanitizeOps: false,
     sanitizeResources: false,
@@ -248,7 +277,6 @@ function group(id: string, title: string, items: LinkNode[]): LinkFolder {
     return {
         id,
         title,
-        source: 'local',
         items,
     }
 }

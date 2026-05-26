@@ -9,9 +9,12 @@ import type { Sync } from '../../../types/sync.ts'
 // Pure transformation used by the download path. Exposed (and kept in this
 // import-light module) so tests can assert the "incoming overwrites local,
 // deletions propagate" contract without pulling in DOM-touching modules.
+//
+// Important: the Gist is the single source of truth on download. We do NOT
+// dedupe here — if the remote stored two identical URLs (e.g. because Chrome
+// itself had two duplicate bookmarks), they must round-trip back unchanged.
 export function computeDownloadedSync(incoming: Partial<Sync>): Sync {
-    const normalized = mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
-    return dedupeSyncLinks(structuredClone(normalized))
+    return mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
 }
 
 export function mergeSyncAppend(current: Sync, incoming: Sync): Sync {
@@ -26,7 +29,6 @@ export function mergeSyncAppend(current: Sync, incoming: Sync): Sync {
             }
         } else {
             const clone = structuredClone(group)
-            clone.source = 'local'
             localizeNodeIds(clone.items)
             merged.links.folders.push(clone)
             groupIds.add(clone.id)

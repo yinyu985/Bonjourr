@@ -1,6 +1,6 @@
 import { fetchGistUpdatedAt, findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
-import { dedupeSyncLinks } from './merge.ts'
+import { saveConfigSnapshot } from './backup.ts'
 import { bootstrapBookmarksFromConfig, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
@@ -28,6 +28,12 @@ const urlsyncform = networkForm('f_urlsync')
 let syncLocked = false
 let autoUploadTimer = 0
 let lastSyncedPayload = ''
+// scheduleAutoUpload skips when syncLocked is true (we're mid-upload/-download
+// and don't want to fight ourselves). But edits during an upload still need
+// to propagate. We set this flag whenever a sync write is dropped because of
+// the lock; the lock-holder re-schedules an upload on its way out so the
+// debounce timer always exists when there's queued work.
+let pendingUpload = false
 const AUTO_UPLOAD_DEBOUNCE_MS = 30000
 // 启动期间每开一个新标签页都会调一次 autoSyncOnStartup 拉 Gist。
 // 频繁开标签页 = 短时间内打几十次 GitHub。同一会话 60s 内只查一次远端。
@@ -35,6 +41,15 @@ const STARTUP_FETCH_THROTTLE_MS = 60_000
 
 export function synchronization(init?: Local, update?: SyncUpdate): void {
     if (init) {
+        // Legacy: 'browser' was a Chrome/Firefox-Sync option that never did
+        // anything (storage.ts uses chrome.storage.local even for the 'sync'
+        // namespace). The option is gone — fold any old value into 'off' so
+        // the UI matches storage instead of falling through every switch.
+        if ((init.syncType as string) === 'browser') {
+            init.syncType = 'off'
+            storage.local.set({ syncType: 'off' })
+        }
+
         onSettingsLoad(() => {
             toggleSyncSettingsOption(init)
             setTimeout(() => handleStoragePersistence(init.syncType), 200)
@@ -88,18 +103,24 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         const next = await applyDownloadedSync(data, result.sync)
         lastSyncedPayload = syncPayloadHash(next)
         await storage.local.set({ gistLastSyncedAt: result.updatedAt })
+        // Just downloaded fresh remote state — any writes that landed during
+        // the download are reflected in `next`, so drop the pending flag.
+        pendingUpload = false
         fadeOut()
     } catch (err) {
         console.warn('Auto sync on startup failed', err)
         const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
         lastSyncedPayload = syncPayloadHash(current)
     } finally {
-        syncLocked = false
+        releaseSyncLock()
     }
 }
 
 function scheduleAutoUpload(): void {
     if (syncLocked) {
+        // The current sync writer (download or upload) will re-schedule us
+        // when it releases the lock — see releaseSyncLock().
+        pendingUpload = true
         return
     }
 
@@ -110,10 +131,19 @@ function scheduleAutoUpload(): void {
     autoUploadTimer = setTimeout(doAutoUpload, AUTO_UPLOAD_DEBOUNCE_MS)
 }
 
+function releaseSyncLock(): void {
+    syncLocked = false
+    if (pendingUpload) {
+        pendingUpload = false
+        scheduleAutoUpload()
+    }
+}
+
 async function doAutoUpload(): Promise<void> {
     autoUploadTimer = 0
 
     if (syncLocked) {
+        pendingUpload = true
         return
     }
 
@@ -144,11 +174,14 @@ async function doAutoUpload(): Promise<void> {
 
         const result = await sendGist(token, local.gistId, latest)
         lastSyncedPayload = payload
+        // Mid-upload writes are part of `latest` (re-bootstrapped above), so
+        // they made it to the remote — drop the pending flag.
+        pendingUpload = false
         storage.local.set({ gistLastSyncedAt: result.updatedAt, gistId: result.id })
     } catch (err) {
         console.warn('Auto upload failed', err)
     } finally {
-        syncLocked = false
+        releaseSyncLock()
     }
 }
 
@@ -181,7 +214,11 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                     const result = await retrieveGist(token, id)
                     const next = await applyDownloadedSync(data, result.sync)
                     lastSyncedPayload = syncPayloadHash(next)
-                    await storage.local.set({ gistLastSyncedAt: result.updatedAt })
+                    await storage.local.set({
+                        gistLastSyncedAt: result.updatedAt,
+                        gistLastFetchedAt: new Date().toISOString(),
+                    })
+                    pendingUpload = false
                     gistsyncform.accept()
                     fadeOut()
                 } catch (err) {
@@ -202,7 +239,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 }
             }
         } finally {
-            syncLocked = false
+            releaseSyncLock()
         }
     }
 
@@ -213,6 +250,10 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
         }
 
         if (local.syncType === 'gist') {
+            // Hold the lock for the duration of the manual upload too —
+            // otherwise auto-upload's debounced doAutoUpload could fire
+            // partway through and double-send to GitHub.
+            syncLocked = true
             gistsyncform.load()
 
             try {
@@ -231,6 +272,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
                 const result = await sendGist(token, local.gistId, latest)
                 lastSyncedPayload = syncPayloadHash(latest)
+                pendingUpload = false
 
                 gistsyncform.accept()
 
@@ -244,6 +286,8 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 setGistStatusNow()
             } catch (error) {
                 gistsyncform.warn(error as string)
+            } finally {
+                releaseSyncLock()
             }
         }
     }
@@ -275,7 +319,17 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             const foundId = await findGistId(local.gistToken)
 
             local.gistId = foundId ?? ''
+            // The previous token's last-sync timestamp is meaningless against
+            // a different gist — clear it so isRemoteNewer doesn't compare a
+            // stale local time against a fresh remote time and incorrectly
+            // skip the next download.
+            local.gistLastSyncedAt = undefined
             storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
+            storage.local.remove('gistLastSyncedAt')
+            storage.local.remove('gistLastFetchedAt')
+            // Different gist, different content — force the next sync to
+            // re-evaluate even if hashes happen to collide.
+            lastSyncedPayload = ''
 
             gistsyncform.accept()
             toggleSyncSettingsOption(local)
@@ -356,8 +410,7 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
     document.getElementById('disabled-sync')?.classList.toggle('shown', !choseStoragePersistence)
 
     switch (type) {
-        case 'off':
-        case 'browser': {
+        case 'off': {
             document.getElementById('url-sync')?.classList.remove('shown')
             document.getElementById('gist-sync')?.classList.remove('shown')
             break
@@ -403,45 +456,17 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
 // Type check
 
 function isSyncType(val = ''): val is SyncType {
-    return ['browser', 'gist', 'url', 'off'].includes(val)
+    return ['gist', 'url', 'off'].includes(val)
 }
 
-const ARCHIVE_PRE_SYNC_KEY = 'bonjourr-archive-pre-sync'
-
 async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Promise<Sync> {
-    const normalized = normalizeExternalSync(incoming)
-    let next = dedupeSyncLinks(structuredClone(normalized))
+    const next = normalizeExternalSync(incoming)
 
-    // Snapshot the soon-to-be-overwritten config so a failed clear+set still leaves
-    // the user with a recoverable copy in localStorage. Web mode shares a 5 MB
-    // localStorage quota with the live config, so cap the snapshot size.
-    try {
-        const snapshot = JSON.stringify(current)
-        if (snapshot.length < 2_000_000) {
-            localStorage.setItem(ARCHIVE_PRE_SYNC_KEY, snapshot)
-        }
-    } catch (_) {
-        // localStorage might be full; the sync still proceeds.
-    }
-
-    // Browser bookmarks are reconciled to match incoming exactly: bookmarks present
-    // locally but absent from the remote config are removed. This is what makes
-    // deletions on one device propagate to others.
-    await replaceBookmarksFromConfig(current, normalized)
+    saveConfigSnapshot(current, 'sync-download')
+    await replaceBookmarksFromConfig(current, next)
 
     await storage.sync.clear()
     await storage.sync.set(next)
-
-    next = await bootstrapBookmarksFromConfig(next)
-    await storage.sync.set(next)
-
-    // 走到这里说明覆盖成功，快照不再需要；不清的话每次同步都会留一份 ≤2MB 的旧 config
-    // 占着 localStorage（在线模式 5MB 配额、与正在用的 config 共享），积累下来会触发 quota。
-    try {
-        localStorage.removeItem(ARCHIVE_PRE_SYNC_KEY)
-    } catch (_) {
-        //
-    }
 
     return next
 }
@@ -471,7 +496,7 @@ function getSettingsTextAreaSync(): Sync | undefined {
         const parsed = JSON.parse(value) as Partial<Sync>
 
         if (parsed?.links) {
-            return dedupeSyncLinks(normalizeExternalSync(parsed))
+            return normalizeExternalSync(parsed)
         }
 
         throw 'Settings JSON is missing required fields.'
@@ -498,5 +523,4 @@ function syncPayloadHash(data: Sync): string {
 export const __testing = {
     applyDownloadedSync,
     syncPayloadHash,
-    ARCHIVE_PRE_SYNC_KEY,
 }

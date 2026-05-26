@@ -53,7 +53,7 @@ function createFolderTabs(data: Sync): void {
         button.dataset.group = folder.id
         button.classList.add('link-title')
         button.classList.toggle('selected-group', folder.id === data.links.selectedFolder)
-        button.classList.toggle('synced', folder.source === 'bookmarks')
+        button.classList.remove('synced')
 
         if (isTopSite) {
             button.textContent = tradThis('Most visited')

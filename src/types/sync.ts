@@ -36,11 +36,8 @@ export interface LinksState {
 export interface LinkFolder {
     id: string
     title: string
-    source: LinkFolderSource
     items: LinkNode[]
 }
-
-export type LinkFolderSource = 'local' | 'bookmarks'
 
 export interface Hide {
     clock?: boolean
