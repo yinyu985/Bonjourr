@@ -1124,7 +1124,7 @@ function renderSnapshotsList(): void {
         btn.textContent = tradThis('Restore')
         btn.dataset.index = String(i)
 
-        onclickdown(btn as HTMLInputElement, async () => {
+        onclickdown(btn, async () => {
             const idx = Number.parseInt(btn.dataset.index ?? '0', 10)
             await restoreConfigSnapshot(idx)
         })
