@@ -7,7 +7,7 @@ Bonjourr is a minimalist new tab browser extension (Chrome, Edge, Firefox, Safar
 1. **Deno only.** Never invoke `npm`, `pnpm`, `yarn`, or `node` directly. If a Deno task fails, stop and ask rather than reaching for npm. (`nodeModulesDir: "auto"` in `deno.json` lets Deno hydrate `node_modules/` itself for `npm:` imports.)
 2. **No new dependencies.** Find a native solution before adding one. Allowed external imports are pinned in `deno.json` `imports`; the `no-external-import` lint rule enforces this.
 3. **Prefer repetition over cleverness.** Repeat yourself rather than write difficult or unreadable code.
-4. **Run `deno task check` after finishing changes** (format + lint + type check + tests). No need to run it between edits.
+4. **MANDATORY: Run `deno task check` before reporting any task as done** (format + lint + type check + tests). This is non-negotiable — if this step is skipped, CI will fail. No need to run it between edits, but you MUST run it once at the end and fix any errors before finishing.
 
 如果是一些简单的编辑任务，你可以让我的另外一个 agent 来执行。下面是一个样例，你可以这样调用它：
 
