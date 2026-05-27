@@ -179,7 +179,11 @@ aside select {
     top: calc(100% + 4px);
     left: 0;
     z-index: 9999;
-    display: none;
+    display: grid;
+    gap: 2px;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
     padding: 4px;
     overflow-x: hidden;
     overflow-y: auto;
@@ -217,8 +221,9 @@ aside select {
 }
 
 .custom-select-options.open {
-    display: grid;
-    gap: 2px;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .custom-select-options button {

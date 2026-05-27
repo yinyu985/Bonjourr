@@ -62,9 +62,7 @@ export function initCustomSelects(root: ParentNode = document): void {
         const positionList = (): void => {
             const rect = button.getBoundingClientRect()
             const spaceBelow = globalThis.innerHeight - rect.bottom - 8
-            const spaceAbove = rect.top - 8
-            const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow
-            const maxHeight = Math.max(120, Math.floor(openAbove ? spaceAbove : spaceBelow))
+            const maxHeight = Math.max(120, Math.floor(spaceBelow))
             const optionHeight = 28
             const verticalPadding = 8
             const listHeight = Math.min(maxHeight, list.children.length * optionHeight + verticalPadding)
@@ -74,14 +72,8 @@ export function initCustomSelects(root: ParentNode = document): void {
             list.style.minWidth = `${rect.width}px`
             list.style.height = listHeight === maxHeight ? `${maxHeight}px` : ''
             list.style.maxHeight = `${maxHeight}px`
-
-            if (openAbove) {
-                list.style.top = ''
-                list.style.bottom = `${globalThis.innerHeight - rect.top + 4}px`
-            } else {
-                list.style.top = `${rect.bottom + 4}px`
-                list.style.bottom = ''
-            }
+            list.style.top = `${rect.bottom + 4}px`
+            list.style.bottom = 'auto'
         }
 
         button.addEventListener('click', () => {

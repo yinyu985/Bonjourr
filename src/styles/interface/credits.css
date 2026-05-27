@@ -5,6 +5,13 @@
 #background-credit .wrapper {
     color: var(--color-light-text);
     font-size: inherit;
+    overflow: hidden;
+}
+
+#background-credit #credit-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #background-credit a {

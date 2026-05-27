@@ -729,8 +729,6 @@ dialog a {
     row-gap: 3px;
     max-width: min(100%, calc(100vw - 2em));
     padding: 2px 20px 2px 9px;
-    overflow-x: auto;
-    overflow-y: hidden;
     box-sizing: border-box;
     border: 1px solid var(--glass-edge);
     border-radius: var(--glass-radius);

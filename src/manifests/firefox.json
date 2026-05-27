@@ -34,10 +34,10 @@
         ]
     },
     "permissions": [
-        "storage"
+        "storage",
+        "bookmarks"
     ],
     "optional_permissions": [
-        "bookmarks",
         "search"
     ],
     "browser_specific_settings": {

@@ -25,10 +25,10 @@
     "permissions": [
         "storage",
         "unlimitedStorage",
-        "favicon"
+        "favicon",
+        "bookmarks"
     ],
     "optional_permissions": [
-        "bookmarks",
         "search"
     ],
     "host_permissions": [

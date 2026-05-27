@@ -59,3 +59,21 @@ function flattenKeys(obj: object): string[] {
 function isObject(value: unknown): value is object {
     return !Array.isArray(value) && value !== null && typeof value === 'object'
 }
+
+export function stableStringify(value: unknown, space?: number): string {
+    return JSON.stringify(sortKeys(value), undefined, space)
+}
+
+function sortKeys(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(sortKeys)
+    }
+    if (isObject(value)) {
+        const sorted: Record<string, unknown> = {}
+        for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+            sorted[key] = sortKeys((value as Record<string, unknown>)[key])
+        }
+        return sorted
+    }
+    return value
+}

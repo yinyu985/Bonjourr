@@ -4,6 +4,7 @@ import { saveConfigSnapshot } from './backup.ts'
 import { bootstrapBookmarksFromConfig, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
+import { stableStringify } from '../../utils/stringify.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { fadeOut } from '../../shared/dom.ts'
 import { networkForm } from '../../shared/form.ts'
@@ -161,6 +162,7 @@ async function doAutoUpload(): Promise<void> {
         if (local.gistId && local.gistLastSyncedAt) {
             const remoteUpdatedAt = await fetchGistUpdatedAt(token, local.gistId)
             if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, local.gistLastSyncedAt)) {
+                pendingUpload = false
                 return
             }
         }
@@ -169,13 +171,12 @@ async function doAutoUpload(): Promise<void> {
         const payload = syncPayloadHash(latest)
 
         if (payload === lastSyncedPayload) {
+            pendingUpload = false
             return
         }
 
         const result = await sendGist(token, local.gistId, latest)
         lastSyncedPayload = payload
-        // Mid-upload writes are part of `latest` (re-bootstrapped above), so
-        // they made it to the remote — drop the pending flag.
         pendingUpload = false
         storage.local.set({ gistLastSyncedAt: result.updatedAt, gistId: result.id })
     } catch (err) {
@@ -277,13 +278,13 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 gistsyncform.accept()
 
                 const localPatch: Partial<Local> = { gistLastSyncedAt: result.updatedAt }
-                if (!local.gistId) {
+                if (result.id !== local.gistId) {
                     local.gistId = result.id
                     localPatch.gistId = result.id
                 }
                 storage.local.set(localPatch)
 
-                setGistStatusNow()
+                setGistStatusNow(local.gistId)
             } catch (error) {
                 gistsyncform.warn(error as string)
             } finally {
@@ -512,11 +513,7 @@ function normalizeExternalSync(data: Partial<Sync>): Sync {
 function syncPayloadHash(data: Sync): string {
     const { selectedFolder: _, ...links } = data.links
     const notes = data.notes ? { records: data.notes.records } : undefined
-    // 不用 utils/stringify：它走 JSON.stringify 的 replacer 数组、只让 SYNC_DEFAULT
-    // 扁平键通过，会把 notes.records 里 {id,title,content,updatedAt} 全过滤成 {}，
-    // 导致改笔记内容 hash 不变、不触发上传。裸 JSON.stringify 在同一段代码路径下
-    // V8 会保持插入顺序，hash 足够稳定。
-    return JSON.stringify({ ...data, links, notes })
+    return stableStringify({ ...data, links, notes })
 }
 
 // 仅供集成测试访问内部函数；不要在生产代码中使用。
