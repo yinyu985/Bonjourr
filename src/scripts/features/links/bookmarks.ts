@@ -70,6 +70,9 @@ let bookmarkRestoreInProgress = false
 let bookmarkRefreshQueued = false
 let bookmarkRestoreReleaseTimer = 0
 
+const skipBookmarkSync = !!sessionStorage.getItem('skipBookmarkSync')
+sessionStorage.removeItem('skipBookmarkSync')
+
 export async function linksImport(): Promise<void> {
     const data = await storage.sync.get()
     const refreshed = await initBookmarkSync(data)
@@ -104,11 +107,14 @@ export async function initBookmarkSync(data: Sync): Promise<Sync> {
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    let mutated = applySyncedFolders(data)
-    mutated = applyFavoritesFromToolbar(data) || mutated
 
-    if (mutated) {
-        await storage.sync.set(data)
+    if (!skipBookmarkSync) {
+        let mutated = applySyncedFolders(data)
+        mutated = applyFavoritesFromToolbar(data) || mutated
+
+        if (mutated) {
+            await storage.sync.set(data)
+        }
     }
 
     addBookmarkListeners()
@@ -121,6 +127,13 @@ function applySyncedFolders(data: Sync): boolean {
 
     for (const browserFolder of browserBookmarkFolders) {
         if (browserFolder.title === FAVORITES_FOLDER) {
+            continue
+        }
+
+        if (
+            browserFolder.title === 'default' && browserFolder.bookmarks.length === 0 &&
+            browserFolder.children.length === 0
+        ) {
             continue
         }
 
@@ -157,10 +170,9 @@ function applySyncedFolders(data: Sync): boolean {
         mutated = mirrorFolderIntoFolder(folder, browserFolder) || mutated
     }
 
-    const previousIds = data.links.folders.map((f) => f.id)
-    for (const id of previousIds) {
-        if (!syncedFolderIds.includes(id)) {
-            removeFolder(data, id)
+    for (const folder of [...data.links.folders]) {
+        if (!syncedFolderIds.includes(folder.id)) {
+            removeFolder(data, folder.id)
             mutated = true
         }
     }
@@ -170,12 +182,8 @@ function applySyncedFolders(data: Sync): boolean {
         mutated = true
     }
 
-    if (removeEmptyDefaultFolder(data)) {
-        mutated = true
-    }
-
     if (!data.links.folders.some((folder) => folder.id === data.links.selectedFolder)) {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
+        data.links.selectedFolder = data.links.folders[0]?.id ?? ''
         mutated = true
     }
 
@@ -236,26 +244,6 @@ function applyFavoritesFromToolbar(data: Sync): boolean {
     return previous !== stableStringify(data.links.favorites)
 }
 
-function removeEmptyDefaultFolder(data: Sync): boolean {
-    if (data.links.folders.length < 2) {
-        return false
-    }
-
-    const defaultFolder = data.links.folders.find((folder) => folder.id === 'default')
-
-    if (!defaultFolder || defaultFolder.items.length > 0) {
-        return false
-    }
-
-    data.links.folders = data.links.folders.filter((folder) => folder.id !== 'default')
-
-    if (data.links.selectedFolder === 'default') {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
-    }
-
-    return true
-}
-
 function addBookmarkListeners(): void {
     if (bookmarkListenerAdded) {
         return
@@ -307,6 +295,10 @@ export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
     const treenode = await getBookmarkTree()
 
     if (!treenode) {
+        return data
+    }
+
+    if (skipBookmarkSync) {
         return data
     }
 
@@ -403,8 +395,22 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
         }
 
         const parentNode = chromeTree.get(parentId)
-        const result = await syncItemsToChrome(parentId, desiredItems, parentNode?.children ?? [], bookmarksApi)
+        const existingChildren = folderTitle === FAVORITES_FOLDER
+            ? (parentNode?.children ?? []).filter((c) => !!c.url)
+            : parentNode?.children ?? []
+        const result = await syncItemsToChrome(parentId, desiredItems, existingChildren, bookmarksApi)
         mutated = result || mutated
+    }
+
+    for (const child of toolbar.children ?? []) {
+        if (child.children && !desiredFolders.has(child.title ?? '')) {
+            try {
+                await bookmarksApi.removeTree(child.id)
+                mutated = true
+            } catch (_) {
+                // best effort
+            }
+        }
     }
 
     mutated = await normalizeBookmarkToolbarOrder(bookmarksApi) || mutated
@@ -448,7 +454,7 @@ async function getRestorableRoot(): Promise<Treenode | undefined> {
     return treenode?.[0]
 }
 
-function holdBookmarkRefreshes(): void {
+export function holdBookmarkRefreshes(): void {
     bookmarkRestoreInProgress = true
 
     if (bookmarkRestoreReleaseTimer) {

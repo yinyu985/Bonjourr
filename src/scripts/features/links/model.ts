@@ -22,18 +22,14 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
     data.links = normalizeCurrentLinks({
         enabled: true,
         foldersOn: false,
-        selectedFolder: 'default',
+        selectedFolder: '',
         rows: 16,
         iconRadius: 0,
         style: 'text',
         newTab: true,
         titles: false,
         backgrounds: true,
-        folders: [{
-            id: 'default',
-            title: 'default',
-            items: [],
-        }],
+        folders: [],
         favorites: [],
     })
 
@@ -159,16 +155,8 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
         folder.items = normalizeItems(folder.items)
     }
 
-    if (links.folders.length === 0) {
-        links.folders.push({
-            id: 'default',
-            title: 'default',
-            items: [],
-        })
-    }
-
     if (!links.folders.some((folder) => folder.id === links.selectedFolder)) {
-        links.selectedFolder = links.folders[0].id
+        links.selectedFolder = links.folders[0]?.id ?? ''
     }
 
     links.style = links.style === 'inline' || links.style === 'text' ? links.style : 'text'

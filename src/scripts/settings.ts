@@ -8,6 +8,7 @@ import { getConfigSnapshots, restoreConfigSnapshot, saveConfigSnapshot } from '.
 import { hideElements } from './features/hide.ts'
 import {
     bootstrapBookmarksFromConfig,
+    holdBookmarkRefreshes,
     linksImport,
     replaceBookmarksFromConfig,
     restoreBookmarksFromConfig,
@@ -905,6 +906,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
         if (mode === 'replace') {
             saveConfigSnapshot(current, 'import-replace')
             await replaceBookmarksFromConfig(current, importedData)
+            holdBookmarkRefreshes()
         }
 
         await storage.sync.clear()
@@ -915,6 +917,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
             await storage.sync.set(data)
         }
 
+        sessionStorage.setItem('skipBookmarkSync', '1')
         fadeOut()
     } catch (err) {
         console.warn('Import settings failed', err)

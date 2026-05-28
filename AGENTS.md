@@ -96,6 +96,7 @@ Each locale has `translations.json` (in-app strings) and `messages.json` (extens
 
 ## Reference docs
 
+- **`SPEC.md` — 架构规范（权威设计文档）。所有改动必须符合此规范，尤其是数据优先级（Remote > Chrome Bookmarks > Plugin Config）、书签同步流程、CSS 作用域规则。改代码前先读此文件。**
 - `docs/TECHNICAL.md` — extended conventions for build, feature pattern, settings wiring, CSS architecture.
 - `tests/README.md` — manual QA checklist run before releases (automated tests don't cover UI flows).
 - `CHANGELOG.md` — release history; tagging `v*` triggers `.github/workflows/release.yml` to publish zip archives.

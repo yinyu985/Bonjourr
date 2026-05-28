@@ -62,7 +62,8 @@ Deno.test({
     sanitizeResources: false,
     fn: () => {
         const a = structuredClone(SYNC_DEFAULT)
-        const b = structuredClone(SYNC_DEFAULT)
+        a.links.folders = [{ id: 'test', title: 'test', items: [] }]
+        const b = structuredClone(a)
         b.links.folders[0].items.push({
             id: 'links0001',
             title: 'New',

@@ -651,8 +651,8 @@ dialog a {
     transform: none;
 }
 
-.inline .link-folder,
-.inline .link a {
+.inline .link-group .link-folder,
+.inline .link-group .link a {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -680,10 +680,12 @@ dialog a {
 
 /* Text */
 
-.text {
+#linkblocks.text {
     --min-height: 2em;
+    --block-size: 2em;
     --column-gap: 14px;
     --row-gap: 8px;
+    --icon-size: max(14px, 1.6em);
     --folder-padding: 16px;
     justify-content: flex-start;
 }

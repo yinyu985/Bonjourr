@@ -1,7 +1,7 @@
 import { fetchGistUpdatedAt, findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { saveConfigSnapshot } from './backup.ts'
-import { bootstrapBookmarksFromConfig, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
+import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { stableStringify } from '../../utils/stringify.ts'
@@ -465,9 +465,12 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
 
     saveConfigSnapshot(current, 'sync-download')
     await replaceBookmarksFromConfig(current, next)
+    holdBookmarkRefreshes()
 
     await storage.sync.clear()
     await storage.sync.set(next)
+
+    sessionStorage.setItem('skipBookmarkSync', '1')
 
     return next
 }

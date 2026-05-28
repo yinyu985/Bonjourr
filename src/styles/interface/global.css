@@ -8,7 +8,6 @@
     padding: 4rem 1rem 6rem;
     margin: 0 auto;
     box-sizing: border-box;
-    will-change: transform;
     font-size: var(--font-size);
     font-family: var(--font-family);
     font-weight: var(--font-weight);
@@ -17,7 +16,7 @@
     grid-template-rows: minmax(0, 1fr);
     align-items: center;
     justify-items: center;
-    transition: opacity var(--load-time-transition), transform 0.4s var(--ease-out-expo);
+    transition: opacity var(--load-time-transition);
 }
 
 @supports not (min-height: 100dvh) {

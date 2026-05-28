@@ -108,18 +108,14 @@ export const SYNC_DEFAULT: Sync = {
     links: {
         enabled: true,
         foldersOn: false,
-        selectedFolder: 'default',
+        selectedFolder: '',
         rows: 16,
         iconRadius: 0,
         style: 'text',
         newTab: true,
         titles: false,
         backgrounds: true,
-        folders: [{
-            id: 'default',
-            title: 'default',
-            items: [],
-        }],
+        folders: [],
         favorites: [],
     },
 }

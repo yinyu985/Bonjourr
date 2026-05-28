@@ -1,4 +1,4 @@
-import { replaceBookmarksFromConfig } from '../links/bookmarks.ts'
+import { holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { storage } from '../../storage.ts'
 import { fadeOut } from '../../shared/dom.ts'
 
@@ -75,9 +75,12 @@ export async function restoreConfigSnapshot(index: number): Promise<boolean> {
     // Chrome's *current* (un-restored) bookmarks back into data.links and
     // silently undo the bookmark portion of the restore.
     await replaceBookmarksFromConfig(current, target.config)
+    holdBookmarkRefreshes()
 
     await storage.sync.clear()
     await storage.sync.set(target.config)
+
+    sessionStorage.setItem('skipBookmarkSync', '1')
     fadeOut()
     return true
 }

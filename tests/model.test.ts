@@ -231,12 +231,12 @@ Deno.test('allLinks flattens links from all folders and subfolders', () => {
 
 // normalizeLinksState
 
-Deno.test('normalizeLinksState creates default folder if empty', () => {
+Deno.test('normalizeLinksState leaves empty folders alone', () => {
     const data: Partial<Sync> = {
         links: {
             enabled: true,
             foldersOn: false,
-            selectedFolder: 'default',
+            selectedFolder: '',
             rows: 16,
             iconRadius: 0,
             style: 'text',
@@ -249,8 +249,8 @@ Deno.test('normalizeLinksState creates default folder if empty', () => {
     }
     const links = normalizeLinksState(data)
 
-    assertEquals(links.folders.length, 1)
-    assertEquals(links.folders[0].title, 'default')
+    assertEquals(links.folders.length, 0)
+    assertEquals(links.selectedFolder, '')
 })
 
 Deno.test('normalizeLinksState fixes invalid selectedFolder', () => {
