@@ -89,7 +89,7 @@ export const SYNC_DEFAULT: Sync = {
         type: 'color',
         blur: 0,
         bright: 0.78,
-        frequency: 'pause',
+        frequency: 'hour',
         color: '#222222',
         urls: '',
         images: '',

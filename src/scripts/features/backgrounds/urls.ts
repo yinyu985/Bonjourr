@@ -1,4 +1,5 @@
 import { applyBackground, removeBackgrounds } from './index.ts'
+import { backgroundUrlsFromText } from './cache.ts'
 import { stringMaxSize } from '../../shared/generic.ts'
 import { needsChange } from '../../shared/time.ts'
 import { storage } from '../../storage.ts'
@@ -16,6 +17,13 @@ let globalUrlValue = ''
 let backgroundUrlsEditor: PrismEditor
 
 export function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): void {
+    syncLocalUrlsFromConfig(backgrounds, local)
+
+    if (backgrounds.frequency === 'pause' && backgrounds.pausedUrl) {
+        applyBackground(urlAsBackgroundMedia(backgrounds.pausedUrl))
+        return
+    }
+
     const urls = lastUsedValidUrls(local.backgroundUrls ?? {})
 
     if (urls.length === 0) {
@@ -47,6 +55,23 @@ export function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew
     applyBackground(urlAsBackgroundMedia(url, metadata))
 }
 
+function syncLocalUrlsFromConfig(backgrounds: Backgrounds, local: Local): void {
+    const nextUrls = backgroundUrlsFromText(backgrounds.urls)
+    const currentKeys = Object.keys(local.backgroundUrls ?? {}).toSorted()
+    const nextKeys = Object.keys(nextUrls).toSorted()
+
+    if (currentKeys.join('\n') === nextKeys.join('\n')) {
+        return
+    }
+
+    for (const [url, metadata] of Object.entries(nextUrls)) {
+        nextUrls[url] = local.backgroundUrls?.[url] ?? metadata
+    }
+
+    local.backgroundUrls = nextUrls
+    storage.local.set({ backgroundUrls: nextUrls })
+}
+
 export function lastUsedValidUrls(metadatas: Local['backgroundUrls']): string[] {
     const getTime = (item: BackgroundUrl) => new Date(item.lastUsed).getTime()
     const entries = Object.entries(metadatas)
@@ -58,7 +83,7 @@ export function lastUsedValidUrls(metadatas: Local['backgroundUrls']): string[] 
     return urls
 }
 
-function urlAsBackgroundMedia(url: string, _metadata: BackgroundUrl): Background {
+function urlAsBackgroundMedia(url: string, _metadata?: BackgroundUrl): Background {
     return {
         format: 'image',
         page: '',
@@ -152,16 +177,7 @@ export function toggleUrlsButton(storage: string, value: string): void {
 
 export function applyUrls(backgrounds: Backgrounds): void {
     const editorValue = backgroundUrlsEditor.value
-    const backgroundUrls: Local['backgroundUrls'] = {}
-
-    for (const url of editorValue.split('\n')) {
-        if (url.startsWith('http')) {
-            backgroundUrls[url] = {
-                lastUsed: new Date().toString(),
-                state: 'NONE',
-            }
-        }
-    }
+    const backgroundUrls: Local['backgroundUrls'] = backgroundUrlsFromText(editorValue, 'NONE')
 
     globalUrlValue = backgrounds.urls = editorValue
     storage.local.set({ backgroundUrls })

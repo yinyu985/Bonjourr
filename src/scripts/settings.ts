@@ -1,6 +1,7 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
 import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
 import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/index.ts'
+import { resetBackgroundRuntimeCache } from './features/backgrounds/cache.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { mergeSyncAppend } from './features/synchronization/merge.ts'
@@ -18,7 +19,7 @@ import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
 import { initCustomSelects, refreshCustomSelects } from './shared/custom-select.ts'
-import { CURRENT_VERSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
+import { CURRENT_VERSION, EXTENSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
@@ -904,6 +905,7 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
         if (mode === 'replace') {
             await replaceBookmarksFromConfig(current, importedData)
             holdBookmarkRefreshes()
+            await resetBackgroundRuntimeCache(importedData.backgrounds)
         }
 
         await storage.sync.clear()
@@ -923,13 +925,24 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
 
 async function resetSettings(action: 'yes' | 'no' | 'first'): Promise<void> {
     if (action === 'yes') {
+        // 直接清空 Chrome 书签栏，不用 replaceBookmarksFromConfig。
+        // replaceBookmarksFromConfig 逐项遍历删除，几十个书签就要跑几十次 API，
+        // 用户看到的反应就是"卡住了不动"。这里直接删 toolbar 的子节点，一次到位。
         try {
-            const current = await storage.sync.get()
-            await replaceBookmarksFromConfig(current, SYNC_DEFAULT)
+            holdBookmarkRefreshes()
+            const tree = await EXTENSION?.bookmarks?.getTree()
+            const toolbar = tree?.[0]?.children?.[0]
+            if (toolbar?.children) {
+                for (const child of toolbar.children) {
+                    await EXTENSION!.bookmarks!.removeTree(child.id)
+                }
+            }
         } catch (_) {
-            // Bookmark clearing is best-effort; proceed with storage reset
+            // best effort
         }
-        storage.clearall().then(fadeOut)
+        await resetBackgroundRuntimeCache(SYNC_DEFAULT.backgrounds)
+        await storage.clearall()
+        fadeOut()
         return
     }
 

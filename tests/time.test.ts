@@ -70,8 +70,7 @@ Deno.test('needsChange with "pause" returns true only when last is 0', () => {
 
 Deno.test('needsChange with "hour" detects hour change', () => {
     const now = new Date()
-    const sameHour = new Date(now)
-    sameHour.setMinutes(now.getMinutes() - 1)
+    const sameHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours())
 
     const differentHour = new Date(now)
     differentHour.setHours(now.getHours() - 1)
@@ -82,11 +81,8 @@ Deno.test('needsChange with "hour" detects hour change', () => {
 
 Deno.test('needsChange with "day" detects day change', () => {
     const now = new Date()
-    const sameDay = new Date(now)
-    sameDay.setHours(now.getHours() - 1)
-
-    const yesterday = new Date(now)
-    yesterday.setDate(now.getDate() - 1)
+    const sameDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
 
     assertEquals(needsChange('day', sameDay.getTime()), false)
     assertEquals(needsChange('day', yesterday.getTime()), true)

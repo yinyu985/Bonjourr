@@ -90,7 +90,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
-        storage.local.set({ backgroundLastChange: '2024-01-01' })
+        await storage.local.set({ backgroundLastChange: '2024-01-01' })
         const local = await storage.local.get('backgroundLastChange')
 
         assertEquals(local.backgroundLastChange, '2024-01-01')
@@ -102,7 +102,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
-        storage.local.set({ backgroundLastChange: '2024-06-01' })
+        await storage.local.set({ backgroundLastChange: '2024-06-01' })
         await storage.local.remove('backgroundLastChange')
         const local = await storage.local.get('backgroundLastChange')
 

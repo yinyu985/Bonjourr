@@ -33,8 +33,8 @@ interface Storage {
     }
     local: {
         get: (key?: keyof Local | (keyof Local)[]) => Promise<Local>
-        set: (val: Partial<Local>) => void
-        remove: (key: keyof Local) => void
+        set: (val: Partial<Local>) => Promise<void>
+        remove: (key: keyof Local) => Promise<void>
         clear: () => void
     }
     type: {
@@ -211,10 +211,10 @@ async function syncClear(): Promise<void> {
 
 //	Local data
 
-function localSet(value: Record<string, unknown>): void {
+async function localSet(value: Record<string, unknown>): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
-            chrome.storage.local.set(value).catch((err) => {
+            await chrome.storage.local.set(value).catch((err) => {
                 reportStorageError('local-write', err)
             })
             return

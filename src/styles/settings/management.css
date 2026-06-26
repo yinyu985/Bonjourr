@@ -56,6 +56,12 @@
 
 /*  Synchronization  */
 
+#gist-sync-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 #gist-sync-status-wrapper {
     display: flex;
     flex-direction: column;

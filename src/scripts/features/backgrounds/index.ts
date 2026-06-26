@@ -2,6 +2,11 @@ import { applyUrls, getUrlsAsCollection, initUrlsEditor, urlsCacheControl } from
 import { handleBackgroundActions, initBackgroundActionsEvents } from '../contextmenu.ts'
 import { settingsBackgroundColor } from '../others.ts'
 import { toggleCredits, updateCredits } from './credits.ts'
+import {
+    currentBackgroundRuntimeVersion,
+    invalidateBackgroundRuntime,
+    isCurrentBackgroundRuntimeVersion,
+} from './cache.ts'
 import { TEXTURE_RANGES } from './textures.ts'
 import { PROVIDERS } from './providers.ts'
 import {
@@ -104,8 +109,13 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
 // 	Storage update
 
 export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> {
+    const updateVersion = currentBackgroundRuntimeVersion()
     const data = await storage.sync.get('backgrounds')
     const local = await storage.local.get()
+
+    if (!isCurrentBackgroundRuntimeVersion(updateVersion)) {
+        return
+    }
 
     data.backgrounds.queries ??= {}
     local.backgroundCollections ??= {}
@@ -118,18 +128,19 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.blur !== undefined) {
         applyFilters({ blur: Number.parseFloat(update.blur) })
-        propertiesUpdateDebounce({ blur: Number.parseFloat(update.blur) })
+        propertiesUpdateDebounce({ blur: Number.parseFloat(update.blur) }, currentBackgroundRuntimeVersion())
         return
     }
 
     if (update.bright !== undefined) {
         applyFilters({ bright: Number.parseFloat(update.bright) })
-        propertiesUpdateDebounce({ bright: Number.parseFloat(update.bright) })
+        propertiesUpdateDebounce({ bright: Number.parseFloat(update.bright) }, currentBackgroundRuntimeVersion())
         return
     }
 
     if (isBackgroundType(update.type)) {
         data.backgrounds.type = update.type
+        unlockBackgroundFrequency(data.backgrounds)
         storage.sync.set({ backgrounds: data.backgrounds })
         createProviderSelect(data.backgrounds)
         handleBackgroundOptions(data.backgrounds)
@@ -151,6 +162,9 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
                 const [_, list] = getUrlsAsCollection(local)
                 data.backgrounds.pausedUrl = list[0].urls.full
             }
+        } else {
+            delete data.backgrounds.pausedImage
+            delete data.backgrounds.pausedUrl
         }
 
         storage.sync.set({ backgrounds: data.backgrounds })
@@ -178,15 +192,27 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.color) {
         colorInput('solid-background', update.color)
+        const unlocked = unlockBackgroundFrequency(data.backgrounds)
+
+        if (unlocked) {
+            data.backgrounds.color = update.color
+            storage.sync.set({ backgrounds: data.backgrounds })
+        }
+
         applyBackground(update.color)
-        colorUpdateDebounce(update.color)
+        colorUpdateDebounce(update.color, currentBackgroundRuntimeVersion())
     }
 
     if (update.urlsapply) {
+        unlockBackgroundFrequency(data.backgrounds)
         applyUrls(data.backgrounds)
     }
 
     if (update.files) {
+        if (unlockBackgroundFrequency(data.backgrounds)) {
+            storage.sync.set({ backgrounds: data.backgrounds })
+        }
+
         addLocalBackgrounds(update.files, local)
     }
 
@@ -194,20 +220,20 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.texturecolor !== undefined) {
         data.backgrounds.texture.color = update.texturecolor
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
         colorInput('texture-color', update.texturecolor)
         applyTexture(data.backgrounds.texture)
     }
 
     if (update.textureopacity !== undefined) {
         data.backgrounds.texture.opacity = Number.parseFloat(update.textureopacity)
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
         applyTexture(data.backgrounds.texture)
     }
 
     if (update.texturesize !== undefined) {
         data.backgrounds.texture.size = Number.parseInt(update.texturesize)
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture })
+        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
         applyTexture(data.backgrounds.texture)
     }
 
@@ -237,6 +263,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     }
 
     if (update.provider) {
+        unlockBackgroundFrequency(data.backgrounds)
         data.backgrounds[data.backgrounds.type] = update.provider
         storage.sync.set({ backgrounds: data.backgrounds })
         handleBackgroundOptions(data.backgrounds)
@@ -265,6 +292,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
         // 1. Save query
 
+        unlockBackgroundFrequency(data.backgrounds)
         local.backgroundCollections[collectionName] = []
         data.backgrounds.queries[collectionName] = query
         storage.sync.set({ backgrounds: data.backgrounds })
@@ -292,8 +320,39 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     }
 }
 
-export async function filtersUpdate({ blur, bright, texture }: Partial<Backgrounds>): Promise<void> {
+function unlockBackgroundFrequency(backgrounds: Backgrounds): boolean {
+    if (backgrounds.frequency !== 'pause') {
+        return false
+    }
+
+    backgrounds.frequency = 'hour'
+    delete backgrounds.pausedImage
+    delete backgrounds.pausedUrl
+
+    const frequencyInput = document.querySelector<HTMLSelectElement>('#i_freq')
+
+    if (frequencyInput) {
+        frequencyInput.value = backgrounds.frequency
+    }
+
+    handleBackgroundActions(backgrounds)
+
+    return true
+}
+
+export async function filtersUpdate(
+    { blur, bright, texture }: Partial<Backgrounds>,
+    runtimeVersion = currentBackgroundRuntimeVersion(),
+): Promise<void> {
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
+
     const data = await storage.sync.get('backgrounds')
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
 
     if (blur !== undefined) {
         data.backgrounds.blur = blur
@@ -308,8 +367,17 @@ export async function filtersUpdate({ blur, bright, texture }: Partial<Backgroun
     storage.sync.set({ backgrounds: data.backgrounds })
 }
 
-async function solidUpdate(value: string): Promise<void> {
+async function solidUpdate(value: string, runtimeVersion = currentBackgroundRuntimeVersion()): Promise<void> {
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
+
     const data = await storage.sync.get('backgrounds')
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
+
     data.backgrounds.color = value
     storage.sync.set({ backgrounds: data.backgrounds })
 }
@@ -318,6 +386,11 @@ async function solidUpdate(value: string): Promise<void> {
 
 async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): Promise<void> {
     if (backgrounds.type === 'color') {
+        return
+    }
+
+    if (backgrounds.type === 'images' && backgrounds.frequency === 'pause' && backgrounds.pausedImage) {
+        applyBackground(backgrounds.pausedImage)
         return
     }
 
@@ -584,8 +657,13 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
     let resolution = res ? res : detectBackgroundSize()
 
     if (typeof media === 'string') {
-        mediaWrapper?.childNodes.forEach((node) => node.remove())
+        invalidateBackgroundRuntime()
+        Array.from(mediaWrapper?.childNodes ?? []).forEach((node) => node.remove())
+        document.getElementById('background-wrapper')?.classList.remove('hidden')
+        document.getElementById('background-wrapper')?.setAttribute('data-type', 'color')
         document.documentElement.style.setProperty('--solid-background', media)
+        document.documentElement.style.setProperty('--average-color', media)
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', media)
         settingsBackgroundColor(media)
         localStorage.removeItem('backgroundCache')
         return
@@ -602,7 +680,8 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
     // disables blur compression for animated gifs (flawed since some gifs aren't animated)
     resolution = media.mimetype === 'image/gif' ? 'full' : resolution
     const src = media.urls[resolution]
-    const item = createImageItem(src, media)
+    const runtimeVersion = currentBackgroundRuntimeVersion()
+    const item = createImageItem(src, media, runtimeVersion)
 
     item.dataset.res = resolution
     mediaWrapper.prepend(item)
@@ -622,12 +701,21 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
     }
 }
 
-function createImageItem(src: string, media: BackgroundImage, callback?: () => void): HTMLDivElement {
+function createImageItem(
+    src: string,
+    media: BackgroundImage,
+    runtimeVersion: number,
+    callback?: () => void,
+): HTMLDivElement {
     const backgroundsWrapper = document.getElementById('background-wrapper')
     const div = document.createElement('div')
     const img = new Image()
 
     const onImageReady = () => {
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion) || !div.isConnected) {
+            return
+        }
+
         const isSmall = img.width <= 256 && img.height <= 256
         const isPng = !!media.mimetype?.includes('png')
 
@@ -642,17 +730,6 @@ function createImageItem(src: string, media: BackgroundImage, callback?: () => v
         }
     }
 
-    img.addEventListener('load', onImageReady)
-    img.src = src
-
-    // If image is already cached, show it immediately without waiting for async load event
-    if (img.complete && img.naturalWidth > 0) {
-        img.removeEventListener('load', onImageReady)
-        onImageReady()
-    }
-
-    img.remove()
-
     div.classList.add('background-image')
     div.style.backgroundImage = `url(${src})`
 
@@ -663,6 +740,21 @@ function createImageItem(src: string, media: BackgroundImage, callback?: () => v
         div.style.backgroundPositionX = x
         div.style.backgroundPositionY = y
     }
+
+    queueMicrotask(() => {
+        img.addEventListener('load', onImageReady)
+        img.src = src
+
+        // If image is already cached, show it immediately without waiting for async load event.
+        // This must run after applyBackground() prepends `div`; otherwise cached images can
+        // finish while `div.isConnected` is still false and get mistaken for stale loads.
+        if (img.complete && img.naturalWidth > 0) {
+            img.removeEventListener('load', onImageReady)
+            onImageReady()
+        }
+
+        img.remove()
+    })
 
     return div
 }

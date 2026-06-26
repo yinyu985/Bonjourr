@@ -1,5 +1,6 @@
 import { getRemoteProvider } from './provider.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
+import { resetBackgroundRuntimeCache } from '../backgrounds/cache.ts'
 import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
@@ -472,6 +473,7 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
 
     await replaceBookmarksFromConfig(current, next)
     holdBookmarkRefreshes()
+    await resetBackgroundRuntimeCache(next.backgrounds)
 
     await storage.sync.clear()
     await storage.sync.set(next)
