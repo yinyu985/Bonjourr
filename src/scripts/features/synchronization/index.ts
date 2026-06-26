@@ -1,6 +1,5 @@
 import { getRemoteProvider } from './provider.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
-import { saveConfigSnapshot } from './backup.ts'
 import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
@@ -471,7 +470,6 @@ function isSyncType(val = ''): val is SyncType {
 async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Promise<Sync> {
     const next = normalizeExternalSync(incoming)
 
-    saveConfigSnapshot(current, 'sync-download')
     await replaceBookmarksFromConfig(current, next)
     holdBookmarkRefreshes()
 

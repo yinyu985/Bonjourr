@@ -4,7 +4,6 @@ import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { mergeSyncAppend } from './features/synchronization/merge.ts'
-import { getConfigSnapshots, restoreConfigSnapshot, saveConfigSnapshot } from './features/synchronization/backup.ts'
 import { hideElements } from './features/hide.ts'
 import {
     bootstrapBookmarksFromConfig,
@@ -132,7 +131,6 @@ function settingsInitEvent(event: Event): void {
         updateSettingsEvent()
         translateAriaLabels()
         settingsDrawerBar()
-        renderSnapshotsList()
         loadCallbacks()
 
         settings?.classList.remove('init')
@@ -904,7 +902,6 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
         let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
 
         if (mode === 'replace') {
-            saveConfigSnapshot(current, 'import-replace')
             await replaceBookmarksFromConfig(current, importedData)
             holdBookmarkRefreshes()
         }
@@ -924,8 +921,14 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
     }
 }
 
-function resetSettings(action: 'yes' | 'no' | 'first'): void {
+async function resetSettings(action: 'yes' | 'no' | 'first'): Promise<void> {
     if (action === 'yes') {
+        try {
+            const current = await storage.sync.get()
+            await replaceBookmarksFromConfig(current, SYNC_DEFAULT)
+        } catch (_) {
+            // Bookmark clearing is best-effort; proceed with storage reset
+        }
         storage.clearall().then(fadeOut)
         return
     }
@@ -1089,75 +1092,4 @@ function setFormInput(id: string, defaults: string, value?: string): void {
 
 function clampFontSize(size: string): string {
     return Math.min(15, Math.max(7, Number.parseFloat(size))).toString()
-}
-
-function renderSnapshotsList(): void {
-    const container = document.getElementById('snapshots-list')
-    if (!container) return
-
-    const snapshots = getConfigSnapshots()
-    container.innerHTML = ''
-
-    if (snapshots.length === 0) return
-
-    for (let i = 0; i < snapshots.length; i++) {
-        const snapshot = snapshots[i]
-        const date = new Date(snapshot.timestamp)
-        const timeStr = date.toLocaleString()
-        const stats = snapshotStats(snapshot.config)
-
-        const item = document.createElement('div')
-        item.className = 'snapshot-item'
-
-        const info = document.createElement('div')
-        info.className = 'snapshot-info'
-
-        const time = document.createElement('span')
-        time.textContent = timeStr
-
-        const detail = document.createElement('span')
-        detail.className = 'snapshot-detail'
-        detail.textContent = `${stats.folders} folders · ${stats.urls} links`
-
-        info.appendChild(time)
-        info.appendChild(detail)
-
-        const btn = document.createElement('button')
-        btn.className = 'param-btn'
-        btn.textContent = tradThis('Restore')
-        btn.dataset.index = String(i)
-
-        onclickdown(btn, async () => {
-            const idx = Number.parseInt(btn.dataset.index ?? '0', 10)
-            await restoreConfigSnapshot(idx)
-        })
-
-        item.appendChild(info)
-        item.appendChild(btn)
-        container.appendChild(item)
-    }
-}
-
-function snapshotStats(config: Sync): { folders: number; urls: number } {
-    const folders = config.links?.folders?.length ?? 0
-    let urls = 0
-
-    for (const folder of config.links?.folders ?? []) {
-        urls += countLinks(folder.items)
-    }
-
-    urls += config.links?.favorites?.length ?? 0
-    return { folders, urls }
-}
-
-function countLinks(items: { id: string }[]): number {
-    let count = 0
-    for (const item of items) {
-        if ('items' in item && Array.isArray((item as Record<string, unknown>).items)) {
-            count += countLinks((item as Record<string, unknown>).items as { id: string }[])
-        } else {
-            count++
-        }
-    }
-    return count
 }
