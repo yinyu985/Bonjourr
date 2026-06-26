@@ -218,7 +218,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: () => {
-        // Gist is the source of truth on download. If the remote stored two
+        // Remote is the source of truth on download. If the remote stored two
         // identical URLs in the same folder (because that's what the user's
         // Chrome had), they must round-trip back unchanged — we are not
         // allowed to silently dedupe here.
@@ -237,7 +237,7 @@ Deno.test({
         assertEquals(
             work.items.filter((item) => isElem(item) && item.url === 'https://example.com/docs').length,
             2,
-            'download must not collapse duplicates — Gist is the source of truth',
+            'download must not collapse duplicates — Remote is the source of truth',
         )
     },
 })

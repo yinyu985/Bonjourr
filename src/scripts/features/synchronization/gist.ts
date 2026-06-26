@@ -86,14 +86,16 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
         return true
     }
 
-    // autoSyncOnStartup 已经记过 gistLastFetchedAt + gistLastSyncedAt。
+    // autoSyncOnStartup 已经记过 remoteLastFetchedAt + remoteLastSyncedAt。
     // 用它们当 fallback 渲染：跨标签页打开 settings 也不需要再 fetch。
-    const local = await storage.local.get(['gistLastFetchedAt', 'gistLastSyncedAt'])
-    const lastFetchedAt = local.gistLastFetchedAt ? new Date(local.gistLastFetchedAt).getTime() : 0
+    const local = await storage.local.get(['remoteLastFetchedAt', 'remoteLastSyncedAt'])
+    const fetchedAt = local.remoteLastFetchedAt
+    const syncedAt = local.remoteLastSyncedAt
+    const lastFetchedAt = fetchedAt ? new Date(fetchedAt).getTime() : 0
     const persistedHit = lastFetchedAt && now - lastFetchedAt < STATUS_FETCH_THROTTLE_MS
 
-    if (persistedHit && local.gistLastSyncedAt) {
-        renderStatus(wrapper, base, local.gistLastSyncedAt, `https://gist.github.com/${id}`)
+    if (persistedHit && syncedAt) {
+        renderStatus(wrapper, base, syncedAt, `https://gist.github.com/${id}`)
         return true
     }
 
@@ -115,7 +117,9 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
 
     const json = await resp.json() as { updated_at: string; html_url: string }
     cachedStatus = { at: now, updatedAt: json.updated_at, htmlUrl: json.html_url, key: cacheKey }
-    storage.local.set({ gistLastFetchedAt: new Date(now).toISOString() })
+    storage.local.set({
+        remoteLastFetchedAt: new Date(now).toISOString(),
+    })
     renderStatus(wrapper, base, json.updated_at, json.html_url)
     return true
 }
@@ -371,5 +375,4 @@ const GIST_ERROR = {
     JSON: tradThis('Invalid JSON response from GitHub.'),
     OTHER: tradThis('Unexpected GitHub Gist error.'),
     DEFAULT: tradThis('Tried to send default config.'),
-    STALE: tradThis('Remote Gist is newer than local. Please download first.'),
 }

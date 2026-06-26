@@ -1,4 +1,4 @@
-import { fetchGistUpdatedAt, findGistId, retrieveGist, sendGist, setGistStatus, setGistStatusNow } from './gist.ts'
+import { getRemoteProvider } from './provider.ts'
 import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { saveConfigSnapshot } from './backup.ts'
 import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
@@ -29,6 +29,7 @@ const urlsyncform = networkForm('f_urlsync')
 let syncLocked = false
 let autoUploadTimer = 0
 let lastSyncedPayload = ''
+let confirmRemoteOverwrite = false
 // scheduleAutoUpload skips when syncLocked is true (we're mid-upload/-download
 // and don't want to fight ourselves). But edits during an upload still need
 // to propagate. We set this flag whenever a sync write is dropped because of
@@ -36,8 +37,8 @@ let lastSyncedPayload = ''
 // debounce timer always exists when there's queued work.
 let pendingUpload = false
 const AUTO_UPLOAD_DEBOUNCE_MS = 30000
-// 启动期间每开一个新标签页都会调一次 autoSyncOnStartup 拉 Gist。
-// 频繁开标签页 = 短时间内打几十次 GitHub。同一会话 60s 内只查一次远端。
+// 启动期间每开一个新标签页都会调一次 autoSyncOnStartup 拉远端。
+// 频繁开标签页 = 短时间内打几十次 provider API。同一会话 60s 内只查一次远端。
 const STARTUP_FETCH_THROTTLE_MS = 60_000
 
 export function synchronization(init?: Local, update?: SyncUpdate): void {
@@ -66,20 +67,21 @@ export function synchronization(init?: Local, update?: SyncUpdate): void {
 }
 
 async function autoSyncOnStartup(local: Local): Promise<void> {
-    if (local.syncType !== 'gist') {
+    const provider = getRemoteProvider(local)
+
+    if (!provider?.isEnabled(local)) {
         return
     }
 
-    const token = local.gistToken
-    const id = local.gistId
-
-    if (!token || !id) {
+    if (!provider.isAuthorized(local) || !provider.getResourceId(local)) {
         return
     }
 
     // 节流：60s 内已经查过远端就不再请求，直接信任本地 hash。
-    // 否则每开一个新标签页都打 GitHub 一次，几秒钟开几个标签 = 暴打 API。
-    const lastFetchedAt = local.gistLastFetchedAt ? new Date(local.gistLastFetchedAt).getTime() : 0
+    // 否则每开一个新标签页都请求 provider 一次，几秒钟开几个标签 = 暴打 API。
+    const lastFetchedAt = provider.getLastFetchedAt(local)
+        ? new Date(provider.getLastFetchedAt(local) ?? '').getTime()
+        : 0
     const fetchedRecently = lastFetchedAt && Date.now() - lastFetchedAt < STARTUP_FETCH_THROTTLE_MS
 
     if (fetchedRecently) {
@@ -91,10 +93,11 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
     syncLocked = true
 
     try {
-        const result = await retrieveGist(token, id)
-        await storage.local.set({ gistLastFetchedAt: new Date().toISOString() })
+        const result = await provider.download(local)
+        await storage.local.set(provider.fetchedPatch(new Date().toISOString()))
 
-        if (local.gistLastSyncedAt && !isRemoteNewer(result.updatedAt, local.gistLastSyncedAt)) {
+        const lastSyncedAt = provider.getLastSyncedAt(local)
+        if (lastSyncedAt && !isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
             const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
             lastSyncedPayload = syncPayloadHash(current)
             return
@@ -103,7 +106,7 @@ async function autoSyncOnStartup(local: Local): Promise<void> {
         const data = await storage.sync.get()
         const next = await applyDownloadedSync(data, result.sync)
         lastSyncedPayload = syncPayloadHash(next)
-        await storage.local.set({ gistLastSyncedAt: result.updatedAt })
+        await storage.local.set(provider.syncedPatch(result.metadata))
         // Just downloaded fresh remote state — any writes that landed during
         // the download are reflected in `next`, so drop the pending flag.
         pendingUpload = false
@@ -124,6 +127,9 @@ function scheduleAutoUpload(): void {
         pendingUpload = true
         return
     }
+
+    storage.local.set({ localConfigUpdatedAt: new Date().toISOString() })
+    confirmRemoteOverwrite = false
 
     if (autoUploadTimer) {
         clearTimeout(autoUploadTimer)
@@ -148,20 +154,21 @@ async function doAutoUpload(): Promise<void> {
         return
     }
 
-    const local = await storage.local.get(['gistId', 'gistToken', 'gistLastSyncedAt', 'syncType'])
+    const local = await storage.local.get()
+    const provider = getRemoteProvider(local)
 
-    if (local.syncType !== 'gist' || !local.gistToken) {
+    if (!provider?.isEnabled(local) || !provider.isAuthorized(local)) {
         return
     }
 
     syncLocked = true
 
     try {
-        const token = local.gistToken
+        const lastSyncedAt = provider.getLastSyncedAt(local)
 
-        if (local.gistId && local.gistLastSyncedAt) {
-            const remoteUpdatedAt = await fetchGistUpdatedAt(token, local.gistId)
-            if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, local.gistLastSyncedAt)) {
+        if (provider.getResourceId(local) && lastSyncedAt) {
+            const remoteUpdatedAt = await provider.fetchUpdatedAt(local)
+            if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, lastSyncedAt)) {
                 pendingUpload = false
                 return
             }
@@ -175,10 +182,10 @@ async function doAutoUpload(): Promise<void> {
             return
         }
 
-        const result = await sendGist(token, local.gistId, latest)
+        const result = await provider.upload(local, latest)
         lastSyncedPayload = payload
         pendingUpload = false
-        storage.local.set({ gistLastSyncedAt: result.updatedAt, gistId: result.id })
+        storage.local.set(provider.syncedPatch(result))
     } catch (err) {
         console.warn('Auto upload failed', err)
     } finally {
@@ -187,13 +194,8 @@ async function doAutoUpload(): Promise<void> {
 }
 
 async function updateSyncOption(update: SyncUpdate): Promise<void> {
-    const local = await storage.local.get([
-        'gistId',
-        'gistToken',
-        'gistLastSyncedAt',
-        'distantUrl',
-        'syncType',
-    ])
+    const local = await storage.local.get()
+    const provider = getRemoteProvider(local)
 
     if (update.down) {
         if (syncLocked) {
@@ -206,18 +208,16 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
         try {
             const data = await storage.sync.get()
 
-            if (local.syncType === 'gist') {
+            if (provider?.isEnabled(local)) {
                 gistsyncform.load()
 
                 try {
-                    const id = local.gistId ?? ''
-                    const token = local.gistToken ?? ''
-                    const result = await retrieveGist(token, id)
+                    const result = await provider.download(local)
                     const next = await applyDownloadedSync(data, result.sync)
                     lastSyncedPayload = syncPayloadHash(next)
                     await storage.local.set({
-                        gistLastSyncedAt: result.updatedAt,
-                        gistLastFetchedAt: new Date().toISOString(),
+                        ...provider.syncedPatch(result.metadata),
+                        ...provider.fetchedPatch(new Date().toISOString()),
                     })
                     pendingUpload = false
                     gistsyncform.accept()
@@ -250,20 +250,23 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             return
         }
 
-        if (local.syncType === 'gist') {
+        if (provider?.isEnabled(local)) {
             // Hold the lock for the duration of the manual upload too —
             // otherwise auto-upload's debounced doAutoUpload could fire
-            // partway through and double-send to GitHub.
+            // partway through and double-send to the remote provider.
             syncLocked = true
             gistsyncform.load()
 
             try {
-                const token = local.gistToken ?? ''
+                const lastSyncedAt = provider.getLastSyncedAt(local)
 
-                if (local.gistId && local.gistLastSyncedAt) {
-                    const remoteUpdatedAt = await fetchGistUpdatedAt(token, local.gistId)
-                    if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, local.gistLastSyncedAt)) {
-                        gistsyncform.warn(tradThis('Remote Gist is newer than local. Please download first.'))
+                if (provider.getResourceId(local) && lastSyncedAt) {
+                    const remoteUpdatedAt = await provider.fetchUpdatedAt(local)
+                    if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, lastSyncedAt) && !confirmRemoteOverwrite) {
+                        confirmRemoteOverwrite = true
+                        gistsyncform.warn(
+                            tradThis('Remote data is newer than local. Click send again to overwrite remote.'),
+                        )
                         return
                     }
                 }
@@ -271,20 +274,16 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 const latest = getSettingsTextAreaSync() ??
                     await bootstrapBookmarksFromConfig(await storage.sync.get())
 
-                const result = await sendGist(token, local.gistId, latest)
+                const result = await provider.upload(local, latest)
                 lastSyncedPayload = syncPayloadHash(latest)
                 pendingUpload = false
+                confirmRemoteOverwrite = false
 
                 gistsyncform.accept()
 
-                const localPatch: Partial<Local> = { gistLastSyncedAt: result.updatedAt }
-                if (result.id !== local.gistId) {
-                    local.gistId = result.id
-                    localPatch.gistId = result.id
-                }
-                storage.local.set(localPatch)
+                storage.local.set(provider.syncedPatch(result))
 
-                setGistStatusNow(local.gistId)
+                provider.setStatusNow(result.resourceId)
             } catch (error) {
                 gistsyncform.warn(error as string)
             } finally {
@@ -295,11 +294,12 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
     if (update.gistToken === '') {
         local.gistToken = ''
-        local.gistId = ''
-        local.gistLastSyncedAt = undefined
+        local.remoteResourceId = ''
+        local.remoteLastSyncedAt = undefined
         storage.local.remove('gistToken')
-        storage.local.remove('gistId')
-        storage.local.remove('gistLastSyncedAt')
+        for (const key of getRemoteProvider({ ...local, syncType: 'gist' })?.clearPatch() ?? []) {
+            storage.local.remove(key)
+        }
         gistsyncform.accept()
         toggleSyncSettingsOption(local)
         return
@@ -317,18 +317,25 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
 
         try {
             local.gistToken = update.gistToken
-            const foundId = await findGistId(local.gistToken)
+            const gist = getRemoteProvider({ ...local, syncType: 'gist' })
+            const foundId = await gist?.findResource(local)
 
-            local.gistId = foundId ?? ''
+            local.remoteResourceId = foundId ?? ''
             // The previous token's last-sync timestamp is meaningless against
-            // a different gist — clear it so isRemoteNewer doesn't compare a
+            // a different remote resource — clear it so isRemoteNewer doesn't compare a
             // stale local time against a fresh remote time and incorrectly
             // skip the next download.
-            local.gistLastSyncedAt = undefined
-            storage.local.set({ gistId: local.gistId, gistToken: local.gistToken })
-            storage.local.remove('gistLastSyncedAt')
-            storage.local.remove('gistLastFetchedAt')
-            // Different gist, different content — force the next sync to
+            local.remoteLastSyncedAt = undefined
+            storage.local.set({
+                gistToken: local.gistToken,
+                remoteResourceId: local.remoteResourceId,
+            })
+            for (const key of gist?.clearPatch() ?? []) {
+                if (key !== 'remoteResourceId') {
+                    storage.local.remove(key)
+                }
+            }
+            // Different remote resource, different content — force the next sync to
             // re-evaluate even if hashes happen to collide.
             lastSyncedPayload = ''
 
@@ -385,7 +392,8 @@ async function handleStoragePersistence(type?: SyncType): Promise<boolean | unde
 }
 
 async function toggleSyncSettingsOption(local?: Local): Promise<void> {
-    const gistId = local?.gistId
+    const provider = getRemoteProvider(local)
+    const resourceId = local ? provider?.getResourceId(local) : undefined
     const gistToken = local?.gistToken
     const distantUrl = local?.distantUrl
     const type = local?.syncType
@@ -423,17 +431,17 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
             document.getElementById('disabled-sync')?.classList.remove('shown')
 
             if (!gistToken) {
-                setGistStatus()
+                provider?.setStatus()
                 break
             }
 
             bGistup?.removeAttribute('disabled')
 
-            if (gistId) {
+            if (resourceId) {
                 bGistdown?.removeAttribute('disabled')
             }
 
-            setGistStatus(gistToken, gistId)
+            provider?.setStatus(local)
 
             break
         }
@@ -483,7 +491,7 @@ function isRemoteNewer(remoteIso: string, localIso: string): boolean {
         return false
     }
 
-    // Ignore sub-second drift: GitHub returns whole-second precision and our own
+    // Ignore sub-second drift: providers can return whole-second precision and our own
     // saved timestamp can be a few ms ahead/behind the value the API echoes back.
     return remote - local > 1000
 }

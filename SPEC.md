@@ -4,28 +4,161 @@
 
 ---
 
-## 1. 数据优先级（Source of Truth）
+## 1. 同步模型与数据权威
 
-```
-Remote (Gist)  ──  第1优先级，绝对权威
-     │
-     ▼
-Chrome Bookmarks  ──  第2优先级，书签的唯一编辑入口
-     │
-     ▼
-Plugin Config (storage.sync)  ──  第3优先级，只读镜像 + 非书签设置
-```
+Bonjourr 的远程同步是**个人备份/双设备搬运机制**，不是多人协作、实时同步、CRDT 或数据库复制系统。当前实现使用 GitHub Gist；未来可以增加 Dropbox、Google Drive 等 provider，但上层同步语义不得改变。
 
 **核心原则：**
-- **Remote 是最终权威**。下载远程配置时，不做新旧对比，直接以远程为准。
-- **Chrome Bookmarks 是书签的唯一编辑入口**。插件不允许增删改书签，只能读取并镜像。
-- **Plugin Config 是被动镜像**。书签数据从 Chrome 单向流入；非书签设置（背景、时钟、字体等）由用户在插件 UI 编辑。
+- **不做 merge / rebase / 字段级冲突解决**。任何代码都不允许尝试把本地和远程的不同字段自动拼接成一个新配置。
+- **上传是 local wins**。上传时，本机当前完整配置覆盖 Remote。
+- **下载是 remote wins**。下载时，Remote 当前完整配置覆盖本机配置，并按远程书签状态写入 Chrome Bookmarks。
+- **自动流程只处理无冲突场景**。如果本地和远程都在上次同步后发生变化，自动同步必须停止，交给用户手动选择上传覆盖远程或下载覆盖本地。
+- **Chrome Bookmarks 是书签的唯一日常编辑入口**。插件平时不增删改书签，只读取并镜像；只有显式下载/恢复这类 remote wins 或 snapshot wins 操作可以写入 Chrome Bookmarks。
+- **Plugin Config 是本机运行状态**。书签数据从 Chrome 单向镜像；非书签设置（背景、时钟、字体、CSS、notes 等）由用户在插件 UI 编辑。
+
+### 1.1 三类状态
+
+```
+Remote Provider
+    个人备份/跨设备搬运目标。当前 provider 是 Gist；未来也可以是 Dropbox 文件或 Google Drive appDataFolder 文件。只有上传会覆盖它，只有下载会读取并覆盖本机。
+
+Chrome Bookmarks
+    书签的日常编辑入口。用户通过浏览器书签管理器编辑，Bonjourr 读取后镜像到 config.links。
+
+Plugin Config (storage.sync)
+    本机当前配置。包含 Chrome Bookmarks 的镜像 + 非书签设置。
+```
+
+### 1.2 Remote Provider 抽象
+
+上层同步逻辑不得依赖 Gist、Dropbox、Google Drive 的具体 API 形态。所有远程介质必须被封装成同一种 provider 能力：
+
+```typescript
+type RemoteProviderKind = 'gist' | 'dropbox' | 'google-drive'
+
+interface RemoteMetadata {
+    provider: RemoteProviderKind
+    resourceId: string
+    updatedAt: string
+}
+
+interface RemoteSnapshot {
+    metadata: RemoteMetadata
+    sync: Partial<Sync>
+}
+```
+
+provider 必须提供这些语义能力：
+
+1. **授权**：获得读写远程快照所需的 token 或 browser identity 权限。
+2. **定位远程资源**：找到或创建 Bonjourr 的 `sync.json` 资源，并返回稳定的 `resourceId`。
+3. **读取 metadata**：在不下载完整内容或尽量少下载内容的前提下，得到远程 `updatedAt`。
+4. **下载完整快照**：返回远程 JSON 内容和对应 metadata。
+5. **上传完整快照**：用本机当前完整配置覆盖远程资源，并返回上传后的 metadata。
+
+上层同步只允许使用 provider 返回的：
+
+- `resourceId`：远程资源标识。Gist 是 gist id；Dropbox 可以是固定路径如 `/sync.json`；Google Drive 是 fileId。
+- `updatedAt`：远程资源最后修改时间。用于判断 Remote 是否在上次同步后变化。
+- `sync`：远程完整配置快照。
+
+上层同步不得关心：
+
+- Gist 的文件名、patch body、gist id 查找细节。
+- Dropbox 是 App Folder 还是 Full Dropbox 权限。
+- Dropbox 上传是 path overwrite。
+- Google Drive 是否使用 `appDataFolder`。
+- Google Drive 创建/更新前是否需要查询 fileId。
+
+这些差异全部属于 provider 内部实现。
+
+provider 对应关系：
+
+| Provider | `resourceId` | 推荐远程位置 | 上传语义 | 下载语义 |
+| --- | --- | --- | --- | --- |
+| Gist | Gist API 返回的 id，存入 `remoteResourceId` | `bonjourr-export.json` 所在 Gist | 覆盖 Gist 文件内容 | 读取 Gist 文件内容 |
+| Dropbox | path，如 `/sync.json` | App Folder 下的 `sync.json` | overwrite path | download path |
+| Google Drive | `fileId` | `appDataFolder/sync.json` | create 或 PATCH fileId | `alt=media` 下载 fileId |
+
+无论 provider 是哪一种，Bonjourr 同步层看到的都必须是同一个模型：
+
+```
+Local Sync config
+    │
+    ▼
+serialize JSON snapshot
+    │
+    ▼
+provider.upload(snapshot)  // 完整覆盖远程
+
+provider.download()
+    │
+    ▼
+Remote JSON snapshot
+    │
+    ▼
+applyDownloadedSync        // 完整覆盖本机
+```
+
+### 1.3 时间戳与本地脏状态
+
+本地同步状态存放在 `storage.local`，不得写入 `Sync`，也不得上传到 Remote。
+
+- `syncProvider`：当前远程 provider，如 `gist`、`dropbox`、`google-drive`、`off`。
+- `remoteResourceId`：当前 provider 的远程资源标识。Gist 使用 Gist API 返回的 id，Dropbox 使用 path，Google Drive 使用 `fileId`。
+- `remoteLastSyncedAt`：上一次成功与 Remote 达成一致的时间。成功上传后使用 provider 返回的 `updatedAt`；成功下载后使用远程 metadata 的 `updatedAt`。
+- `remoteLastFetchedAt`：上一次查询/下载远程状态的时间，只用于节流 provider 请求，不代表同步成功。
+- `localConfigUpdatedAt`：本机配置最后一次由用户行为或 Chrome Bookmarks 变化导致内容改变的时间。
+- `lastSyncedPayload` / payload hash：上一次成功同步的配置内容摘要，用于避免仅靠时间戳误判。
+
+当前 Gist provider 只能保留 provider 专属授权字段（如 `gistToken`）。远程资源 ID、上次同步时间、上次拉取时间、本地更新时间必须使用通用字段：`remoteResourceId`、`remoteLastSyncedAt`、`remoteLastFetchedAt`、`localConfigUpdatedAt`。新增 provider 时不得把 provider 专有字段散落到通用同步流程里。
+
+`localConfigUpdatedAt` 必须遵守：
+
+- 用户改设置并写入 `storage.sync` 时更新。
+- Chrome Bookmarks listener 刷新后，如果 `config.links` 实际发生变化，则更新。
+- 导入、恢复、重置等显式本地操作导致配置变化时更新。
+- 从 Remote 下载并覆盖本地时，不表示本机产生了未上传修改；下载成功后应将 `localConfigUpdatedAt` 视为已同步状态（通常设置为远程 `updatedAt` 或清空未同步标记）。
+- 启动 normalize、默认值补全、`remoteLastSyncedAt` / `remoteLastFetchedAt` 写入、状态 UI 更新，不得更新 `localConfigUpdatedAt`。
+- `links.selectedFolder` 是本机 UI 导航状态，不参与 payload hash，也不应单独触发远程上传。
+
+本地是否有未上传改动，必须同时参考时间和内容：
+
+```
+hasLocalChanges =
+    localConfigUpdatedAt > remoteLastSyncedAt
+    AND syncPayloadHash(currentConfig) != lastSyncedPayload
+```
+
+远程是否更新：
+
+```
+hasRemoteChanges =
+    remote.updatedAt > remoteLastSyncedAt
+```
+
+比较 provider `updatedAt` 和本地记录时允许 1 秒以内误差，因为不同 provider 的时间戳精度可能不同，本地保存也可能有毫秒偏移。
+
+缺失时间戳必须按以下规则处理：
+
+- 没有 `remoteResourceId`：表示还没有绑定远程资源。自动上传可以创建远程资源；不存在远程较新判断。
+- 有 `remoteResourceId` 但没有 `remoteLastSyncedAt`：表示当前本机没有可靠同步基线。自动流程不得覆盖任意一侧；启动时只显示远程状态，用户必须手动选择上传覆盖远程或下载覆盖本机。
+- 没有 `localConfigUpdatedAt`：视为本机没有已知未上传改动，但仍必须用 payload hash 兜底。如果当前 payload 与 `lastSyncedPayload` 不同，应视为本地有改动。
+- 没有 `lastSyncedPayload`：不能仅凭时间判断“无本地改动”。应计算当前 payload，并在一次成功上传或下载后建立新的 `lastSyncedPayload`。
+
+首次启用某个 Remote Provider 时：
+
+- 如果没有找到现有 Bonjourr 远程资源，用户上传会创建资源，并把当前本机配置作为远程初始状态。
+- 如果找到现有 Bonjourr 远程资源，自动流程不得立刻覆盖本机或远程；用户必须明确点击上传或下载来建立同步基线。
+- 一旦某次上传或下载成功，才算建立 `remoteLastSyncedAt` + `lastSyncedPayload` 基线。
 
 ---
 
 ## 2. 数据流
 
-### 2.1 下载（Remote → Chrome → Config）
+### 2.1 显式下载（Remote → Chrome → Config）
+
+下载是 remote wins。用户点击下载、启动时自动下载（仅无本地改动时）、或 URL 同步下载，都使用同一语义：**远程完整覆盖本机**。
 
 ```
 Remote Config
@@ -40,6 +173,9 @@ Remote Config
   2. `replaceBookmarksFromConfig(current, next)` → 将书签写入 Chrome
   3. `storage.sync.clear()` + `storage.sync.set(next)` → 替换本地配置
   4. 设置 `skipBookmarkSync` flag → 防止页面刷新时 Chrome 反向覆盖刚写入的数据
+  5. 更新同步状态：`remoteLastSyncedAt = remote.updatedAt`，`lastSyncedPayload = syncPayloadHash(next)`，本机未上传状态清零
+
+下载前必须保存当前本机配置 snapshot。下载后允许 `fadeOut()` / `location.reload()`，因为这是用户可理解的显式覆盖本机操作，页面需要重新按远程配置初始化。
 
 ### 2.2 本地编辑（Chrome → Config）
 
@@ -60,8 +196,29 @@ refreshSyncedGroups()
 
 - **插件不编辑书签**。`syncBookmarksUpdate` 是空实现（no-op），未来不会实现。
 - Chrome 删除文件夹 → config 必须跟着删，**不论 items 是否有内容**。Chrome 是权威。
+- 如果 `refreshSyncedGroups()` 导致 `config.links` 发生实际变化，必须更新 `localConfigUpdatedAt` 并触发 30 秒自动上传 debounce。
 
-### 2.3 上传（Config → Remote）
+### 2.3 本地设置编辑（Settings → Config）
+
+```
+用户修改设置
+    │
+    ▼
+feature(undefined, update)
+    │
+    ├─ 更新 DOM
+    ├─ storage.sync.set → 保存配置
+    ├─ localConfigUpdatedAt = now
+    └─ 触发 30 秒自动上传 debounce
+```
+
+- 非书签设置由 Bonjourr UI 编辑。
+- 高频输入（slider、range、textarea 等）继续使用 `eventDebounce` 限制 storage 写入频率。
+- 只有配置内容实际变化才应造成远程上传；纯 UI 状态、同步状态、请求状态不得触发上传。
+
+### 2.4 上传（Config → Remote）
+
+上传是 local wins。上传前必须先把 Chrome Bookmarks 刷新进 config，再把当前完整 config 上传到 Remote。上传不是 merge，不读取远程字段来拼接新配置。
 
 ```
 Plugin Config (已包含 Chrome 书签镜像)
@@ -70,13 +227,89 @@ Plugin Config (已包含 Chrome 书签镜像)
 bootstrapBookmarksFromConfig → 从 Chrome 刷新一次确保最新
     │
     ▼
-sendGist → 上传到远程
+provider.upload → 上传到远程
 ```
 
 - 上传前调用 `bootstrapBookmarksFromConfig` 确保 config 反映 Chrome 最新状态。
-- 上传完成后 Remote 即为最新权威。
+- 上传成功后 Remote 即为本机当前配置。
+- 上传成功后更新同步状态：`remoteLastSyncedAt = result.updatedAt`，`lastSyncedPayload = syncPayloadHash(uploaded)`，`localConfigUpdatedAt` 进入已同步状态。
+- 上传失败不得修改 `remoteLastSyncedAt` 或 `lastSyncedPayload`。
 
-### 2.4 启动
+### 2.5 自动上传（Local → Remote，无冲突时）
+
+自动上传只用于个人双设备的普通场景：本机有新改动，远程没有被其他设备更新。
+
+```
+storage.sync 写入 / Chrome Bookmarks 变化
+    │
+    ▼
+等待 30 秒 debounce
+    │
+    ▼
+读取 local sync 状态 + 当前 config
+    │
+    ├─ syncProvider 关闭? → 停止
+    ├─ 当前 provider 未授权? → 停止
+    ├─ payload == lastSyncedPayload? → 停止
+    └─ 检查 remote.updatedAt
+          │
+          ├─ remote 未比 remoteLastSyncedAt 新 → bootstrapBookmarksFromConfig → provider.upload
+          └─ remote 比 remoteLastSyncedAt 新 → 停止自动上传，提示用户手动选择
+```
+
+自动上传必须遵守：
+
+1. 自动上传前必须调用 `bootstrapBookmarksFromConfig`，确保 Chrome Bookmarks 的最新状态进入 config。
+2. 如果 `syncPayloadHash(currentConfig) == lastSyncedPayload`，不得上传。
+3. 如果 Remote 比 `remoteLastSyncedAt` 新，自动上传不得覆盖远程，也不得自动下载远程。必须进入冲突状态，提示用户手动选择。
+4. 自动上传流程不得调用 `fadeOut()`，不得刷新页面。
+5. 自动上传期间要持有同步锁，避免手动上传/下载或另一次自动上传并发执行。
+6. 如果同步锁持有期间又发生本地写入，释放锁后必须重新安排 debounce，不能丢掉本地改动。
+
+### 2.6 手动上传（Local wins，可确认覆盖）
+
+用户点击上传表示“用本机当前配置覆盖远程”。
+
+```
+用户点击上传
+    │
+    ▼
+bootstrapBookmarksFromConfig
+    │
+    ▼
+检查 remote.updatedAt
+    │
+    ├─ remote 未比 remoteLastSyncedAt 新 → provider.upload
+    └─ remote 比 remoteLastSyncedAt 新 → 显示确认 → 用户确认后 provider.upload 覆盖远程
+```
+
+- 手动上传永远不做 merge。
+- 如果 Remote 较新，必须明确提示：“远程配置比上次同步更新，继续上传会用本机配置覆盖远程。”
+- 用户确认后继续上传；用户取消则不修改本地和远程。
+- 手动上传成功后不需要刷新页面。
+
+### 2.7 冲突状态（Local 和 Remote 都更新）
+
+冲突定义：
+
+```
+hasLocalChanges == true
+AND hasRemoteChanges == true
+```
+
+冲突状态下：
+
+- 自动上传不得执行。
+- 自动下载不得执行。
+- 不允许静默覆盖任意一侧。
+- 不允许尝试 merge / rebase。
+- UI 必须让用户明确选择：
+  - **上传本机覆盖远程**（local wins）
+  - **下载远程覆盖本机**（remote wins）
+- 下载远程覆盖本机前，必须保存当前本机 snapshot。
+- 上传本机覆盖远程前，如果已经拿到远程配置，应保存远程 snapshot；如果没有远程配置，至少必须保存当前本机 snapshot，并在 UI 中明确这是覆盖远程操作。
+
+### 2.8 启动同步
 
 ```
 页面加载
@@ -84,11 +317,20 @@ sendGist → 上传到远程
     ├─ 有 skipBookmarkSync flag? → 跳过书签同步，直接渲染 config
     │
     └─ 无 flag:
-        ├─ Gist 同步开启?
-        │   ├─ 远程更新时间 > 本地? → 执行下载流程 (2.1)
-        │   └─ 否 → 从 Chrome 同步 (2.2 的逻辑)
-        └─ Gist 未开启 → 从 Chrome 同步
+        ├─ Remote provider 开启?
+        │   ├─ remote.updatedAt > remoteLastSyncedAt 且本地无未上传改动 → 自动下载 Remote
+        │   ├─ remote.updatedAt > remoteLastSyncedAt 且本地有未上传改动 → 进入冲突状态，提示用户选择
+        │   └─ remote 未更新 → 从 Chrome 同步 (2.2 的逻辑)，刷新 lastSyncedPayload
+        └─ Remote provider 未开启 → 从 Chrome 同步
 ```
+
+启动同步必须遵守：
+
+- 启动时可以查询 Remote，但应使用 `remoteLastFetchedAt` 节流，避免频繁打开新标签页时大量请求 provider API。
+- 如果 Remote 较新且本机没有未上传改动，可以自动下载 Remote，因为这是个人双设备最常见场景：另一台电脑已上传，本机启动后跟随远程。
+- 如果 Remote 较新且本机也有未上传改动，必须进入冲突状态，不得自动下载或自动上传。
+- 启动自动下载属于 remote wins 操作，下载后可以刷新页面。
+- 启动时仅从 Chrome Bookmarks 镜像到 config 的变化，如果构成真实本地改动，应更新 `localConfigUpdatedAt` 并安排自动上传。
 
 ---
 

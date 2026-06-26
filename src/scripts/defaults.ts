@@ -123,6 +123,10 @@ export const SYNC_DEFAULT: Sync = {
 export const LOCAL_DEFAULT: Local = {
     syncType: 'off',
     gistToken: '',
+    remoteResourceId: '',
+    remoteLastSyncedAt: '',
+    remoteLastFetchedAt: '',
+    localConfigUpdatedAt: '',
     translations: undefined,
     backgroundUrls: {},
     backgroundFiles: {},

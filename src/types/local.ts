@@ -2,7 +2,8 @@ import type { Background } from './shared.ts'
 import type { Sync } from './sync.ts'
 
 export type BackgroundUrlState = 'NONE' | 'LOADING' | 'OK' | 'NOT_URL' | 'CANT_REACH' | 'NOT_MEDIA'
-export type SyncType = 'gist' | 'url' | 'off'
+export type RemoteProviderKind = 'gist' | 'dropbox' | 'google-drive'
+export type SyncType = RemoteProviderKind | 'url' | 'off'
 
 export interface Local {
     fonts?: FontListItem[]
@@ -11,10 +12,11 @@ export interface Local {
     operaExplained?: true
 
     // Sync
-    gistId?: string
     gistToken?: string
-    gistLastSyncedAt?: string
-    gistLastFetchedAt?: string
+    remoteResourceId?: string
+    remoteLastSyncedAt?: string
+    remoteLastFetchedAt?: string
+    localConfigUpdatedAt?: string
     distantUrl?: string
     syncType?: SyncType
 

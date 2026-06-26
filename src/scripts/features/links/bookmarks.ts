@@ -353,11 +353,11 @@ export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
     return createdAny || reordered
 }
 
-// Writes the Gist-side state into the user's Chrome bookmarks with Gist as
+// Writes the remote-side state into the user's Chrome bookmarks with Remote as
 // the single source of truth. Duplicates are NOT collapsed — `desiredUrls`
 // below is only used for membership checks, never to shorten `desiredLinks`,
-// and `existingByUrl` shifts one Chrome bookmark per occurrence in Gist so a
-// Gist with [A, A, B] writes three Chrome bookmarks even when Chrome only
+// and `existingByUrl` shifts one Chrome bookmark per occurrence in Remote so a
+// remote snapshot with [A, A, B] writes three Chrome bookmarks even when Chrome only
 // had one A to start with. Existing IDs are preserved when a URL match is
 // available — important to avoid every download rotating every bookmark ID
 // (which would cascade into avoidable cross-device upload churn).
