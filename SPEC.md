@@ -318,6 +318,7 @@ AND hasRemoteChanges == true
     │
     └─ 无 flag:
         ├─ Remote provider 开启?
+        │   ├─ 先完成一次 provider-agnostic freshness check
         │   ├─ remote.updatedAt > remoteLastSyncedAt 且本地无未上传改动 → 自动下载 Remote
         │   ├─ remote.updatedAt > remoteLastSyncedAt 且本地有未上传改动 → 进入冲突状态，提示用户选择
         │   └─ remote 未更新 → 从 Chrome 同步 (2.2 的逻辑)，刷新 lastSyncedPayload
@@ -326,7 +327,9 @@ AND hasRemoteChanges == true
 
 启动同步必须遵守：
 
-- 启动时可以查询 Remote，但应使用 `remoteLastFetchedAt` 节流，避免频繁打开新标签页时大量请求 provider API。
+- 只要任意 Remote provider 开启、已授权、且已绑定远程资源，启动时必须先完成一次 provider-agnostic freshness check。这个规则不得写成 Gist 专属逻辑；Dropbox、Google Drive 等未来 provider 必须走同一门禁。
+- 启动 freshness check 成功前，自动上传必须暂停。否则设备可能在基于旧本地配置的情况下覆盖另一台设备刚上传的 Remote。
+- `remoteLastFetchedAt` 可用于状态显示、请求记录或非关键 UI 节流，但不得用于跳过启动 freshness check 后继续允许自动上传。
 - 如果 Remote 较新且本机没有未上传改动，可以自动下载 Remote，因为这是个人双设备最常见场景：另一台电脑已上传，本机启动后跟随远程。
 - 如果 Remote 较新且本机也有未上传改动，必须进入冲突状态，不得自动下载或自动上传。
 - 启动自动下载属于 remote wins 操作，下载后可以刷新页面。

@@ -221,7 +221,6 @@ body.potato #bookmarks::backdrop {
     background-color: rgba(34, 34, 34, 0.5333333333);
 }
 
-body.potato #editlink,
 body.potato #bookmarks {
     background-color: rgb(var(--color-param));
 }

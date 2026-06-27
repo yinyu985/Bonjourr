@@ -362,7 +362,6 @@
     "Browser": "Browser",
     "Get": "Erhalten",
     "Send": "Schicken",
-    "Distant URL": "Entfernte URL",
     "Not a valid URL": "Keine gültige URL",
     "Cannot access resource right now": "Zugriff auf die Ressource ist derzeit nicht möglich",
     "Cannot access resource, even with proxy": "Kein Zugriff auf die Ressource, auch nicht mit Proxy",

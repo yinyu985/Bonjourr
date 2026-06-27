@@ -1,4 +1,3 @@
-import { populateDialogWithEditLink } from './links/edit.ts'
 import { IS_MOBILE, SYSTEM_OS } from '../defaults.ts'
 import { transitioner } from '../utils/transitioner.ts'
 import { debounce } from '../utils/debounce.ts'
@@ -43,7 +42,7 @@ export function openContextMenu(event: Event): void {
 
     const target = getContextTarget(event)
 
-    if (target.closest('#link-favorites')) {
+    if (target.closest('#linkblocks')) {
         event.preventDefault()
         closeContextMenu()
         return
@@ -87,11 +86,6 @@ export function openContextMenu(event: Event): void {
     contextmenuTransition.first(() => domdialog?.show())
     contextmenuTransition.after(() => domdialog?.classList?.add('shown'))
     contextmenuTransition.transition(10)
-
-    if (eventLocation.widgets.link) {
-        populateDialogWithEditLink(event, domdialog, target)
-        return
-    }
 
     if (clickedOnWidgets) {
         const allWidgets = Object.entries(eventLocation.widgets)
@@ -321,9 +315,6 @@ export function closeContextMenu(): void {
         domdialog.removeAttribute('data-tab')
         domdialog.classList.remove('shown')
         domdialog.close()
-
-        // stops multi-selection mode for quick links
-        document.dispatchEvent(new Event('remove-select-all'))
     }
 }
 

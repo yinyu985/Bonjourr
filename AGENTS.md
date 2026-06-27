@@ -49,13 +49,19 @@ Boot sequence is fixed and order-sensitive:
 
 1. `restoreBackgroundCache()` paints the cached background from `localStorage` synchronously to avoid a flash.
 2. `storage.init()` resolves both `sync` (user settings) and `local` (caches/state) state. If absent, defaults from `defaults.ts` are cloned.
-3. Each feature's entry function is invoked once with `(sync, local?)` — see the `startup()` body for the order. `synchronization(local)` runs last, kicking off the Gist auto-fetch (throttled by `gistLastFetchedAt`).
+3. Each feature's entry function is invoked once with `(sync, local?)` — see the `startup()` body for the order. When a remote provider is enabled, authorized, and bound to a remote resource, `synchronization(local)` must complete one provider-agnostic startup freshness check before Chrome bookmark mirroring and editable UI like notes/settings are wired.
 
 > There is **no** version-migration step. The fork is single-user; old victrme schemas aren't supported. `compatibility/apply.ts` only does `mergeImportedConfig` (used when restoring a backup or pasting JSON in settings) and strips a few hardcoded deprecated fields. If you need to evolve the `Sync` shape, edit `defaults.ts` and `types/sync.ts` directly and update tests.
 
 ### Storage abstraction (`src/scripts/storage.ts`)
 
 Two backends behind one API: `webext-local` (uses `chrome.storage.local` even for the "sync" namespace — the extension stores sync data under a `syncStorage` key inside local storage) and `localstorage` (web build, JSON-encoded under `localStorage.bonjourr`). The type is selected at startup based on `globalThis.chrome?.storage`. All feature code reads/writes through `storage.sync.*` / `storage.local.*` and never touches the platform APIs directly. `storage.init()` also handles a wait-for-`webextstorage`-event handshake when the extension's `services/webext-storage.js` content script populates `globalThis.startupStorage` before the bundle loads.
+
+### Remote sync freshness gate
+
+Remote sync rules are provider-agnostic. Do not hardcode Gist semantics into the upper synchronization flow; future Dropbox / Google Drive providers must satisfy the same `RemoteProvider` contract.
+
+When any remote provider is enabled, authorized, and bound to a remote resource, each Bonjourr new-tab page load must attempt one remote freshness check before automatic upload is allowed. `remoteLastFetchedAt` may support UI status or request bookkeeping, but it must not be used to skip startup freshness checking and then permit auto-upload. If the freshness check fails, non-editable local UI may keep running, but auto-upload must stay paused until a provider-level freshness check succeeds.
 
 ### Feature module pattern
 

@@ -662,7 +662,6 @@
 
             <select id="i_synctype">
                 <option value="gist" selected>Github Gist</option>
-                <option class="trn" value="url">Distant URL</option>
                 <option class="trn" value="off">Disabled</option>
             </select>
         </div>
@@ -738,44 +737,6 @@
                 <span class="trn">Server status</span>
                 <div id="gist-sync-status-wrapper">
                     <span id="gist-sync-status-base"></span>
-                </div>
-            </div>
-        </div>
-
-        <div id="url-sync" class="dropdown">
-            <hr />
-
-            <div class="wrapper">
-                <span class="trn">URL</span>
-
-                <form id="f_urlsync" class="network-form">
-                    <div>
-                        <input
-                            type="text"
-                            name="i_urlsync"
-                            id="i_urlsync"
-                            maxlength="256"
-                            aria-label="Synchronization using a distant URL"
-                            autocomplete="urlsync"
-                        />
-                        <button type="submit" id="b_urlsync">
-                            <span></span>
-                        </button>
-                    </div>
-                    <small class="network-form-warning"></small>
-                </form>
-            </div>
-
-            <hr />
-
-            <div class="wrapper">
-                <span class="trn">Distant URL</span>
-
-                <div id="url-sync-actions">
-                    <button id="b_urldown" class="param-btn" disabled>
-                        <img src="src/assets/labels/download.svg" height="16" alt="" />
-                        <span class="trn">Get</span>
-                    </button>
                 </div>
             </div>
         </div>

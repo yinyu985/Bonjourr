@@ -1,5 +1,4 @@
 import { getRemoteProvider } from './provider.ts'
-import { isDistantUrlValid, receiveFromURL } from './url.ts'
 import { resetBackgroundRuntimeCache } from '../backgrounds/cache.ts'
 import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
@@ -13,23 +12,25 @@ import { storage } from '../../storage.ts'
 
 import type { Local, SyncType } from '../../../types/local.ts'
 import type { Sync } from '../../../types/sync.ts'
+import type { RemoteProvider } from './provider.ts'
 
 interface SyncUpdate {
     type?: string
-    url?: string
     gistToken?: string
     firefoxPersist?: boolean
     down?: true
     up?: true
 }
 
+type StartupSyncResult = 'skipped' | 'checked' | 'downloaded' | 'failed'
+
 const gistsyncform = networkForm('f_gistsync')
-const urlsyncform = networkForm('f_urlsync')
 
 let syncLocked = false
 let autoUploadTimer = 0
 let lastSyncedPayload = ''
 let confirmRemoteOverwrite = false
+let startupFreshnessChecked = true
 // scheduleAutoUpload skips when syncLocked is true (we're mid-upload/-download
 // and don't want to fight ourselves). But edits during an upload still need
 // to propagate. We set this flag whenever a sync write is dropped because of
@@ -37,11 +38,10 @@ let confirmRemoteOverwrite = false
 // debounce timer always exists when there's queued work.
 let pendingUpload = false
 const AUTO_UPLOAD_DEBOUNCE_MS = 30000
-// 启动期间每开一个新标签页都会调一次 autoSyncOnStartup 拉远端。
-// 频繁开标签页 = 短时间内打几十次 provider API。同一会话 60s 内只查一次远端。
-const STARTUP_FETCH_THROTTLE_MS = 60_000
 
-export function synchronization(init?: Local, update?: SyncUpdate): void {
+export async function synchronization(init?: Local, update?: SyncUpdate): Promise<StartupSyncResult | void> {
+    let startupResult: StartupSyncResult | undefined
+
     if (init) {
         // Legacy: 'browser' was a Chrome/Firefox-Sync option that never did
         // anything (storage.ts uses chrome.storage.local even for the 'sync'
@@ -49,7 +49,7 @@ export function synchronization(init?: Local, update?: SyncUpdate): void {
         // the UI matches storage instead of falling through every switch.
         if ((init.syncType as string) === 'browser') {
             init.syncType = 'off'
-            storage.local.set({ syncType: 'off' })
+            await storage.local.set({ syncType: 'off' })
         }
 
         onSettingsLoad(() => {
@@ -57,64 +57,32 @@ export function synchronization(init?: Local, update?: SyncUpdate): void {
             setTimeout(() => handleStoragePersistence(init.syncType), 200)
         })
 
-        autoSyncOnStartup(init)
+        startupFreshnessChecked = !needsStartupFreshnessCheck(init)
         globalThis.addEventListener('bonjourr-sync-write', scheduleAutoUpload)
+        startupResult = await autoSyncOnStartup(init)
     }
 
     if (update) {
-        updateSyncOption(update)
+        await updateSyncOption(update)
     }
+
+    return startupResult
 }
 
-async function autoSyncOnStartup(local: Local): Promise<void> {
+async function autoSyncOnStartup(local: Local): Promise<StartupSyncResult> {
     const provider = getRemoteProvider(local)
 
-    if (!provider?.isEnabled(local)) {
-        return
-    }
-
-    if (!provider.isAuthorized(local) || !provider.getResourceId(local)) {
-        return
-    }
-
-    // 节流：60s 内已经查过远端就不再请求，直接信任本地 hash。
-    // 否则每开一个新标签页都请求 provider 一次，几秒钟开几个标签 = 暴打 API。
-    const lastFetchedAt = provider.getLastFetchedAt(local)
-        ? new Date(provider.getLastFetchedAt(local) ?? '').getTime()
-        : 0
-    const fetchedRecently = lastFetchedAt && Date.now() - lastFetchedAt < STARTUP_FETCH_THROTTLE_MS
-
-    if (fetchedRecently) {
-        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
-        lastSyncedPayload = syncPayloadHash(current)
-        return
+    if (!provider || !needsStartupFreshnessCheck(local)) {
+        return 'skipped'
     }
 
     syncLocked = true
 
     try {
-        const result = await provider.download(local)
-        await storage.local.set(provider.fetchedPatch(new Date().toISOString()))
-
-        const lastSyncedAt = provider.getLastSyncedAt(local)
-        if (lastSyncedAt && !isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
-            const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
-            lastSyncedPayload = syncPayloadHash(current)
-            return
-        }
-
-        const data = await storage.sync.get()
-        const next = await applyDownloadedSync(data, result.sync)
-        lastSyncedPayload = syncPayloadHash(next)
-        await storage.local.set(provider.syncedPatch(result.metadata))
-        // Just downloaded fresh remote state — any writes that landed during
-        // the download are reflected in `next`, so drop the pending flag.
-        pendingUpload = false
-        fadeOut()
+        return await completeStartupFreshnessCheck(local, provider)
     } catch (err) {
         console.warn('Auto sync on startup failed', err)
-        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
-        lastSyncedPayload = syncPayloadHash(current)
+        return 'failed'
     } finally {
         releaseSyncLock()
     }
@@ -161,6 +129,11 @@ async function doAutoUpload(): Promise<void> {
         return
     }
 
+    if (!startupFreshnessChecked && provider.getResourceId(local)) {
+        pendingUpload = true
+        return
+    }
+
     syncLocked = true
 
     try {
@@ -185,12 +158,44 @@ async function doAutoUpload(): Promise<void> {
         const result = await provider.upload(local, latest)
         lastSyncedPayload = payload
         pendingUpload = false
-        storage.local.set(provider.syncedPatch(result))
+        await storage.local.set(provider.syncedPatch(result))
     } catch (err) {
         console.warn('Auto upload failed', err)
     } finally {
         releaseSyncLock()
     }
+}
+
+function needsStartupFreshnessCheck(local: Local): boolean {
+    const provider = getRemoteProvider(local)
+    return !!provider?.isEnabled(local) && provider.isAuthorized(local) && !!provider.getResourceId(local)
+}
+
+async function completeStartupFreshnessCheck(
+    local: Local,
+    provider: RemoteProvider,
+): Promise<'checked' | 'downloaded'> {
+    const result = await provider.download(local)
+    await storage.local.set(provider.fetchedPatch(new Date().toISOString()))
+
+    const lastSyncedAt = provider.getLastSyncedAt(local)
+    if (lastSyncedAt && !isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
+        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        lastSyncedPayload = syncPayloadHash(current)
+        startupFreshnessChecked = true
+        return 'checked'
+    }
+
+    const data = await storage.sync.get()
+    const next = await applyDownloadedSync(data, result.sync)
+    lastSyncedPayload = syncPayloadHash(next)
+    await storage.local.set(provider.syncedPatch(result.metadata))
+    // Just downloaded fresh remote state — any writes that landed during
+    // the download are reflected in `next`, so drop the pending flag.
+    pendingUpload = false
+    startupFreshnessChecked = true
+    fadeOut()
+    return 'downloaded'
 }
 
 async function updateSyncOption(update: SyncUpdate): Promise<void> {
@@ -220,23 +225,11 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                         ...provider.fetchedPatch(new Date().toISOString()),
                     })
                     pendingUpload = false
+                    startupFreshnessChecked = true
                     gistsyncform.accept()
                     fadeOut()
                 } catch (err) {
                     gistsyncform.warn(err as string)
-                }
-            }
-
-            if (local.syncType === 'url') {
-                urlsyncform.load()
-
-                try {
-                    const incoming = await receiveFromURL(local.distantUrl)
-                    await applyDownloadedSync(data, incoming)
-                    urlsyncform.accept()
-                    fadeOut()
-                } catch (err) {
-                    urlsyncform.warn(err as string)
                 }
             }
         } finally {
@@ -278,10 +271,11 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 lastSyncedPayload = syncPayloadHash(latest)
                 pendingUpload = false
                 confirmRemoteOverwrite = false
+                startupFreshnessChecked = true
 
                 gistsyncform.accept()
 
-                storage.local.set(provider.syncedPatch(result))
+                await storage.local.set(provider.syncedPatch(result))
 
                 provider.setStatusNow(result.resourceId)
             } catch (error) {
@@ -296,18 +290,12 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
         local.gistToken = ''
         local.remoteResourceId = ''
         local.remoteLastSyncedAt = undefined
-        storage.local.remove('gistToken')
+        startupFreshnessChecked = true
+        await storage.local.remove('gistToken')
         for (const key of getRemoteProvider({ ...local, syncType: 'gist' })?.clearPatch() ?? []) {
-            storage.local.remove(key)
+            await storage.local.remove(key)
         }
         gistsyncform.accept()
-        toggleSyncSettingsOption(local)
-        return
-    }
-
-    if (update.url === '') {
-        local.distantUrl = ''
-        storage.local.remove('distantUrl')
         toggleSyncSettingsOption(local)
         return
     }
@@ -321,18 +309,19 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             const foundId = await gist?.findResource(local)
 
             local.remoteResourceId = foundId ?? ''
+            startupFreshnessChecked = !needsStartupFreshnessCheck({ ...local, syncType: 'gist' })
             // The previous token's last-sync timestamp is meaningless against
             // a different remote resource — clear it so isRemoteNewer doesn't compare a
             // stale local time against a fresh remote time and incorrectly
             // skip the next download.
             local.remoteLastSyncedAt = undefined
-            storage.local.set({
+            await storage.local.set({
                 gistToken: local.gistToken,
                 remoteResourceId: local.remoteResourceId,
             })
             for (const key of gist?.clearPatch() ?? []) {
                 if (key !== 'remoteResourceId') {
-                    storage.local.remove(key)
+                    await storage.local.remove(key)
                 }
             }
             // Different remote resource, different content — force the next sync to
@@ -346,24 +335,10 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
         }
     }
 
-    if (update.url) {
-        urlsyncform.load()
-
-        try {
-            await receiveFromURL(update.url)
-            urlsyncform.accept('i_urlsync', update.url)
-
-            local.distantUrl = update.url
-            storage.local.set({ distantUrl: update.url })
-            toggleSyncSettingsOption(local)
-        } catch (error) {
-            urlsyncform.warn(error as string)
-        }
-    }
-
     if (isSyncType(update.type)) {
         local.syncType = update.type
-        storage.local.set({ syncType: local.syncType })
+        startupFreshnessChecked = !needsStartupFreshnessCheck(local)
+        await storage.local.set({ syncType: local.syncType })
 
         toggleSyncSettingsOption(local)
         handleStoragePersistence(update.type)
@@ -391,28 +366,21 @@ async function handleStoragePersistence(type?: SyncType): Promise<boolean | unde
     }
 }
 
-async function toggleSyncSettingsOption(local?: Local): Promise<void> {
+function toggleSyncSettingsOption(local?: Local): void {
     const provider = getRemoteProvider(local)
     const resourceId = local ? provider?.getResourceId(local) : undefined
     const gistToken = local?.gistToken
-    const distantUrl = local?.distantUrl
     const type = local?.syncType
 
     const iGistsync = document.querySelector<HTMLInputElement>('#i_gistsync')
-    const iUrlsync = document.querySelector<HTMLInputElement>('#i_urlsync')
     const bGistdown = document.querySelector<HTMLInputElement>('#b_gistdown')
     const bGistup = document.querySelector<HTMLInputElement>('#b_gistup')
-    const bUrldown = document.querySelector<HTMLInputElement>('#b_urldown')
 
     bGistdown?.setAttribute('disabled', '')
-    bUrldown?.setAttribute('disabled', '')
     bGistup?.setAttribute('disabled', '')
 
     if (iGistsync && gistToken) {
         iGistsync.value = gistToken
-    }
-    if (iUrlsync && distantUrl) {
-        iUrlsync.value = distantUrl
     }
 
     const choseStoragePersistence = localStorage.choseStoragePersistence === 'true'
@@ -420,14 +388,12 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
 
     switch (type) {
         case 'off': {
-            document.getElementById('url-sync')?.classList.remove('shown')
             document.getElementById('gist-sync')?.classList.remove('shown')
             break
         }
 
         case 'gist': {
             document.getElementById('gist-sync')?.classList.add('shown')
-            document.getElementById('url-sync')?.classList.remove('shown')
             document.getElementById('disabled-sync')?.classList.remove('shown')
 
             if (!gistToken) {
@@ -446,18 +412,6 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
             break
         }
 
-        case 'url': {
-            document.getElementById('url-sync')?.classList.add('shown')
-            document.getElementById('gist-sync')?.classList.remove('shown')
-            document.getElementById('disabled-sync')?.classList.remove('shown')
-
-            if (distantUrl && await isDistantUrlValid(distantUrl)) {
-                bUrldown?.removeAttribute('disabled')
-            }
-
-            break
-        }
-
         default:
     }
 }
@@ -465,7 +419,7 @@ async function toggleSyncSettingsOption(local?: Local): Promise<void> {
 // Type check
 
 function isSyncType(val = ''): val is SyncType {
-    return ['gist', 'url', 'off'].includes(val)
+    return ['gist', 'off'].includes(val)
 }
 
 async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Promise<Sync> {
@@ -475,6 +429,7 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
     holdBookmarkRefreshes()
     await resetBackgroundRuntimeCache(next.backgrounds)
 
+    storage.stageSyncForReload(next)
     await storage.sync.clear()
     await storage.sync.set(next)
 

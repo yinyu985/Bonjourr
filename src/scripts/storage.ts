@@ -42,9 +42,12 @@ interface Storage {
         set: (type: StorageType) => void
         init: () => StorageType
     }
+    stageSyncForReload: (data: Sync) => void
     init: () => Promise<InitializedStorage>
     clearall: () => Promise<void>
 }
+
+const SYNC_RELOAD_SNAPSHOT_KEY = 'bonjourr-sync-reload-snapshot'
 
 // 之前所有写失败都被 try/catch 吞掉只 console.warn，用户毫无察觉。
 // dispatch 一个事件让 settings 面板（或任何想监听的地方）显示个 banner。
@@ -74,6 +77,7 @@ export const storage: Storage = {
         remove: localRemove,
         clear: localClear,
     },
+    stageSyncForReload,
     init: init,
     clearall: clearall,
     type: storageTypeFn(),
@@ -129,7 +133,7 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
                     ...keyval,
                 }
                 await chrome.storage.local.set({ syncStorage: data })
-                globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
+                dispatchSyncWriteIfContentChanged(local.syncStorage, data, keyval)
             } catch (err) {
                 reportStorageError('sync-write', err)
             }
@@ -148,9 +152,10 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
                     data[k] = v
                 }
 
+                const previous = verifyDataAsSync(parse<Sync>(localStorage.bonjourr) ?? {})
                 localStorage.bonjourr = JSON.stringify(data ?? {})
                 globalThis.dispatchEvent(new Event('storage'))
-                globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
+                dispatchSyncWriteIfContentChanged(previous, data, keyval)
             } catch (err) {
                 // QuotaExceededError / Safari 私密模式 / Firefox 阻止
                 reportStorageError('sync-write', err)
@@ -160,6 +165,42 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
 
         default:
     }
+}
+
+function dispatchSyncWriteIfContentChanged(
+    previous: Partial<Sync> | undefined,
+    next: Partial<Sync>,
+    patch: Partial<Sync>,
+): void {
+    if (isOnlySelectedFolderChange(previous, next, patch)) {
+        return
+    }
+
+    globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
+}
+
+function isOnlySelectedFolderChange(
+    previous: Partial<Sync> | undefined,
+    next: Partial<Sync>,
+    patch: Partial<Sync>,
+): boolean {
+    const keys = Object.keys(patch)
+
+    if (keys.length !== 1 || !('links' in patch)) {
+        return false
+    }
+
+    const previousLinks = previous?.links
+    const nextLinks = next.links
+
+    if (!previousLinks || !nextLinks) {
+        return false
+    }
+
+    const { selectedFolder: _previousSelected, ...previousComparable } = previousLinks
+    const { selectedFolder: _nextSelected, ...nextComparable } = nextLinks
+
+    return deepEqual(previousComparable, nextComparable)
 }
 
 async function syncRemove(key: string): Promise<void> {
@@ -366,6 +407,17 @@ async function init(): Promise<InitializedStorage> {
         default:
     }
 
+    const stagedSync = readStagedSyncForReload()
+    if (stagedSync) {
+        store.sync = stagedSync
+        if (store.local) {
+            store.local.syncStorage = stagedSync
+        }
+        if (await persistSyncSnapshot(type, stagedSync)) {
+            clearStagedSyncForReload()
+        }
+    }
+
     if (Object.keys(store.sync ?? {})?.length === 0) {
         store.sync = structuredClone(SYNC_DEFAULT)
     }
@@ -453,5 +505,66 @@ function verifyDataAsLocal(data: Partial<Local> = {}): Local {
     return {
         ...LOCAL_DEFAULT,
         ...data,
+    }
+}
+
+function stageSyncForReload(data: Sync): void {
+    try {
+        sessionStorage.setItem(SYNC_RELOAD_SNAPSHOT_KEY, JSON.stringify(data))
+    } catch (err) {
+        reportStorageError('sync-reload-stage', err)
+    }
+}
+
+function readStagedSyncForReload(): Sync | undefined {
+    let raw: string | null
+
+    try {
+        raw = sessionStorage.getItem(SYNC_RELOAD_SNAPSHOT_KEY)
+    } catch (err) {
+        reportStorageError('sync-reload-read', err)
+        return
+    }
+
+    if (!raw) {
+        return
+    }
+
+    const parsed = parse<Partial<Sync>>(raw)
+
+    if (!parsed || Object.keys(parsed).length === 0) {
+        clearStagedSyncForReload()
+        return
+    }
+
+    return verifyDataAsSync(parsed)
+}
+
+function clearStagedSyncForReload(): void {
+    try {
+        sessionStorage.removeItem(SYNC_RELOAD_SNAPSHOT_KEY)
+    } catch (err) {
+        reportStorageError('sync-reload-clear', err)
+    }
+}
+
+async function persistSyncSnapshot(type: StorageType, data: Sync): Promise<boolean> {
+    switch (type) {
+        case 'webext-local': {
+            return await chrome.storage.local.set({ syncStorage: data }).then(() => true).catch((err) => {
+                reportStorageError('sync-reload-persist', err)
+                return false
+            })
+        }
+
+        case 'localstorage': {
+            try {
+                localStorage.bonjourr = JSON.stringify(data)
+                return true
+            } catch (err) {
+                reportStorageError('sync-reload-persist', err)
+                return false
+            }
+        }
     }
 }

@@ -362,7 +362,6 @@
     "Browser": "瀏覽器",
     "Get": "取得",
     "Send": "傳送",
-    "Distant URL": "遠端網址",
     "Not a valid URL": "不是有效的網址",
     "Cannot access resource right now": "目前無法存取資源",
     "Cannot access resource, even with proxy": "無法存取資源，無論是否使用代理",

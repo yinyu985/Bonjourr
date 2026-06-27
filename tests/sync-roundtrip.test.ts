@@ -8,6 +8,8 @@ import { __testing } from '../src/scripts/features/synchronization/index.ts'
 import type { Sync } from '../src/types/sync.ts'
 
 const { applyDownloadedSync, syncPayloadHash } = __testing
+const LOCKED_BACKGROUND_FULL_URL = 'https://example.com/remote-full.jpg'
+const LOCKED_BACKGROUND_SMALL_URL = 'https://example.com/remote-small.jpg'
 
 // 这一组测试是为了挡住几次踩过的同步坑：
 //   - syncPayloadHash 对 notes 内容必须敏感（曾经被 stringify replacer 过滤掉过）
@@ -78,6 +80,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
+        sessionStorage.clear()
         await storage.sync.clear()
 
         const current = structuredClone(SYNC_DEFAULT)
@@ -94,6 +97,7 @@ Deno.test({
         assertEquals(next.lang, 'ja')
         assertEquals(saved.lang, 'ja')
         assertEquals(saved.tabtitle, SYNC_DEFAULT.tabtitle)
+        sessionStorage.clear()
     },
 })
 
@@ -102,6 +106,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
+        sessionStorage.clear()
         await storage.sync.clear()
         const current = structuredClone(SYNC_DEFAULT)
         const incoming = structuredClone(SYNC_DEFAULT)
@@ -111,6 +116,46 @@ Deno.test({
         const saved = await storage.sync.get()
 
         assertEquals(syncPayloadHash(next), syncPayloadHash(saved))
+        sessionStorage.clear()
+    },
+})
+
+Deno.test({
+    name: 'applyDownloadedSync stages a locked remote image for the reload startup',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        sessionStorage.clear()
+        localStorage.removeItem('backgroundCache')
+        await storage.sync.clear()
+
+        const current = structuredClone(SYNC_DEFAULT)
+        await storage.sync.set(current)
+
+        const incoming = structuredClone(SYNC_DEFAULT)
+        incoming.backgrounds.type = 'images'
+        incoming.backgrounds.frequency = 'pause'
+        incoming.backgrounds.texture = { type: 'none' }
+        incoming.backgrounds.pausedImage = lockedBackground()
+
+        const next = await applyDownloadedSync(current, incoming)
+
+        assertEquals(next.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
+        assertEquals(localStorage.getItem('backgroundCache'), LOCKED_BACKGROUND_FULL_URL)
+
+        await storage.sync.clear()
+        await storage.sync.set(structuredClone(SYNC_DEFAULT))
+
+        const initialized = await storage.init()
+        const saved = await storage.sync.get()
+
+        assertEquals(initialized.sync.backgrounds.type, 'images')
+        assertEquals(initialized.sync.backgrounds.frequency, 'pause')
+        assertEquals(initialized.sync.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
+        assertEquals(saved.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
+
+        sessionStorage.clear()
+        localStorage.removeItem('backgroundCache')
     },
 })
 
@@ -128,4 +173,15 @@ function syncWithNote(content: string, title = 'Untitled'): Sync {
         }],
     }
     return data
+}
+
+function lockedBackground(): NonNullable<Sync['backgrounds']['pausedImage']> {
+    return {
+        format: 'image',
+        urls: {
+            full: LOCKED_BACKGROUND_FULL_URL,
+            small: LOCKED_BACKGROUND_SMALL_URL,
+        },
+        color: '#123456',
+    }
 }

@@ -73,9 +73,13 @@ async function startup(): Promise<void> {
     darkmode(sync.dark)
     customCss(sync.css)
     backgroundsInit(sync, local, true)
-    quickLinks({ sync, local })
+    const startupSyncResult = await synchronization(local)
+    if (startupSyncResult === 'downloaded') {
+        return
+    }
+
+    await quickLinks({ sync, local })
     notes(sync)
-    synchronization(local)
     settingsInit(sync, local)
     operaExtensionExplainer(local.operaExplained)
 

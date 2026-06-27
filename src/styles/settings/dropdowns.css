@@ -85,10 +85,6 @@
     max-height: 105px;
 }
 
-#url-sync.shown {
-    max-height: 220px;
-}
-
 #gist-sync.shown {
     max-height: 220px;
 }

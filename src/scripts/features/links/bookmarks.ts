@@ -33,37 +33,6 @@ type BookmarksFolderItem = {
     dateAdded: number
 }
 
-type BookmarkLinksUpdate = {
-    addLinks?: {
-        title: string
-        url: string
-        folder?: string
-        group?: string
-        id?: string
-    }[]
-    updateLink?: {
-        id: string
-        url?: string
-        title: string
-    }
-    moveLinks?: string[]
-    moveFavorites?: string[]
-    moveToFolder?: {
-        source?: string
-        target: string
-        ids?: string[]
-    }
-    moveToSubfolder?: {
-        source: string
-        target: string
-    }
-    moveOutSubfolder?: { ids: string[]; folder: string }
-    deleteLinks?: string[]
-    deleteFolder?: string
-    folderTitle?: { old: string; new: string }
-    unsyncFolder?: string
-}
-
 let browserBookmarkFolders: BookmarksFolder[] = []
 let bookmarkListenerAdded = false
 let bookmarkRestoreInProgress = false
@@ -127,13 +96,6 @@ function applySyncedFolders(data: Sync): boolean {
 
     for (const browserFolder of browserBookmarkFolders) {
         if (browserFolder.title === FAVORITES_FOLDER) {
-            continue
-        }
-
-        if (
-            browserFolder.title === 'default' && browserFolder.bookmarks.length === 0 &&
-            browserFolder.children.length === 0
-        ) {
             continue
         }
 
@@ -287,10 +249,6 @@ export async function refreshSyncedGroups(): Promise<void> {
     initblocks(data, local)
 }
 
-export function syncBookmarksUpdate(_update: BookmarkLinksUpdate, _data: Sync): Promise<boolean> {
-    return Promise.resolve(false)
-}
-
 export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
     const treenode = await getBookmarkTree()
 
@@ -311,46 +269,6 @@ export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
     }
 
     return data
-}
-
-export async function restoreBookmarksFromConfig(data: Sync): Promise<boolean> {
-    const folders = collectRestorableBookmarkItems(data)
-
-    if (!EXTENSION || folders.size === 0) {
-        return false
-    }
-
-    holdBookmarkRefreshes()
-    const root = await getRestorableRoot()
-
-    if (!root || !EXTENSION.bookmarks) {
-        releaseBookmarkRefreshesSoon()
-        return false
-    }
-
-    const bookmarksApi = EXTENSION.bookmarks
-    const toolbar = root.children?.[0] ?? root
-    const folderIdsByTitle = bookmarkFolderIdsByTitle(root)
-    const urlsByParentId = directBookmarkUrlsByParentId(root)
-    let createdAny = false
-
-    for (const [folderTitle, items] of orderedRestorableFolders(data, folders)) {
-        const parentId = folderTitle === FAVORITES_FOLDER
-            ? toolbar.id
-            : await getOrCreateRestoreFolder(folderTitle, toolbar.id, bookmarksApi, folderIdsByTitle, urlsByParentId)
-
-        if (!parentId) {
-            continue
-        }
-
-        const result = await restoreItemsToChrome(parentId, items, urlsByParentId, bookmarksApi)
-        createdAny = result || createdAny
-    }
-
-    const reordered = await normalizeBookmarkToolbarOrder(bookmarksApi)
-
-    releaseBookmarkRefreshesSoon()
-    return createdAny || reordered
 }
 
 // Writes the remote-side state into the user's Chrome bookmarks with Remote as
@@ -431,10 +349,6 @@ function collectRestorableBookmarkItems(data: Sync): Map<string, LinkNode[]> {
     }
 
     return folders
-}
-
-function orderedRestorableFolders(data: Sync, folders: Map<string, LinkNode[]>): [string, LinkNode[]][] {
-    return orderedRestorableFolderNames(data, folders).map((folder) => [folder, folders.get(folder) ?? []])
 }
 
 function orderedRestorableFolderNames(data: Sync, folders: Map<string, LinkNode[]>, extras: string[] = []): string[] {
@@ -688,42 +602,6 @@ async function syncItemsToChrome(
     return mutated
 }
 
-async function restoreItemsToChrome(
-    parentId: string,
-    items: LinkNode[],
-    urlsByParentId: Map<string, Set<string>>,
-    bookmarksApi: NonNullable<typeof EXTENSION>['bookmarks'],
-): Promise<boolean> {
-    let createdAny = false
-    const existingUrls = urlsByParentId.get(parentId) ?? new Set<string>()
-    urlsByParentId.set(parentId, existingUrls)
-
-    for (const item of items) {
-        if (isElem(item)) {
-            const url = normalizeBookmarkUrl(item.url)
-            if (!url || existingUrls.has(url)) continue
-
-            try {
-                await bookmarksApi.create({ parentId, title: item.title, url })
-                existingUrls.add(url)
-                createdAny = true
-            } catch (_error) {
-                // Best effort
-            }
-        } else if (isSubfolder(item)) {
-            try {
-                const created = await bookmarksApi.create({ parentId, title: item.title })
-                const result = await restoreItemsToChrome(created.id, item.items, urlsByParentId, bookmarksApi)
-                createdAny = result || createdAny
-            } catch (_error) {
-                // Best effort
-            }
-        }
-    }
-
-    return createdAny
-}
-
 function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
     const folders = new Map<string, string>()
     const titleCounts = new Map<string, number>()
@@ -757,35 +635,6 @@ function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
 
     walk(treenode)
     return folders
-}
-
-function directBookmarkUrlsByParentId(treenode: Treenode): Map<string, Set<string>> {
-    const urlsByParentId = new Map<string, Set<string>>()
-
-    function walk(node: Treenode): void {
-        if (!node.children) {
-            return
-        }
-
-        const urls = urlsByParentId.get(node.id) ?? new Set<string>()
-
-        for (const child of node.children) {
-            if (child.url) {
-                urls.add(normalizeBookmarkUrl(child.url))
-            }
-        }
-
-        urlsByParentId.set(node.id, urls)
-
-        for (const child of node.children) {
-            if (child.children) {
-                walk(child)
-            }
-        }
-    }
-
-    walk(treenode)
-    return urlsByParentId
 }
 
 function normalizeBookmarkUrl(url: string): string {

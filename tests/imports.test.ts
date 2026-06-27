@@ -65,6 +65,49 @@ Deno.test('Image import without texture does not inherit default texture', () =>
     assert(config.backgrounds.texture.type === 'none')
 })
 
+Deno.test('Full config import with pausedImage and default topographic texture overrides to none', () => {
+    const incoming = structuredClone(SYNC_DEFAULT)
+    incoming.backgrounds.type = 'images'
+    incoming.backgrounds.frequency = 'pause'
+    incoming.backgrounds.pausedImage = {
+        format: 'image',
+        urls: {
+            full: 'https://example.com/full.jpg',
+            small: 'https://example.com/small.jpg',
+        },
+    }
+    // texture is already topographic from SYNC_DEFAULT
+
+    const config = mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
+
+    assert(config.backgrounds.type === 'images')
+    assert(config.backgrounds.frequency === 'pause')
+    assert(
+        config.backgrounds.texture.type === 'none',
+        'topographic default should be overridden to none when importing a pausedImage config',
+    )
+})
+
+Deno.test('Full config import with pausedImage and explicit non-default texture keeps it', () => {
+    const incoming = structuredClone(SYNC_DEFAULT)
+    incoming.backgrounds.type = 'images'
+    incoming.backgrounds.frequency = 'pause'
+    incoming.backgrounds.pausedImage = {
+        format: 'image',
+        urls: {
+            full: 'https://example.com/full.jpg',
+            small: 'https://example.com/small.jpg',
+        },
+    }
+    incoming.backgrounds.texture = { type: 'grain' }
+
+    const config = mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
+
+    assert(config.backgrounds.type === 'images')
+    assert(config.backgrounds.frequency === 'pause')
+    assert(config.backgrounds.texture.type === 'grain', 'explicit non-default texture should be preserved')
+})
+
 Deno.test('Background runtime reset applies imported texture immediately', async () => {
     document.body.insertAdjacentHTML(
         'beforeend',

@@ -41,10 +41,6 @@
         display: none;
     }
 
-    #editlink {
-        max-width: 80%;
-    }
-
     #linkblocks.text,
     #linkblocks.inline {
         --folder-padding: 24px;

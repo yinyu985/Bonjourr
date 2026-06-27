@@ -4,14 +4,12 @@ import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/
 import { resetBackgroundRuntimeCache } from './features/backgrounds/cache.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
-import { mergeSyncAppend } from './features/synchronization/merge.ts'
 import { hideElements } from './features/hide.ts'
 import {
     bootstrapBookmarksFromConfig,
     holdBookmarkRefreshes,
     linksImport,
     replaceBookmarksFromConfig,
-    restoreBookmarksFromConfig,
 } from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
 import { clock } from './features/clock/index.ts'
@@ -197,7 +195,6 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'gist'))
 
     setFormInput('i_gistsync', 'github_pat_XXXXXXXXXXXX', local?.gistToken)
-    setFormInput('i_urlsync', 'https://pastebin.com/raw/y7XhhiDs', local?.distantUrl)
 
     setCheckbox('i_showall', data.showall)
     setCheckbox('i_quicklinks', data.links.enabled)
@@ -476,11 +473,6 @@ function initOptionsEvents(): void {
         synchronization(undefined, { gistToken: paramId('i_gistsync').value })
     })
 
-    paramId('f_urlsync').addEventListener('submit', function (this, event): void {
-        event.preventDefault()
-        synchronization(undefined, { url: paramId('i_urlsync').value })
-    })
-
     onclickdown(paramId('b_storage-persist'), async () => {
         const persists = await navigator.storage.persist()
         synchronization(undefined, { firefoxPersist: persists })
@@ -491,10 +483,6 @@ function initOptionsEvents(): void {
     })
 
     armConfirmOverwrite(paramId('b_gistdown'), () => {
-        synchronization(undefined, { down: true })
-    })
-
-    armConfirmOverwrite(paramId('b_urldown'), () => {
         synchronization(undefined, { down: true })
     })
 
@@ -545,7 +533,7 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('b_settings-apply'), () => {
         const val = paramId('settings-data').value
-        importSettings(parse<Partial<Sync>>(val) ?? {}, 'replace')
+        importSettings(parse<Partial<Sync>>(val) ?? {})
     })
 
     onclickdown(paramId('b_reset-first'), () => {
@@ -878,13 +866,13 @@ function loadImportFile(target: HTMLInputElement): void {
 
         // data has at least one valid key from default sync storage => import
         if (Object.keys(SYNC_DEFAULT).filter((key) => key in importData).length > 0) {
-            importSettings(importData as Sync, 'replace')
+            importSettings(importData as Sync)
         }
     }
     reader.readAsText(file)
 }
 
-async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace' = 'merge'): Promise<void> {
+async function importSettings(imported: Partial<Sync>): Promise<void> {
     try {
         const current = await storage.sync.get()
 
@@ -900,21 +888,14 @@ async function importSettings(imported: Partial<Sync>, mode: 'merge' | 'replace'
         }
 
         const importedData = mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported)
-        let data = mode === 'replace' ? importedData : mergeSyncAppend(current, importedData)
 
-        if (mode === 'replace') {
-            await replaceBookmarksFromConfig(current, importedData)
-            holdBookmarkRefreshes()
-            await resetBackgroundRuntimeCache(importedData.backgrounds)
-        }
+        await replaceBookmarksFromConfig(current, importedData)
+        holdBookmarkRefreshes()
+        await resetBackgroundRuntimeCache(importedData.backgrounds)
 
+        storage.stageSyncForReload(importedData)
         await storage.sync.clear()
-        await storage.sync.set(data)
-
-        if (mode !== 'replace' && await restoreBookmarksFromConfig(importedData)) {
-            data = await bootstrapBookmarksFromConfig(data)
-            await storage.sync.set(data)
-        }
+        await storage.sync.set(importedData)
 
         sessionStorage.setItem('skipBookmarkSync', '1')
         fadeOut()

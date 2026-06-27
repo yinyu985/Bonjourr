@@ -3,7 +3,7 @@ import type { Sync } from './sync.ts'
 
 export type BackgroundUrlState = 'NONE' | 'LOADING' | 'OK' | 'NOT_URL' | 'CANT_REACH' | 'NOT_MEDIA'
 export type RemoteProviderKind = 'gist' | 'dropbox' | 'google-drive'
-export type SyncType = RemoteProviderKind | 'url' | 'off'
+export type SyncType = RemoteProviderKind | 'off'
 
 export interface Local {
     fonts?: FontListItem[]
@@ -17,7 +17,6 @@ export interface Local {
     remoteLastSyncedAt?: string
     remoteLastFetchedAt?: string
     localConfigUpdatedAt?: string
-    distantUrl?: string
     syncType?: SyncType
 
     // Backgrounds

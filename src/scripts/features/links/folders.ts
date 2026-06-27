@@ -8,8 +8,6 @@ import type { Local } from '../../../types/local.ts'
 import type { LinkNode } from '../../../types/shared.ts'
 import type { Sync } from '../../../types/sync.ts'
 
-const domlinkblocks = document.getElementById('linkblocks') as HTMLUListElement
-
 interface OpenPanel {
     panel: HTMLElement
     opener: HTMLElement
@@ -38,13 +36,10 @@ export async function folderClick(event: MouseEvent | KeyboardEvent): Promise<vo
     }
 
     const inFolder = li?.classList.contains('link-folder')
-    const isSelectAll = domlinkblocks.className.includes('select-all')
 
-    if (!(li && inFolder) || rightClick || isSelectAll) {
+    if (!(li && inFolder) || rightClick) {
         return
     }
-
-    document.dispatchEvent(new Event('stop-select-all'))
 
     const [data, local] = await Promise.all([storage.sync.get(), storage.local.get()])
     openFolder(data, local, li)

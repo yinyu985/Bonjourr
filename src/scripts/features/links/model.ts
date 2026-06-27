@@ -126,7 +126,7 @@ export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
 
     const [removed] = data.links.folders.splice(index, 1)
     if (data.links.selectedFolder === id) {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? 'default'
+        data.links.selectedFolder = data.links.folders[0]?.id ?? ''
     }
     return removed
 }
@@ -151,7 +151,7 @@ function normalizeCurrentLinks(links: LinksState): LinksState {
 
     for (const folder of links.folders) {
         folder.id ||= newFolderId()
-        folder.title ||= 'default'
+        folder.title ||= folder.id
         folder.items = normalizeItems(folder.items)
     }
 

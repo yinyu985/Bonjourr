@@ -14,7 +14,6 @@ function makeLocal(overrides: Partial<Local> = {}): Local {
 
 Deno.test('getRemoteProvider returns the selected provider only for remote sync types', () => {
     assertEquals(getRemoteProvider(makeLocal({ syncType: 'gist' }))?.kind, 'gist')
-    assertEquals(getRemoteProvider(makeLocal({ syncType: 'url' })), undefined)
     assertEquals(getRemoteProvider(makeLocal({ syncType: 'off' })), undefined)
 })
 

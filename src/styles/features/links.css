@@ -66,23 +66,6 @@
     display: none;
 }
 
-.select-all .link div,
-.select-all .link span {
-    /* split div and span instead of just ".link" */
-    /* to keep folder blur with filter */
-    filter: grayscale(1) brightness(0.6);
-}
-
-.select-all .selected div,
-.select-all .selected span {
-    filter: none;
-}
-
-.select-all.inline .link:hover span,
-.select-all.text .link:hover span {
-    text-decoration: none;
-}
-
 .text-left #link-mini,
 .text-left .link-list {
     justify-content: start;
@@ -495,33 +478,6 @@ body.group-focus #linkblocks > .link-group {
 .backgrounds .link div {
     background-color: transparent;
     border-color: transparent;
-}
-
-.link.removed {
-    margin: 0 calc(var(--column-gap) / 2 * -1); /* minus half of gap */
-    width: 0 !important;
-    opacity: 0;
-    overflow: hidden;
-    transition: width 0.3s 0.3s var(--out-cubic), margin 0.3s 0.3s var(--out-cubic), opacity 0.3s var(--out-cubic);
-}
-
-.link.removed span {
-    min-height: 0 !important;
-    max-height: 0 !important;
-    transition: max-height 0.3s 0.3s var(--out-cubic);
-}
-
-.link.removed div {
-    transform: scale(0.6);
-}
-
-#linkblocks.select-all.inline .link-folder.selected,
-#linkblocks.select-all.inline .link.selected a,
-#linkblocks.select-all.text .link-folder.selected,
-#linkblocks.select-all.text .link.selected a {
-    border-radius: 4px;
-    outline: 0.2em solid var(--color-blue);
-    background-color: rgba(0, 114, 238, 0.1333333333);
 }
 
 #linkblocks.inline .link.selected:hover span,

@@ -385,7 +385,6 @@
     "Browser": "Browser",
     "Get": "Get",
     "Send": "Send",
-    "Distant URL": "Distant URL",
     "Not a valid URL": "Not a valid URL",
     "Cannot access resource right now": "Cannot access resource right now",
     "Cannot access resource, even with proxy": "Cannot access resource, even with proxy",

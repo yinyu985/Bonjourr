@@ -362,7 +362,6 @@
     "Browser": "浏览器",
     "Get": "获取",
     "Send": "发送",
-    "Distant URL": "远程 URL",
     "Not a valid URL": "不是有效的网址",
     "Cannot access resource right now": "当前无法访问资源",
     "Cannot access resource, even with proxy": "即使使用代理也无法访问资源",

@@ -48,7 +48,6 @@ function createFolderTabs(data: Sync): void {
     for (const folder of visibleFolders) {
         const button = document.createElement('button')
         const isTopSite = folder.id === 'topsites'
-        const isDefault = folder.id === 'default'
         button.textContent = folder.title
         button.dataset.group = folder.id
         button.classList.add('link-title')
@@ -58,10 +57,6 @@ function createFolderTabs(data: Sync): void {
         if (isTopSite) {
             button.textContent = tradThis('Most visited')
             button.classList.add('topsites-title')
-        }
-
-        if (isDefault) {
-            button.textContent = tradThis('Default folder')
         }
 
         button.addEventListener('click', changeFolder)
@@ -103,7 +98,7 @@ function changeFolder(event: Event): void {
     async function recreateLinksFromNewFolder(): Promise<void> {
         const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
         const data = await refreshBookmarksBeforeFolderRender(await storage.sync.get())
-        const folderId = button.dataset.group ?? data.links.folders[0]?.id ?? 'default'
+        const folderId = button.dataset.group ?? data.links.folders[0]?.id ?? ''
 
         for (const div of buttons ?? []) {
             div.classList.remove('selected-group')
@@ -172,24 +167,6 @@ export function changeFolderTitle(title: { old: string; new: string }, data: Syn
 
     folder.title = title.new
     data.links.selectedFolder = folder.id
-    initFolders(data)
-    return data
-}
-export function deleteFolder(folderId: string, data: Sync): Sync {
-    const { folders } = data.links
-    const index = folders.findIndex((folder) => folder.id === folderId || folder.title === folderId)
-
-    if (folders.length <= 1 || index < 0) {
-        return data
-    }
-
-    const [removed] = folders.splice(index, 1)
-
-    if (data.links.selectedFolder === removed.id) {
-        data.links.selectedFolder = folders[0]?.id ?? 'default'
-    }
-
-    initblocks(data)
     initFolders(data)
     return data
 }

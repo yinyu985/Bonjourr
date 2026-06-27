@@ -1,90 +1,26 @@
-import { changeFolderTitle, deleteFolder, initFolders, toggleFolders, updateSelectedFolderPosition } from './groups.ts'
-import { initBookmarkSync, syncBookmarksUpdate } from './bookmarks.ts'
-import { openContextMenu } from '../contextmenu.ts'
-import { storeIconFile } from './fileicons.ts'
+import { initFolders, toggleFolders, updateSelectedFolderPosition } from './groups.ts'
+import { initBookmarkSync } from './bookmarks.ts'
 import { collapseAllPanels, folderClick } from './folders.ts'
-import {
-    createTitle,
-    DEFAULT_FAVICON,
-    FOLDER_ICON,
-    getDefaultIcon,
-    getLiFromEvent,
-    getLinksInSubfolder,
-    isElem,
-    isSubfolder,
-} from './helpers.ts'
-import { createLink, createSubfolder, FAVORITES_FOLDER, getFolder, getNode, newFolderId, removeNode } from './model.ts'
+import { createTitle, DEFAULT_FAVICON, FOLDER_ICON, getDefaultIcon, isElem, isSubfolder } from './helpers.ts'
+import { createLink, FAVORITES_FOLDER, getFolder, getNode } from './model.ts'
 
 import { EXTENSION, PLATFORM } from '../../defaults.ts'
-import { stringMaxSize } from '../../shared/generic.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { getHTMLTemplate } from '../../shared/dom.ts'
 import { eventDebounce } from '../../utils/debounce.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkElem, LinkIcon, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
+import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
 import type { Local } from '../../../types/local.ts'
 import type { LinkFolder, Sync } from '../../../types/sync.ts'
-
-type AddLinks = {
-    title: string
-    url: string
-    folder?: string
-    group?: string
-    id?: string
-}[]
-
-type UpdateLink = {
-    id: string
-    url?: string
-    title: string
-    icon?: LinkIcon
-    file?: File
-}
-
-type SubfolderMove = {
-    source: string
-    target: string
-}
-
-type MoveToFolderArgs = {
-    source?: string
-    target: string
-    ids: string[]
-}
-
-type SubmitLink = {
-    type: 'link'
-    links: AddLinks
-}
-
-type SubmitSubfolder = {
-    type: 'subfolder'
-    ids: string[]
-    title?: string
-    folder?: string
-}
 
 export type LinksUpdate = {
     iconradius?: string
     row?: string
     newtab?: boolean
     folders?: boolean
-    addLinks?: AddLinks
-    addSubfolder?: { ids: string[]; folder?: string; group?: string }
-    updateLink?: UpdateLink
-    moveLinks?: string[]
-    moveFavorites?: string[]
-    concatSubfolders?: SubfolderMove
-    moveToSubfolder?: SubfolderMove
-    moveToFolder?: SubfolderMove | MoveToFolderArgs
-    moveOutSubfolder?: { ids: string[]; folder: string; group?: string }
-    deleteFolder?: string
-    deleteLinks?: string[]
     refreshIcons?: string[]
-    folderTitle?: { old: string; new: string }
     styles?: { style?: string; titles?: boolean; backgrounds?: boolean }
-    unsyncFolder?: string
 }
 
 type RenderFolder = {
@@ -103,7 +39,6 @@ const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 const domlinkmini = document.getElementById('link-mini') as HTMLDivElement
 export const FAVORITES_GROUP = FAVORITES_FOLDER
 let initIconList: [HTMLImageElement, string][] = []
-let selectallTimer = 0
 
 const INTERNAL_URL_SCHEMES = [
     'about:',
@@ -233,10 +168,6 @@ export function initblocks(sync: Sync, local?: Local): true {
             li = isElem(item) ? createElem(item, sync.links.newTab) : createSubfolderElement(item)
 
             fragment.appendChild(li)
-
-            li.addEventListener('keyup', openContextMenu)
-            li.addEventListener('click', selectAll)
-            li.addEventListener('pointerdown', selectAll)
         }
 
         linklist.innerHTML = ''
@@ -602,77 +533,9 @@ function initRows(row: number, style: string): void {
     }
 }
 
-queueMicrotask(() => {
-    document.addEventListener('stop-select-all', () => clearTimeout(selectallTimer))
-    document.addEventListener('remove-select-all', removeSelectAll)
-})
-
-function selectAll(event: MouseEvent): void {
-    clearTimeout(selectallTimer)
-
-    const selectAllActive = domlinkblocks.className.includes('select-all')
-    const primaryButton = !event.button || event.button === 0
-    const pointerUpOrClick = event.type.includes('pointerup') || event.type.includes('click')
-    const li = getLiFromEvent(event)
-
-    if (selectAllActive && pointerUpOrClick) {
-        if (primaryButton) {
-            li?.classList.toggle('selected')
-        }
-        event.preventDefault()
-        return
-    }
-
-    if (!selectAllActive && primaryButton && event.type === 'pointerdown') {
-        if ((event as PointerEvent)?.pointerType === 'touch') {
-            return
-        }
-
-        selectallTimer = setTimeout(() => domlinkblocks.classList.add('select-all'), 600)
-    }
-}
-
-function removeSelectAll(): void {
-    clearTimeout(selectallTimer)
-    domlinkblocks.classList.remove('select-all')
-    for (const li of domlinkblocks.querySelectorAll('.link')) {
-        li.classList.remove('selected')
-    }
-}
-
 export async function linksUpdate(update: LinksUpdate): Promise<void> {
     let data = await storage.sync.get()
 
-    if (await syncBookmarksUpdate(update, data)) {
-        return
-    }
-
-    if (update.addLinks) data = linkSubmission({ type: 'link', links: update.addLinks }, data)
-    if (update.addSubfolder) {
-        data = linkSubmission({
-            type: 'subfolder',
-            ids: update.addSubfolder.ids,
-            folder: update.addSubfolder.folder ?? update.addSubfolder.group,
-        }, data)
-    }
-    if (update.moveLinks) data = moveLinks(update.moveLinks, data)
-    if (update.moveFavorites) data = moveFavorites(update.moveFavorites, data)
-    if (update.moveToFolder && 'ids' in update.moveToFolder) data = moveToFolder(update.moveToFolder, data)
-    if (update.moveToSubfolder || update.moveToFolder && 'source' in update.moveToFolder) {
-        data = moveToSubfolder((update.moveToSubfolder ?? update.moveToFolder) as SubfolderMove, data)
-    }
-    if (update.concatSubfolders) data = concatSubfolders(update.concatSubfolders, data)
-    if (update.moveOutSubfolder) {
-        data = moveOutSubfolder({
-            ids: update.moveOutSubfolder.ids,
-            folder: update.moveOutSubfolder.folder,
-        }, data)
-    }
-    if (update.updateLink) data = updateLink(update.updateLink, data)
-    if (update.deleteLinks) data = deleteLinks(update.deleteLinks, data)
-    if (update.folderTitle) data = changeFolderTitle(update.folderTitle, data)
-    if (update.deleteFolder !== undefined) data = deleteFolder(update.deleteFolder, data)
-    if (update.unsyncFolder !== undefined) data = unsyncFolder(update.unsyncFolder, data)
     if (update.folders !== undefined) data = toggleFolders(update.folders, data)
     if (update.newtab !== undefined) data = setOpenInNewTab(update.newtab, data)
     if (update.refreshIcons) data = refreshIcons(update.refreshIcons, data)
@@ -689,218 +552,6 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
     }
 
     await storage.sync.set(data)
-}
-
-function linkSubmission(args: SubmitLink | SubmitSubfolder, data: Sync): Sync {
-    if (args.type === 'link') {
-        for (const link of args.links) {
-            const folderId = link.folder ?? link.group ?? data.links.selectedFolder
-            const targetFolder = getFolder(data, folderId) ?? getFolderByTitleOrDefault(data, folderId)
-            targetFolder.items.push(validateLink(link.title, link.url, link.id))
-        }
-    }
-
-    if (args.type === 'subfolder') {
-        const targetFolder = getFolderByTitleOrDefault(data, args.folder ?? data.links.selectedFolder)
-        const selectedLinks = args.ids.map((id) => removeNode(data, id)).filter(isElem)
-        const subfolder = createSubfolder(getSubfolderTitle(args.title), selectedLinks)
-        targetFolder.items.push(subfolder)
-    }
-
-    storage.local.get().then((local) => initblocks(data, local))
-    return data
-}
-
-function getSubfolderTitle(title?: string): string {
-    const titledom = document.getElementById('e-title') as HTMLInputElement | null
-    const linktitle = title ?? titledom?.value ?? ''
-
-    if (titledom) {
-        titledom.value = ''
-    }
-
-    return linktitle
-}
-
-function updateLink({ id, title, icon, url, file }: UpdateLink, data: Sync): Sync {
-    const linkElement = document.getElementById(id)
-    const titledom = linkElement?.querySelector<HTMLSpanElement>('span')
-    const icondom = linkElement?.querySelector<HTMLImageElement>('img')
-    const urldom = linkElement?.querySelector<HTMLAnchorElement>('a')
-    const node = getNode(data, id)
-
-    if (!node) {
-        return data
-    }
-
-    if (title !== undefined) {
-        node.title = stringMaxSize(title, 64)
-        if (titledom) titledom.textContent = node.title
-    }
-
-    if (isElem(node)) {
-        if (icondom && icon) {
-            updateIcon(id, node, icon, file, icondom)
-        }
-
-        if (titledom && urldom && url !== undefined) {
-            node.url = normalizeLinkUrl(url)
-            urldom.href = node.url
-            titledom.textContent = createTitle(node)
-        }
-    }
-
-    return data
-}
-
-function updateIcon(
-    id: string,
-    link: LinkElem,
-    icon: LinkIcon,
-    file: File | undefined,
-    icondom: HTMLImageElement,
-): void {
-    const img = document.createElement('img')
-    const currentSrc = icondom.src
-    let url = getDefaultIcon(link.url)
-
-    icondom.src = 'src/assets/interface/loading.svg'
-    img.onload = () => {
-        icondom.src = img.src
-    }
-
-    if (icon.type === 'auto') {
-        icon.value = undefined
-        img.src = url
-    }
-
-    if (icon.type === 'url') {
-        if (icon.value && stringMaxSize(icon.value, 7500)) {
-            url = icon.value
-            img.src = url
-        }
-    }
-
-    if (icon.type === 'file') {
-        const currentIcon = link.icon
-        if (!file && currentIcon?.type === 'file' && currentIcon.value) {
-            icon = currentIcon
-            img.src = currentSrc
-        }
-        if (file) {
-            storeIconFile(id, file).then((uri) => {
-                img.src = uri
-            })
-        }
-    }
-
-    link.icon = icon
-}
-
-function concatSubfolders({ target, source }: SubfolderMove, data: Sync): Sync {
-    const targetNode = getNode(data, target)
-    const sourceNode = getNode(data, source)
-
-    if (!(isSubfolder(targetNode) && isSubfolder(sourceNode))) {
-        return data
-    }
-
-    targetNode.items.push(...sourceNode.items)
-    removeNode(data, source)
-    initblocks(data)
-    return data
-}
-
-function moveToSubfolder({ target, source }: SubfolderMove, data: Sync): Sync {
-    const sourceNode = removeNode(data, source)
-    const targetNode = getNode(data, target)
-
-    if (isElem(sourceNode) && isSubfolder(targetNode)) {
-        targetNode.items.push(sourceNode)
-        initblocks(data)
-    }
-
-    return data
-}
-
-function moveOutSubfolder({ ids, folder }: { ids: string[]; folder: string }, data: Sync): Sync {
-    const targetFolder = getFolderByTitleOrDefault(data, folder)
-
-    for (const id of ids) {
-        const node = removeNode(data, id)
-        if (node) targetFolder.items.push(node)
-    }
-
-    initblocks(data)
-    return data
-}
-
-function deleteLinks(ids: string[], data: Sync): Sync {
-    for (const id of ids) {
-        const node = getNode(data, id)
-
-        if (isElem(node) && node.icon?.type === 'file') {
-            storage.local.remove(`x-icon-${id}`)
-        }
-
-        if (isSubfolder(node)) {
-            for (const child of node.items) {
-                if (isElem(child) && child.icon?.type === 'file') storage.local.remove(`x-icon-${child.id}`)
-            }
-        }
-
-        removeNode(data, id)
-    }
-
-    animateLinksRemove(ids)
-    return data
-}
-
-function moveLinks(ids: string[], data: Sync): Sync {
-    const folderId = document.querySelector<HTMLElement>('#linkblocks .link-group')?.dataset.group ??
-        data.links.selectedFolder
-    const subfolderId = domlinkblocks.dataset.folderid
-    const items = subfolderId ? getLinksInSubfolder(data, subfolderId) : getFolder(data, folderId)?.items
-
-    reorderItems(items, ids)
-    initblocks(data)
-    return data
-}
-
-function moveFavorites(ids: string[], data: Sync): Sync {
-    const idSet = new Set(ids)
-    const existingIds = new Set(data.links.favorites.map((link) => link.id))
-
-    if (ids.every((id) => existingIds.has(id))) {
-        reorderItems(data.links.favorites, ids)
-    } else {
-        for (const id of ids) {
-            if (existingIds.has(id)) continue
-            const node = removeNode(data, id)
-            if (isElem(node)) data.links.favorites.push(node)
-        }
-    }
-
-    data.links.favorites = data.links.favorites.filter((link) => idSet.has(link.id) || !ids.includes(link.id))
-    initblocks(data)
-    return data
-}
-
-function moveToFolder({ ids, target, source }: MoveToFolderArgs, data: Sync): Sync {
-    const targetFolder = getFolderByTitleOrDefault(data, target)
-    const moving = ids.map((id) => removeNode(data, id)).filter((node): node is LinkNode => !!node)
-    const insertAt = source !== undefined ? Number.parseInt(source) : -1
-
-    if (insertAt >= 0 && insertAt <= targetFolder.items.length) {
-        targetFolder.items.splice(insertAt, 0, ...moving)
-    } else {
-        targetFolder.items.push(...moving)
-    }
-
-    data.links.selectedFolder = targetFolder.id
-    initFolders(data)
-    initblocks(data)
-    return data
 }
 
 function refreshIcons(ids: string[], data: Sync): Sync {
@@ -920,10 +571,6 @@ function refreshIcons(ids: string[], data: Sync): Sync {
     }
 
     initblocks(data)
-    return data
-}
-
-function unsyncFolder(_folderId: string, data: Sync): Sync {
     return data
 }
 
@@ -1000,13 +647,6 @@ function normalizeLinkUrl(url: string): string {
     return prefix + url
 }
 
-function animateLinksRemove(ids: string[]): void {
-    for (const id of ids) {
-        document.getElementById(id)?.classList.add('removed')
-        setTimeout(() => document.getElementById(id)?.remove(), 600)
-    }
-}
-
 function getIconFromLinkElem(link: LinkElem): string {
     const stored = link.icon?.value
     // Legacy chrome-extension://[id]/_favicon/ values were persisted by
@@ -1037,32 +677,4 @@ function getIconFromLinkElem(link: LinkElem): string {
 
 function isLinkStyle(style: string): style is Sync['links']['style'] {
     return ['inline', 'text'].includes(style)
-}
-
-function getFolderByTitleOrDefault(data: Sync, idOrTitle?: string): LinkFolder {
-    const folder = getFolder(data, idOrTitle) ?? data.links.folders.find((item) => item.title === idOrTitle)
-
-    if (folder) {
-        return folder
-    }
-
-    const created: LinkFolder = {
-        id: idOrTitle && idOrTitle !== '+' ? idOrTitle : newFolderId(),
-        title: idOrTitle && idOrTitle !== '+' ? idOrTitle : 'default',
-        items: [],
-    }
-    data.links.folders.push(created)
-    return created
-}
-
-function reorderItems<T extends { id: string }>(items: T[] | undefined, ids: string[]): void {
-    if (!items) {
-        return
-    }
-
-    const itemById = new Map(items.map((item) => [item.id, item]))
-    const ordered = ids.map((id) => itemById.get(id)).filter((item): item is T => !!item)
-    const missing = items.filter((item) => !ids.includes(item.id))
-
-    items.splice(0, items.length, ...ordered, ...missing)
 }

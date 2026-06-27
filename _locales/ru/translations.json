@@ -362,7 +362,6 @@
     "Browser": "Браузер",
     "Get": "Получать",
     "Send": "Отправлять",
-    "Distant URL": "Удаленный URL",
     "Not a valid URL": "Некорректный URL",
     "Cannot access resource right now": "Не удается получить доступ к ресурсу в данный момент",
     "Cannot access resource, even with proxy": "Не удается получить доступ к ресурсу даже через прокси",

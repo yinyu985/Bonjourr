@@ -75,9 +75,6 @@ function clickUserActions(event: MouseEvent): void {
     else if (open.notes && !on.notes && !on.interactable) {
         document.dispatchEvent(new CustomEvent('toggle-notes', { detail: { open: false } }))
     } //
-    else if (open.selectall && !on.link) {
-        document.dispatchEvent(new Event('remove-select-all'))
-    } //
     else if (open.folder && !on.folder && !on.linkfolder) {
         document.dispatchEvent(new Event('close-folder'))
     }
@@ -89,7 +86,6 @@ function isOpen(): {
     settings: boolean
     folder: boolean
     groupfocus: boolean
-    selectall: boolean | undefined
     contextmenu: boolean | undefined
     notes: boolean
 } {
@@ -97,7 +93,6 @@ function isOpen(): {
         settings: !!document.getElementById('settings')?.classList.contains('shown'),
         folder: !!document.querySelector('.in-folder'),
         groupfocus: document.body.classList.contains('group-focus'),
-        selectall: document.getElementById('linkblocks')?.classList.contains('select-all'),
         contextmenu: document.querySelector<HTMLDialogElement>('#contextmenu')?.open,
         notes: !!document.getElementById('notes-panel')?.classList.contains('shown'),
     }
