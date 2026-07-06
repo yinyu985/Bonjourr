@@ -4,7 +4,6 @@ import { getSubfolder } from './model.ts'
 
 import { storage } from '../../storage.ts'
 
-import type { Local } from '../../../types/local.ts'
 import type { LinkNode } from '../../../types/shared.ts'
 import type { Sync } from '../../../types/sync.ts'
 
@@ -41,11 +40,12 @@ export async function folderClick(event: MouseEvent | KeyboardEvent): Promise<vo
         return
     }
 
-    const [data, local] = await Promise.all([storage.sync.get(), storage.local.get()])
-    openFolder(data, local, li)
+    const { buildBookmarkSnapshotFromConfig } = await import('./bookmarks.ts')
+    const data = await buildBookmarkSnapshotFromConfig(await storage.sync.get())
+    openFolder(data, li)
 }
 
-function openFolder(data: Sync, local: Local, li: HTMLLIElement): void {
+function openFolder(data: Sync, li: HTMLLIElement): void {
     const linkgroup = li.closest<HTMLElement>('.link-group')
     if (!linkgroup) return
 
@@ -75,10 +75,7 @@ function openFolder(data: Sync, local: Local, li: HTMLLIElement): void {
     linkgroup.appendChild(panel)
     positionPanel(panel, li, linkgroup)
 
-    // Resolve favicons for the freshly-rendered <img>s. createElem queues each
-    // image into the shared init list; createIcons drains it now so panel
-    // links don't render with broken-image placeholders.
-    createIcons(local)
+    createIcons()
 
     openPanels.push({ panel, opener: li, container: linkgroup })
     attachListeners()

@@ -2,7 +2,7 @@ import { initFolders, toggleFolders, updateSelectedFolderPosition } from './grou
 import { initBookmarkSync } from './bookmarks.ts'
 import { collapseAllPanels, folderClick } from './folders.ts'
 import { createTitle, DEFAULT_FAVICON, FOLDER_ICON, getDefaultIcon, isElem, isSubfolder } from './helpers.ts'
-import { createLink, FAVORITES_FOLDER, getFolder, getNode } from './model.ts'
+import { createLink, FAVORITES_FOLDER, getFolder, linksWithBookmarks } from './model.ts'
 
 import { EXTENSION, PLATFORM } from '../../defaults.ts'
 import { displayInterface } from '../../shared/display.ts'
@@ -12,14 +12,13 @@ import { storage } from '../../storage.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
 import type { Local } from '../../../types/local.ts'
-import type { LinkFolder, Sync } from '../../../types/sync.ts'
+import type { LinkFolder, Sync, SyncSnapshot } from '../../../types/sync.ts'
 
 export type LinksUpdate = {
     iconradius?: string
     row?: string
     newtab?: boolean
     folders?: boolean
-    refreshIcons?: string[]
     styles?: { style?: string; titles?: boolean; backgrounds?: boolean }
 }
 
@@ -102,22 +101,21 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
         return
     }
 
-    const { local } = init
-    let { sync } = init
+    const { sync } = init
 
     domlinkblocks.classList.add(sync.links.style ?? 'inline')
     domlinkblocks.classList.toggle('titles', sync.links.titles)
     domlinkblocks.classList.toggle('backgrounds', sync.links.backgrounds)
     domlinkblocks.classList.toggle('hidden', !sync.links.enabled)
 
-    sync = await initBookmarkSync(sync)
+    const snapshot = await initBookmarkSync(sync)
 
-    initFolders(sync, !!init)
-    initRows(sync.links.rows, sync.links.style)
-    initblocks(sync, local)
+    initFolders(snapshot, !!init)
+    initRows(snapshot.links.rows, snapshot.links.style)
+    initblocks(snapshot)
 }
 
-export function initblocks(sync: Sync, local?: Local): true {
+export function initblocks(sync: SyncSnapshot): true {
     // Re-render destroys/reorders the <li> nodes the open panels point to.
     // Drop any open subfolder popovers before rebuilding so we don't keep
     // stale openers in the panel stack.
@@ -179,11 +177,7 @@ export function initblocks(sync: Sync, local?: Local): true {
         domlinkblocks.insertBefore(linkgroup, domlinkmini)
     }
 
-    if (local) {
-        createIcons(local)
-    } else {
-        storage.local.get().then((nextLocal) => createIcons(nextLocal))
-    }
+    createIcons()
 
     initFavorites(sync)
     setRadius(sync.links.iconRadius)
@@ -194,7 +188,8 @@ export function initblocks(sync: Sync, local?: Local): true {
 }
 
 function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
-    const folder = getFolder(sync, sync.links.selectedFolder) ?? sync.links.folders[0]
+    const links = linksWithBookmarks(sync)
+    const folder = getFolder(sync, links.selectedFolder) ?? links.folders[0]
 
     if (!folder) {
         return []
@@ -208,7 +203,7 @@ function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
     }]
 }
 
-export function initFavorites(sync: Sync): void {
+export function initFavorites(sync: SyncSnapshot): void {
     const container = document.getElementById('link-favorites')
 
     if (!container) {
@@ -217,7 +212,9 @@ export function initFavorites(sync: Sync): void {
 
     container.innerHTML = ''
 
-    for (const link of sync.links.favorites) {
+    const links = linksWithBookmarks(sync)
+
+    for (const link of links.favorites) {
         const li = getHTMLTemplate<HTMLLIElement>('link-elem-template', 'li')
         const span = li.querySelector('span')
         const anchor = li.querySelector('a')
@@ -238,7 +235,7 @@ export function initFavorites(sync: Sync): void {
         container.appendChild(li)
     }
 
-    container.classList.toggle('has-links', sync.links.favorites.length > 0)
+    container.classList.toggle('has-links', links.favorites.length > 0)
 }
 
 export function createSubfolderElement(link: LinkSubfolder): HTMLLIElement {
@@ -284,36 +281,17 @@ export function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement
     return li
 }
 
-// Per-host resolved icon: data URL or DEFAULT_FAVICON. Hydrated from
-// storage.local.linkIconResolutions on page load — once a host has been
-// resolved, all future renders (including across reloads) hit this map and
-// skip every fetch / Chrome API call.
+// Per-host resolved icon: data URL or DEFAULT_FAVICON. This cache is runtime
+// only; Quick Links never persist custom or refreshed icon data.
 //
-// Map 自带插入顺序 → 拿来当 LRU 用：命中即"删后重 set"把它移到末尾，写入时
-// 超过 cap 就从头删。否则用户长期使用后此处会无界增长（每个值是 ~2KB base64
-// favicon，1000 个 host 就 ~2MB 常驻），且 storage.local.set 序列化整张表
-// 也越来越慢。
+// Map 自带插入顺序 → 拿来当 LRU 用：命中即"删后重 set"把它移到末尾。
 const ICON_CACHE_CAP = 500
 const iconResolvedByHost = new Map<string, string>()
 
-// In-flight resolution promises, keyed by host, to dedupe concurrent
-// resolutions for the same host within a single render batch.
 const iconInflightByHost = new Map<string, Promise<string>>()
 
-let resolutionsHydrated = false
-
-export function createIcons(local: Local): void {
-    if (!resolutionsHydrated) {
-        resolutionsHydrated = true
-        const stored = local.linkIconResolutions ?? {}
-        // 启动时只灌入末尾 cap 项；超出的当作"最久没访问到"丢弃。
-        const entries = Object.entries(stored)
-        for (const [host, value] of entries.slice(-ICON_CACHE_CAP)) {
-            iconResolvedByHost.set(host, value)
-        }
-    }
-
-    const resolved = initIconList.map(([img, url]) => [img, resolveIconUrl(local, url)] as [HTMLImageElement, string])
+export function createIcons(): void {
+    const resolved = initIconList
     initIconList = []
 
     for (const [img, url] of resolved) {
@@ -343,21 +321,6 @@ function getCachedIcon(host: string): string | undefined {
     return value
 }
 
-// 节流落盘：连续解析多个 favicon 时不要每个都序列化整张表落盘一次。
-// 直接 dump 当前 Map，不再 spread 老 storage —— Map 已经是事实来源，
-// 而且按 LRU 顺序输出能让下次启动也按相同顺序 hydrate。
-let persistTimer = 0
-
-function persistResolutions(): void {
-    if (persistTimer) {
-        return
-    }
-    persistTimer = setTimeout(() => {
-        persistTimer = 0
-        storage.local.set({ linkIconResolutions: Object.fromEntries(iconResolvedByHost) })
-    }, 1000)
-}
-
 function hostFromDdgUrl(ddgUrl: string): string | undefined {
     try {
         const match = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
@@ -368,8 +331,6 @@ function hostFromDdgUrl(ddgUrl: string): string | undefined {
 }
 
 function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): void {
-    // Non-DDG URLs (user-set custom URL, data:, local-icon blob) have no
-    // "404 with body" problem. Set src directly; on error fall back once.
     if (!isDuckDuckGoUrl(primaryUrl)) {
         img.addEventListener('error', () => {
             img.src = DEFAULT_FAVICON
@@ -404,7 +365,6 @@ function resolveHostIcon(host: string, ddgUrl: string): Promise<string> {
 
     const promise = resolveHostIconInner(host, ddgUrl).then((value) => {
         touchIconCache(host, value)
-        persistResolutions()
         return value
     }).finally(() => {
         iconInflightByHost.delete(host)
@@ -449,9 +409,6 @@ async function resolveChromeFaviconAsDataUrl(ddgUrl: string): Promise<string> {
 
     const chromeFaviconUrl = buildChromeFaviconUrl(original)
 
-    // Load through a temporary <img>, then paint onto a canvas to extract
-    // a data URL. This captures the pixels once and caches them — subsequent
-    // uses never hit the Chrome _favicon API again.
     try {
         const dataUrl = await imageUrlToDataUrl(chromeFaviconUrl)
         return dataUrl
@@ -513,14 +470,6 @@ function buildChromeFaviconUrl(pageUrl: string): string {
     return u.toString()
 }
 
-function resolveIconUrl(local: Local, url: string): string {
-    if (url.startsWith('local-icon:')) {
-        return local[`x-icon-${url.slice('local-icon:'.length)}`] ?? ''
-    }
-
-    return url
-}
-
 function initRows(row: number, style: string): void {
     const sizes = {
         inline: { width: 11, gap: 2 },
@@ -538,7 +487,6 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
 
     if (update.folders !== undefined) data = toggleFolders(update.folders, data)
     if (update.newtab !== undefined) data = setOpenInNewTab(update.newtab, data)
-    if (update.refreshIcons) data = refreshIcons(update.refreshIcons, data)
     if (update.styles) setLinkStyle(update.styles)
     if (update.row) setRows(update.row)
     if (update.iconradius) {
@@ -552,26 +500,6 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
     }
 
     await storage.sync.set(data)
-}
-
-function refreshIcons(ids: string[], data: Sync): Sync {
-    for (const id of ids) {
-        const node = getNode(data, id)
-
-        if (isElem(node)) {
-            const unixDate = Date.now()
-
-            if (!node.icon || node.icon.type === 'auto') {
-                node.icon = node.icon ?? { type: 'auto', value: '' }
-                node.icon.value = getDefaultIcon(node.url, unixDate)
-            } else if (node.icon.type === 'url') {
-                node.icon.value = `${node.icon.value}?r=${unixDate}`
-            }
-        }
-    }
-
-    initblocks(data)
-    return data
 }
 
 function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
@@ -648,31 +576,15 @@ function normalizeLinkUrl(url: string): string {
 }
 
 function getIconFromLinkElem(link: LinkElem): string {
-    const stored = link.icon?.value
-    // Legacy chrome-extension://[id]/_favicon/ values were persisted by
-    // refreshIcons in earlier versions. Treat them as missing so they get
-    // recomputed via DDG → Chrome → DEFAULT_FAVICON on render.
-    const isStaleChromeFavicon = typeof stored === 'string' &&
-        stored.startsWith('chrome-extension://') &&
-        stored.includes('/_favicon/')
-
-    if (!stored || isStaleChromeFavicon) {
-        try {
-            const url = new URL(link.url)
-            if (url.protocol === 'data:') {
-                return `local-icon:${link.id}`
-            }
-            return getDefaultIcon(url.origin + url.pathname)
-        } catch (_) {
-            return getDefaultIcon(link.url)
+    try {
+        const url = new URL(link.url)
+        if (url.protocol === 'data:') {
+            return DEFAULT_FAVICON
         }
+        return getDefaultIcon(url.origin + url.pathname)
+    } catch (_) {
+        return getDefaultIcon(link.url)
     }
-
-    if (link.icon?.type === 'file') {
-        return `local-icon:${link.id}`
-    }
-
-    return stored
 }
 
 function isLinkStyle(style: string): style is Sync['links']['style'] {

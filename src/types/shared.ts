@@ -7,7 +7,6 @@ export type Link = LinkSubfolder | LinkElem
 export type LinkNode = LinkSubfolder | LinkElem
 export type Background = BackgroundImage
 export type Frequency = 'tabs' | 'hour' | 'day' | 'period' | 'pause'
-export type LinkIconType = 'auto' | 'library' | 'file' | 'url'
 
 export interface BackgroundImage {
     format: 'image'
@@ -30,12 +29,6 @@ export interface LinkElem {
     id: string
     title: string
     url: string
-    icon?: LinkIcon
-}
-
-export interface LinkIcon {
-    type: LinkIconType
-    value?: string
 }
 
 export interface LinkSubfolder {

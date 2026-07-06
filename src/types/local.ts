@@ -29,10 +29,6 @@ export interface Local {
 
     // Online
     syncStorage?: Sync
-
-    // Links
-    linkIconResolutions?: Record<string, string>
-    [key: `x-icon-${string}`]: string
 }
 
 export interface BackgroundUrl {
