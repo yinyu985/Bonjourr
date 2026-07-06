@@ -3,11 +3,11 @@ import './init.test.ts'
 import { assert, assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { orderBookmarkToolbarChildren } from '../src/scripts/features/links/bookmark-order.ts'
-import { allLinks, getSubfolder, isElem, removeNode } from '../src/scripts/features/links/model.ts'
+import { allLinks, getSubfolder, isElem, linksWithBookmarks, removeNode } from '../src/scripts/features/links/model.ts'
 import { computeDownloadedSync } from '../src/scripts/features/synchronization/merge.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../src/types/shared.ts'
-import type { LinkFolder } from '../src/types/sync.ts'
+import type { LinkFolder, SyncSnapshot } from '../src/types/sync.ts'
 
 Deno.test({
     name: 'bookmark toolbar ordering keeps folders before direct bookmarks',
@@ -52,16 +52,14 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: () => {
-        const data = structuredClone(SYNC_DEFAULT)
-
-        data.links.folders = [
+        const data = syncWithFolders([
             group('work', 'Work', [
                 plainLink('Top level', 'https://example.com/top'),
                 subfolder('docs', 'Docs', [
                     plainLink('Nested', 'https://example.com/nested'),
                 ]),
             ]),
-        ]
+        ])
 
         const nested = getSubfolder(data, 'docs')?.items[0]
 
@@ -78,17 +76,15 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: () => {
-        const incoming = structuredClone(SYNC_DEFAULT)
-
         // Local had two folders with their own links. Remote (incoming) only has Work.
         // After download we expect Personal — and its link — to be gone.
-        incoming.links.folders = [
+        const incoming = syncWithFolders([
             group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
-        ]
+        ])
 
         const next = computeDownloadedSync(incoming)
 
-        assertEquals(next.links.folders.map((folder) => folder.id), ['work'])
+        assertEquals(linksWithBookmarks(next).folders.map((folder) => folder.id), ['work'])
         assert(
             !allLinks(next).some((link) => link.url === 'https://example.com/personal'),
             'remote-deleted link must not survive the download',
@@ -101,15 +97,13 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     fn: () => {
-        const incoming = structuredClone(SYNC_DEFAULT)
-
         // The user kept 'Work' but deleted 'Spec' from it on another device.
-        incoming.links.folders = [
+        const incoming = syncWithFolders([
             group('work', 'Work', [plainLink('Docs', 'https://example.com/docs')]),
-        ]
+        ])
 
         const next = computeDownloadedSync(incoming)
-        const work = next.links.folders.find((folder) => folder.id === 'work')
+        const work = linksWithBookmarks(next).folders.find((folder) => folder.id === 'work')
 
         assert(work)
         assertEquals(work.items.length, 1)
@@ -126,16 +120,15 @@ Deno.test({
         // identical URLs in the same folder (because that's what the user's
         // Chrome had), they must round-trip back unchanged — we are not
         // allowed to silently dedupe here.
-        const incoming = structuredClone(SYNC_DEFAULT)
-        incoming.links.folders = [
+        const incoming = syncWithFolders([
             group('work', 'Work', [
                 plainLink('Docs', 'https://example.com/docs'),
                 plainLink('Docs again', 'https://example.com/docs'),
             ]),
-        ]
+        ])
 
         const next = computeDownloadedSync(incoming)
-        const work = next.links.folders.find((folder) => folder.id === 'work')
+        const work = linksWithBookmarks(next).folders.find((folder) => folder.id === 'work')
 
         assert(work)
         assertEquals(
@@ -151,6 +144,18 @@ function group(id: string, title: string, items: LinkNode[]): LinkFolder {
         id,
         title,
         items,
+    }
+}
+
+function syncWithFolders(folders: LinkFolder[]): SyncSnapshot {
+    const data = structuredClone(SYNC_DEFAULT)
+    return {
+        ...data,
+        links: {
+            ...data.links,
+            folders,
+            favorites: [],
+        },
     }
 }
 

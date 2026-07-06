@@ -54,6 +54,7 @@ Deno.test('gistProvider patches do not write legacy gist sync fields', () => {
         'remoteResourceId',
         'remoteLastSyncedAt',
         'remoteLastFetchedAt',
+        'lastSyncedPayload',
     ])
 })
 
@@ -66,4 +67,5 @@ Deno.test('LOCAL_DEFAULT does not contain legacy gist sync fields', () => {
     assertEquals('remoteResourceId' in local, true)
     assertEquals('remoteLastSyncedAt' in local, true)
     assertEquals('remoteLastFetchedAt' in local, true)
+    assertEquals('lastSyncedPayload' in local, true)
 })

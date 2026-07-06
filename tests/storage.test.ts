@@ -14,7 +14,7 @@ Deno.test({
         assertEquals(typeof sync.lang, 'string')
         assertEquals(typeof sync.time, 'boolean')
         assertEquals(typeof sync.links.enabled, 'boolean')
-        assertEquals(Array.isArray(sync.links.folders), true)
+        assertEquals('folders' in sync.links, false)
         assertEquals(typeof local.syncType, 'string')
     },
 })
@@ -58,6 +58,37 @@ Deno.test({
 })
 
 Deno.test({
+    name: 'syncSet strips bookmark mirrors from persisted settings',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        localStorage.removeItem('bonjourr')
+
+        await storage.sync.set(
+            {
+                links: {
+                    ...SYNC_DEFAULT.links,
+                    folders: [{
+                        id: 'folder-1',
+                        title: 'Folder',
+                        items: [],
+                    }],
+                    favorites: [{
+                        id: 'bookmark-1',
+                        title: 'Bookmark',
+                        url: 'https://example.com',
+                    }],
+                },
+            } as unknown as Parameters<typeof storage.sync.set>[0],
+        )
+        const sync = await storage.sync.get()
+
+        assertEquals('folders' in sync.links, false)
+        assertEquals('favorites' in sync.links, false)
+    },
+})
+
+Deno.test({
     name: 'syncRemove deletes a key from storage',
     sanitizeOps: false,
     sanitizeResources: false,
@@ -94,6 +125,21 @@ Deno.test({
         const local = await storage.local.get('backgroundLastChange')
 
         assertEquals(local.backgroundLastChange, '2024-01-01')
+    },
+})
+
+Deno.test({
+    name: 'localGet keeps lastSyncedPayload as a string even when it looks like JSON',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const payload = '{"notes":{"records":[{"content":"new note"}]}}'
+
+        await storage.local.set({ lastSyncedPayload: payload })
+        const local = await storage.local.get('lastSyncedPayload')
+
+        assertEquals(local.lastSyncedPayload, payload)
+        assertEquals(typeof local.lastSyncedPayload, 'string')
     },
 })
 

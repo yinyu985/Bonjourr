@@ -4,7 +4,9 @@ import { transitioner } from '../../utils/transitioner.ts'
 import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 
-import type { Sync } from '../../../types/sync.ts'
+import { linksWithBookmarks, syncWithBookmarks } from './model.ts'
+
+import type { Sync, SyncSnapshot } from '../../../types/sync.ts'
 
 const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 let positionListenerAdded = false
@@ -21,12 +23,14 @@ export function setGroupFocus(focused: boolean): void {
         const hasRendered = container && container.children.length > 0
 
         if (!hasRendered) {
-            storage.sync.get().then((data) => initFavorites(data))
+            import('./bookmarks.ts').then(async ({ buildBookmarkSnapshotFromConfig }) => {
+                initFavorites(await buildBookmarkSnapshotFromConfig(await storage.sync.get()))
+            })
         }
     }
 }
 
-export function initFolders(data: Sync, init?: true): void {
+export function initFolders(data: SyncSnapshot, init?: true): void {
     if (!init) {
         for (const node of document.querySelectorAll('#link-mini button') ?? []) {
             node.remove()
@@ -42,8 +46,9 @@ export function initFolders(data: Sync, init?: true): void {
     }
 }
 
-function createFolderTabs(data: Sync): void {
-    const visibleFolders = data.links.folders
+function createFolderTabs(data: SyncSnapshot): void {
+    const links = linksWithBookmarks(data)
+    const visibleFolders = links.folders
 
     for (const folder of visibleFolders) {
         const button = document.createElement('button')
@@ -51,7 +56,7 @@ function createFolderTabs(data: Sync): void {
         button.textContent = folder.title
         button.dataset.group = folder.id
         button.classList.add('link-title')
-        button.classList.toggle('selected-group', folder.id === data.links.selectedFolder)
+        button.classList.toggle('selected-group', folder.id === links.selectedFolder)
         button.classList.remove('synced')
 
         if (isTopSite) {
@@ -64,9 +69,9 @@ function createFolderTabs(data: Sync): void {
         document.querySelector('#link-mini div')?.appendChild(button)
     }
 
-    domlinkblocks?.classList.toggle('with-groups', data.links.foldersOn && data.links.folders.length > 0)
+    domlinkblocks?.classList.toggle('with-groups', links.foldersOn && links.folders.length > 0)
 
-    if (!data.links.foldersOn || data.links.folders.length === 0) {
+    if (!links.foldersOn || links.folders.length === 0) {
         setGroupFocus(false)
     }
 }
@@ -98,14 +103,15 @@ function changeFolder(event: Event): void {
     async function recreateLinksFromNewFolder(): Promise<void> {
         const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
         const data = await refreshBookmarksBeforeFolderRender(await storage.sync.get())
-        const folderId = button.dataset.group ?? data.links.folders[0]?.id ?? ''
+        const links = linksWithBookmarks(data)
+        const folderId = button.dataset.group ?? links.folders[0]?.id ?? ''
 
         for (const div of buttons ?? []) {
             div.classList.remove('selected-group')
         }
         button.classList.add('selected-group')
+        await storage.sync.set({ links: { ...data.links, selectedFolder: folderId } })
         data.links.selectedFolder = folderId
-        await storage.sync.set({ links: data.links })
         initblocks(data)
     }
 
@@ -122,12 +128,12 @@ function changeFolder(event: Event): void {
     }
 }
 
-async function refreshBookmarksBeforeFolderRender(data: Sync): Promise<Sync> {
+async function refreshBookmarksBeforeFolderRender(data: Sync): Promise<SyncSnapshot> {
     try {
-        const { bootstrapBookmarksFromConfig } = await import('./bookmarks.ts')
-        return await bootstrapBookmarksFromConfig(data)
+        const { buildBookmarkSnapshotFromConfig } = await import('./bookmarks.ts')
+        return await buildBookmarkSnapshotFromConfig(data)
     } catch (_) {
-        return data
+        return syncWithBookmarks(data)
     }
 }
 
@@ -155,11 +161,11 @@ export function toggleFolders(on: boolean, data: Sync): Sync {
 
 export function changeFolderTitle(title: { old: string; new: string }, data: Sync): Sync {
     if (!title.old && !title.new) {
-        initFolders(data)
+        initFolders(syncWithBookmarks(data))
         return data
     }
 
-    const folder = data.links.folders.find((item) => item.id === title.old || item.title === title.old)
+    const folder = linksWithBookmarks(data).folders.find((item) => item.id === title.old || item.title === title.old)
 
     if (!folder) {
         return data
@@ -167,6 +173,6 @@ export function changeFolderTitle(title: { old: string; new: string }, data: Syn
 
     folder.title = title.new
     data.links.selectedFolder = folder.id
-    initFolders(data)
+    initFolders(syncWithBookmarks(data))
     return data
 }

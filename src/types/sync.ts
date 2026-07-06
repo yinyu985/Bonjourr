@@ -29,8 +29,15 @@ export interface LinksState {
     newTab: boolean
     titles: boolean
     backgrounds: boolean
+}
+
+export interface BookmarkLinksState extends LinksState {
     folders: LinkFolder[]
     favorites: LinkElem[]
+}
+
+export interface SyncSnapshot extends Sync {
+    links: BookmarkLinksState
 }
 
 export interface LinkFolder {
@@ -54,7 +61,7 @@ export interface Backgrounds {
     images: string
     pausedUrl?: string
     pausedImage?: BackgroundImage
-    queries: Record<string, string>
+    query: string
     texture: {
         type:
             | 'none'

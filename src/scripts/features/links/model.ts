@@ -1,7 +1,7 @@
 import { randomString, stringMaxSize } from '../../shared/generic.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
-import type { LinkFolder, LinksState, Sync } from '../../../types/sync.ts'
+import type { BookmarkLinksState, LinkFolder, LinksState, Sync, SyncSnapshot } from '../../../types/sync.ts'
 
 export const FAVORITES_FOLDER = '__favorites'
 
@@ -11,6 +11,22 @@ export type LinkLocation = {
     folder: LinkFolder
     subfolder?: LinkSubfolder
     index: number
+}
+
+export function linksWithBookmarks(sync: Sync): BookmarkLinksState {
+    const links = sync.links as LinksState & Partial<BookmarkLinksState>
+    return {
+        ...links,
+        folders: Array.isArray(links.folders) ? links.folders : [],
+        favorites: Array.isArray(links.favorites) ? links.favorites.filter(isElem) : [],
+    }
+}
+
+export function syncWithBookmarks(sync: Sync): SyncSnapshot {
+    return {
+        ...sync,
+        links: linksWithBookmarks(sync),
+    }
 }
 
 export function normalizeLinksState(data: Partial<Sync>): LinksState {
@@ -29,8 +45,6 @@ export function normalizeLinksState(data: Partial<Sync>): LinksState {
         newTab: true,
         titles: false,
         backgrounds: true,
-        folders: [],
-        favorites: [],
     })
 
     return data.links
@@ -61,11 +75,11 @@ export function createSubfolder(title: string, items: LinkNode[] = []): LinkSubf
 }
 
 export function getFolder(data: Sync, id?: string): LinkFolder | undefined {
-    return data.links.folders.find((folder) => folder.id === id)
+    return linksWithBookmarks(data).folders.find((folder) => folder.id === id)
 }
 
 export function getFolderByTitle(data: Sync, title: string): LinkFolder | undefined {
-    return data.links.folders.find((folder) => folder.title === title)
+    return linksWithBookmarks(data).folders.find((folder) => folder.title === title)
 }
 
 export function getNode(data: Sync, id: string): LinkNode | undefined {
@@ -83,17 +97,19 @@ export function getSubfolder(data: Sync, id: string): LinkSubfolder | undefined 
 }
 
 export function findNode(data: Sync, id: string): LinkLocation | undefined {
-    for (const folder of data.links.folders) {
+    const links = linksWithBookmarks(data)
+
+    for (const folder of links.folders) {
         const found = findNodeInItems(folder.items, id, folder)
         if (found) return found
     }
 
-    const favoriteIndex = data.links.favorites.findIndex((link) => link.id === id)
-    const favorite = data.links.favorites[favoriteIndex]
+    const favoriteIndex = links.favorites.findIndex((link) => link.id === id)
+    const favorite = links.favorites[favoriteIndex]
     if (favorite) {
         return {
             node: favorite,
-            items: data.links.favorites,
+            items: links.favorites,
             folder: favoritesFolder(),
             index: favoriteIndex,
         }
@@ -105,7 +121,8 @@ export function getLinksInSubfolder(data: Sync, id: string): LinkNode[] {
 }
 
 export function allNodes(data: Sync): LinkNode[] {
-    return [...data.links.folders.flatMap((folder) => flattenNodes(folder.items)), ...data.links.favorites]
+    const links = linksWithBookmarks(data)
+    return [...links.folders.flatMap((folder) => flattenNodes(folder.items)), ...links.favorites]
 }
 
 export function allLinks(data: Sync): LinkElem[] {
@@ -121,12 +138,13 @@ export function removeNode(data: Sync, id: string): LinkNode | undefined {
 }
 
 export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
-    const index = data.links.folders.findIndex((folder) => folder.id === id)
+    const links = linksWithBookmarks(data)
+    const index = links.folders.findIndex((folder) => folder.id === id)
     if (index < 0) return
 
-    const [removed] = data.links.folders.splice(index, 1)
+    const [removed] = links.folders.splice(index, 1)
     if (data.links.selectedFolder === id) {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? ''
+        data.links.selectedFolder = links.folders[0]?.id ?? ''
     }
     return removed
 }
@@ -146,17 +164,21 @@ export function isLink(link: unknown): link is LinkNode {
 }
 
 function normalizeCurrentLinks(links: LinksState): LinksState {
-    links.folders = Array.isArray(links.folders) ? links.folders : []
-    links.favorites = Array.isArray(links.favorites) ? links.favorites.filter(isElem) : []
+    const withBookmarks = links as LinksState & Partial<BookmarkLinksState>
+    const folders = Array.isArray(withBookmarks.folders) ? withBookmarks.folders : []
 
-    for (const folder of links.folders) {
+    if (Array.isArray(withBookmarks.favorites)) {
+        withBookmarks.favorites = withBookmarks.favorites.filter(isElem)
+    }
+
+    for (const folder of folders) {
         folder.id ||= newFolderId()
         folder.title ||= folder.id
         folder.items = normalizeItems(folder.items)
     }
 
-    if (!links.folders.some((folder) => folder.id === links.selectedFolder)) {
-        links.selectedFolder = links.folders[0]?.id ?? ''
+    if (!folders.some((folder) => folder.id === links.selectedFolder)) {
+        links.selectedFolder = folders[0]?.id ?? ''
     }
 
     links.style = links.style === 'inline' || links.style === 'text' ? links.style : 'text'
@@ -182,7 +204,7 @@ function normalizeItems(items: LinkNode[] = []): LinkNode[] {
 
 function isLinksState(value: unknown): value is LinksState {
     const links = value as LinksState | undefined
-    return !!links && Array.isArray(links.folders) && Array.isArray(links.favorites)
+    return !!links && typeof links === 'object'
 }
 
 function findNodeInItems(

@@ -12,6 +12,8 @@ GlobalRegistrator.register({
 // 元素就会在加载阶段抛 null。这里塞一份最小骨架让模块加载不炸——具体功能
 // 测试该自己再补 DOM。
 document.body.innerHTML = `
+    <main id="interface"></main>
+    <dialog id="contextmenu"></dialog>
     <div id="linkblocks"></div>
     <div id="link-mini"></div>
 `

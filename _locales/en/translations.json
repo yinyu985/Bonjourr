@@ -402,6 +402,8 @@
     "Tried to send default config.": "Tried to send default config.",
     "Remote Gist is newer than local. Please download first.": "Remote Gist is newer than local. Please download first.",
     "Sync in progress, please wait.": "Sync in progress, please wait.",
+    "Remote sync has no baseline yet. Click Get to download remote, or Send to upload local.": "Remote sync has no baseline yet. Click Get to download remote, or Send to upload local.",
+    "Local and remote both changed since last sync. Click Send to overwrite remote, or Get to overwrite local.": "Local and remote both changed since last sync. Click Send to overwrite remote, or Get to overwrite local.",
     "Confirm?": "Confirm?",
     "Settings file": "Settings file",
     "Import an existing settings file": "Import an existing settings file",

@@ -2,7 +2,7 @@ import { initblocks, validateLink } from './index.ts'
 import { initFolders } from './groups.ts'
 import { orderBookmarkToolbarChildren } from './bookmark-order.ts'
 import { isElem, isSubfolder } from './helpers.ts'
-import { FAVORITES_FOLDER, getFolderByTitle, removeFolder } from './model.ts'
+import { FAVORITES_FOLDER, getFolderByTitle, linksWithBookmarks, removeFolder, syncWithBookmarks } from './model.ts'
 
 import { EXTENSION } from '../../defaults.ts'
 import { tradThis } from '../../utils/translations.ts'
@@ -12,7 +12,7 @@ import { getPermissions } from '../../utils/permissions.ts'
 import { storage } from '../../storage.ts'
 
 import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
-import type { LinkFolder, Sync } from '../../../types/sync.ts'
+import type { LinkFolder, Sync, SyncSnapshot } from '../../../types/sync.ts'
 
 type Treenode = browser.bookmarks.BookmarkTreeNode
 
@@ -38,27 +38,25 @@ let bookmarkListenerAdded = false
 let bookmarkRestoreInProgress = false
 let bookmarkRefreshQueued = false
 let bookmarkRestoreReleaseTimer = 0
-
-const skipBookmarkSync = !!sessionStorage.getItem('skipBookmarkSync')
-sessionStorage.removeItem('skipBookmarkSync')
+let bookmarkDirtyTimer = 0
 
 export async function linksImport(): Promise<void> {
     const data = await storage.sync.get()
-    const refreshed = await initBookmarkSync(data)
+    const refreshed = await buildBookmarkSnapshotFromConfig(data)
     await renderLinksFromSync(refreshed)
 }
 
-export async function renderLinksFromSync(data: Sync): Promise<void> {
+export function renderLinksFromSync(data: SyncSnapshot): void {
     if (!document.getElementById('linkblocks')) {
         return
     }
 
-    const local = await storage.local.get()
     initFolders(data)
-    initblocks(data, local)
+    initblocks(data)
 }
 
-export async function initBookmarkSync(data: Sync): Promise<Sync> {
+export async function initBookmarkSync(data: Sync): Promise<SyncSnapshot> {
+    const snapshot = syncWithBookmarks(data)
     let treenode = await getBookmarkTree()
 
     if (!treenode) {
@@ -72,34 +70,29 @@ export async function initBookmarkSync(data: Sync): Promise<Sync> {
 
     if (!treenode) {
         browserBookmarkFolders = []
-        return data
+        return snapshot
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
 
-    if (!skipBookmarkSync) {
-        let mutated = applySyncedFolders(data)
-        mutated = applyFavoritesFromToolbar(data) || mutated
-
-        if (mutated) {
-            await storage.sync.set(data)
-        }
-    }
+    applySyncedFolders(snapshot)
+    applyFavoritesFromToolbar(snapshot)
 
     addBookmarkListeners()
-    return data
+    return snapshot
 }
 
-function applySyncedFolders(data: Sync): boolean {
+function applySyncedFolders(data: SyncSnapshot): boolean {
     let mutated = false
     const syncedFolderIds: string[] = []
+    const links = data.links
 
     for (const browserFolder of browserBookmarkFolders) {
         if (browserFolder.title === FAVORITES_FOLDER) {
             continue
         }
 
-        let folder = data.links.folders.find((f) => f.id === browserFolder.id)
+        let folder = links.folders.find((f) => f.id === browserFolder.id)
 
         if (!folder) {
             folder = getFolderByTitle(data, browserFolder.title)
@@ -111,7 +104,7 @@ function applySyncedFolders(data: Sync): boolean {
                 title: browserFolder.title,
                 items: [],
             }
-            data.links.folders.push(folder)
+            links.folders.push(folder)
             mutated = true
         }
 
@@ -132,20 +125,20 @@ function applySyncedFolders(data: Sync): boolean {
         mutated = mirrorFolderIntoFolder(folder, browserFolder) || mutated
     }
 
-    for (const folder of [...data.links.folders]) {
+    for (const folder of [...links.folders]) {
         if (!syncedFolderIds.includes(folder.id)) {
             removeFolder(data, folder.id)
             mutated = true
         }
     }
 
-    if (data.links.folders.length > 1 && !data.links.foldersOn) {
+    if (links.folders.length > 1 && !links.foldersOn) {
         data.links.foldersOn = true
         mutated = true
     }
 
-    if (!data.links.folders.some((folder) => folder.id === data.links.selectedFolder)) {
-        data.links.selectedFolder = data.links.folders[0]?.id ?? ''
+    if (!links.folders.some((folder) => folder.id === links.selectedFolder)) {
+        links.selectedFolder = links.folders[0]?.id ?? ''
         mutated = true
     }
 
@@ -177,23 +170,24 @@ function buildItemsFromBrowserFolder(browserFolder: BookmarksFolder): LinkNode[]
     return items
 }
 
-function applyFavoritesFromToolbar(data: Sync): boolean {
+function applyFavoritesFromToolbar(data: SyncSnapshot): boolean {
     const folder = browserBookmarkFolders.find((item) => item.title === FAVORITES_FOLDER)
 
     if (!folder) {
         return false
     }
 
-    const previous = stableStringify(data.links.favorites)
+    const links = data.links
+    const previous = stableStringify(links.favorites)
     const existingById = new Map<string, LinkElem>()
     const existingByUrl = new Map<string, LinkElem>()
 
-    for (const link of data.links.favorites) {
+    for (const link of links.favorites) {
         existingById.set(link.id, link)
         existingByUrl.set(normalizeBookmarkUrl(link.url), link)
     }
 
-    data.links.favorites = folder.bookmarks.map((bookmark) => {
+    links.favorites = folder.bookmarks.map((bookmark) => {
         const existing = existingById.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
         const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
 
@@ -203,7 +197,7 @@ function applyFavoritesFromToolbar(data: Sync): boolean {
         return link
     })
 
-    return previous !== stableStringify(data.links.favorites)
+    return previous !== stableStringify(links.favorites)
 }
 
 function addBookmarkListeners(): void {
@@ -222,9 +216,21 @@ function addBookmarkListeners(): void {
                 return
             }
 
+            markBookmarksDirty()
             refreshSyncedGroups()
         })
     }
+}
+
+function markBookmarksDirty(): void {
+    if (bookmarkDirtyTimer) {
+        clearTimeout(bookmarkDirtyTimer)
+    }
+
+    bookmarkDirtyTimer = setTimeout(() => {
+        bookmarkDirtyTimer = 0
+        globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
+    })
 }
 
 export async function refreshSyncedGroups(): Promise<void> {
@@ -236,39 +242,25 @@ export async function refreshSyncedGroups(): Promise<void> {
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    let mutated = applySyncedFolders(data)
-    mutated = applyFavoritesFromToolbar(data) || mutated
-
-    if (!mutated) {
-        return
-    }
-
-    await storage.sync.set(data)
-    const local = await storage.local.get()
-    initFolders(data)
-    initblocks(data, local)
+    const snapshot = syncWithBookmarks(data)
+    applySyncedFolders(snapshot)
+    applyFavoritesFromToolbar(snapshot)
+    initFolders(snapshot)
+    initblocks(snapshot)
 }
 
-export async function bootstrapBookmarksFromConfig(data: Sync): Promise<Sync> {
+export async function buildBookmarkSnapshotFromConfig(data: Sync): Promise<SyncSnapshot> {
+    const snapshot = syncWithBookmarks(structuredClone(data))
     const treenode = await getBookmarkTree()
 
     if (!treenode) {
-        return data
-    }
-
-    if (skipBookmarkSync) {
-        return data
+        return snapshot
     }
 
     browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    let mutated = applySyncedFolders(data)
-    mutated = applyFavoritesFromToolbar(data) || mutated
-
-    if (mutated) {
-        await storage.sync.set(data)
-    }
-
-    return data
+    applySyncedFolders(snapshot)
+    applyFavoritesFromToolbar(snapshot)
+    return snapshot
 }
 
 // Writes the remote-side state into the user's Chrome bookmarks with Remote as
@@ -339,20 +331,21 @@ export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Pro
 
 function collectRestorableBookmarkItems(data: Sync): Map<string, LinkNode[]> {
     const folders = new Map<string, LinkNode[]>()
+    const links = linksWithBookmarks(data)
 
-    for (const folder of data.links.folders) {
+    for (const folder of links.folders) {
         folders.set(folder.title, folder.items)
     }
 
-    if (data.links.favorites.length > 0) {
-        folders.set(FAVORITES_FOLDER, data.links.favorites)
+    if (links.favorites.length > 0) {
+        folders.set(FAVORITES_FOLDER, links.favorites)
     }
 
     return folders
 }
 
 function orderedRestorableFolderNames(data: Sync, folders: Map<string, LinkNode[]>, extras: string[] = []): string[] {
-    const configuredFolders = data.links.folders
+    const configuredFolders = linksWithBookmarks(data).folders
         .map((folder) => folder.title)
         .filter((folder) => folders.has(folder) || extras.includes(folder))
     const extraFolders = uniqueStrings([...folders.keys(), ...extras]).filter((folder) => {

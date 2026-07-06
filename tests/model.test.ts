@@ -15,6 +15,7 @@ import {
     isElem,
     isLink,
     isSubfolder,
+    linksWithBookmarks,
     newFolderId,
     newLinkId,
     normalizeLinksState,
@@ -23,12 +24,18 @@ import {
 } from '../src/scripts/features/links/model.ts'
 
 import type { LinkElem, LinkSubfolder } from '../src/types/shared.ts'
-import type { LinkFolder, Sync } from '../src/types/sync.ts'
+import type { LinkFolder, Sync, SyncSnapshot } from '../src/types/sync.ts'
 
-function makeSyncWithFolders(folders: LinkFolder[]): Sync {
+function makeSyncWithFolders(folders: LinkFolder[]): SyncSnapshot {
     const data = structuredClone(SYNC_DEFAULT)
-    data.links.folders = folders
-    return data
+    return {
+        ...data,
+        links: {
+            ...data.links,
+            folders,
+            favorites: [],
+        },
+    }
 }
 
 function makeLink(id: string, title: string, url: string): LinkElem {
@@ -166,8 +173,7 @@ Deno.test('findNode returns location with index', () => {
 })
 
 Deno.test('findNode finds favorites', () => {
-    const data = structuredClone(SYNC_DEFAULT)
-    data.links.favorites = [makeLink('fav1', 'Fav', 'https://fav.com')]
+    const data = syncWithFavorites([makeLink('fav1', 'Fav', 'https://fav.com')])
 
     const location = findNode(data, 'fav1')
     assert(location)
@@ -182,7 +188,7 @@ Deno.test('removeNode removes and returns the node', () => {
 
     const removed = removeNode(data, 'l1')
     assertEquals(removed, link)
-    assertEquals(data.links.folders[0].items.length, 0)
+    assertEquals(linksWithBookmarks(data).folders[0].items.length, 0)
 })
 
 Deno.test('removeNode removes nested link from subfolder', () => {
@@ -211,7 +217,7 @@ Deno.test('removeFolder removes folder and updates selectedFolder', () => {
 
     const removed = removeFolder(data, 'f1')
     assertEquals(removed?.id, 'f1')
-    assertEquals(data.links.folders.length, 1)
+    assertEquals(linksWithBookmarks(data).folders.length, 1)
     assertEquals(data.links.selectedFolder, 'f2')
 })
 
@@ -232,7 +238,7 @@ Deno.test('allLinks flattens links from all folders and subfolders', () => {
 // normalizeLinksState
 
 Deno.test('normalizeLinksState leaves empty folders alone', () => {
-    const data: Partial<Sync> = {
+    const data: Partial<SyncSnapshot> = {
         links: {
             enabled: true,
             foldersOn: false,
@@ -249,12 +255,12 @@ Deno.test('normalizeLinksState leaves empty folders alone', () => {
     }
     const links = normalizeLinksState(data)
 
-    assertEquals(links.folders.length, 0)
+    assertEquals(linksWithBookmarks(data as Sync).folders.length, 0)
     assertEquals(links.selectedFolder, '')
 })
 
 Deno.test('normalizeLinksState fixes invalid selectedFolder', () => {
-    const data: Partial<Sync> = {
+    const data: Partial<SyncSnapshot> = {
         links: {
             enabled: true,
             foldersOn: false,
@@ -281,7 +287,7 @@ Deno.test('normalizeLinksState filters invalid items from folders', () => {
         { broken: true },
     ]
 
-    const data: Partial<Sync> = {
+    const data: Partial<SyncSnapshot> = {
         links: {
             enabled: true,
             foldersOn: false,
@@ -301,6 +307,18 @@ Deno.test('normalizeLinksState filters invalid items from folders', () => {
             favorites: [],
         },
     }
-    const links = normalizeLinksState(data)
-    assertEquals(links.folders[0].items.length, 1)
+    normalizeLinksState(data)
+    assertEquals(linksWithBookmarks(data as Sync).folders[0].items.length, 1)
 })
+
+function syncWithFavorites(favorites: LinkElem[]): SyncSnapshot {
+    const data = structuredClone(SYNC_DEFAULT)
+    return {
+        ...data,
+        links: {
+            ...data.links,
+            folders: [],
+            favorites,
+        },
+    }
+}

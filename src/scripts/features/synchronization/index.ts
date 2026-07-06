@@ -1,6 +1,11 @@
 import { getRemoteProvider } from './provider.ts'
+import { waitForPendingBackgroundWrites } from '../backgrounds/index.ts'
 import { resetBackgroundRuntimeCache } from '../backgrounds/cache.ts'
-import { bootstrapBookmarksFromConfig, holdBookmarkRefreshes, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
+import {
+    buildBookmarkSnapshotFromConfig,
+    holdBookmarkRefreshes,
+    replaceBookmarksFromConfig,
+} from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { stableStringify } from '../../utils/stringify.ts'
@@ -12,7 +17,7 @@ import { storage } from '../../storage.ts'
 
 import type { Local, SyncType } from '../../../types/local.ts'
 import type { Sync } from '../../../types/sync.ts'
-import type { RemoteProvider } from './provider.ts'
+import type { RemoteMetadata, RemoteProvider } from './provider.ts'
 
 interface SyncUpdate {
     type?: string
@@ -22,7 +27,14 @@ interface SyncUpdate {
     up?: true
 }
 
-type StartupSyncResult = 'skipped' | 'checked' | 'downloaded' | 'failed'
+type StartupSyncResult = 'skipped' | 'checked' | 'downloaded' | 'conflict' | 'failed'
+type RemoteFreshness = 'current' | 'newer' | 'unknown'
+
+interface StartupPayloadDecision {
+    pendingUpload: boolean
+    runtimePayload: string
+    persistedPayload?: string
+}
 
 const gistsyncform = networkForm('f_gistsync')
 
@@ -37,12 +49,19 @@ let startupFreshnessChecked = true
 // the lock; the lock-holder re-schedules an upload on its way out so the
 // debounce timer always exists when there's queued work.
 let pendingUpload = false
+// Startup sync can detect a state where it must NOT auto-overwrite either side
+// (no sync baseline, or a real local-vs-remote conflict). We park a human
+// message here and surface it once the settings panel mounts, so the user
+// can pick Upload (local wins) or Download (remote wins) by hand.
+let pendingConflictMessage = ''
 const AUTO_UPLOAD_DEBOUNCE_MS = 30000
 
 export async function synchronization(init?: Local, update?: SyncUpdate): Promise<StartupSyncResult | void> {
     let startupResult: StartupSyncResult | undefined
 
     if (init) {
+        lastSyncedPayload = init.lastSyncedPayload ?? ''
+
         // Legacy: 'browser' was a Chrome/Firefox-Sync option that never did
         // anything (storage.ts uses chrome.storage.local even for the 'sync'
         // namespace). The option is gone — fold any old value into 'off' so
@@ -55,6 +74,11 @@ export async function synchronization(init?: Local, update?: SyncUpdate): Promis
         onSettingsLoad(() => {
             toggleSyncSettingsOption(init)
             setTimeout(() => handleStoragePersistence(init.syncType), 200)
+            // If startup sync parked a conflict / no-baseline message, surface
+            // it now that the settings form actually exists.
+            if (pendingConflictMessage) {
+                gistsyncform.warn(pendingConflictMessage)
+            }
         })
 
         startupFreshnessChecked = !needsStartupFreshnessCheck(init)
@@ -137,17 +161,16 @@ async function doAutoUpload(): Promise<void> {
     syncLocked = true
 
     try {
-        const lastSyncedAt = provider.getLastSyncedAt(local)
-
-        if (provider.getResourceId(local) && lastSyncedAt) {
-            const remoteUpdatedAt = await provider.fetchUpdatedAt(local)
-            if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, lastSyncedAt)) {
-                pendingUpload = false
-                return
+        const freshness = await remoteFreshness(local, provider)
+        if (freshness !== 'current') {
+            pendingUpload = false
+            if (freshness === 'unknown') {
+                console.warn('Auto upload skipped: cannot verify remote freshness')
             }
+            return
         }
 
-        const latest = await bootstrapBookmarksFromConfig(await storage.sync.get())
+        const latest = await buildUploadSnapshot()
         const payload = syncPayloadHash(latest)
 
         if (payload === lastSyncedPayload) {
@@ -158,7 +181,7 @@ async function doAutoUpload(): Promise<void> {
         const result = await provider.upload(local, latest)
         lastSyncedPayload = payload
         pendingUpload = false
-        await storage.local.set(provider.syncedPatch(result))
+        await recordRemoteSyncSuccess(provider, result, payload)
     } catch (err) {
         console.warn('Auto upload failed', err)
     } finally {
@@ -174,28 +197,84 @@ function needsStartupFreshnessCheck(local: Local): boolean {
 async function completeStartupFreshnessCheck(
     local: Local,
     provider: RemoteProvider,
-): Promise<'checked' | 'downloaded'> {
+): Promise<StartupSyncResult> {
     const result = await provider.download(local)
     await storage.local.set(provider.fetchedPatch(new Date().toISOString()))
 
     const lastSyncedAt = provider.getLastSyncedAt(local)
-    if (lastSyncedAt && !isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
-        const current = await bootstrapBookmarksFromConfig(await storage.sync.get())
-        lastSyncedPayload = syncPayloadHash(current)
+
+    // SPEC §2.8 / 缺失时间戳规则：没有 remoteLastSyncedAt 基线时，本机无法
+    // 可靠判断远程是否"较新"。自动流程不得覆盖任意一侧；只记 fetched 状态，
+    // 提示用户手动上传或下载来建立基线。绝不能在这里把远程内容盖到本机。
+    if (!lastSyncedAt) {
+        startupFreshnessChecked = false
+        surfaceSyncConflict(
+            tradThis('Remote sync has no baseline yet. Click Get to download remote, or Send to upload local.'),
+        )
+        return 'conflict'
+    }
+
+    if (!isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
+        const data = await storage.sync.get()
+        const current = await buildUploadSnapshot(data)
+        const currentPayload = syncPayloadHash(current)
+        const remotePayload = syncPayloadHash(normalizeExternalSync(result.sync))
+        const decision = startupPayloadDecision(local, provider, remotePayload, currentPayload, lastSyncedPayload)
+
+        lastSyncedPayload = decision.runtimePayload
+        pendingUpload = decision.pendingUpload || pendingUpload
+
+        if (decision.persistedPayload) {
+            await storage.local.set({ lastSyncedPayload: decision.persistedPayload })
+        }
+
         startupFreshnessChecked = true
         return 'checked'
     }
 
+    // Remote is newer. Before letting remote wins, make sure the local side
+    // has no unsynced edits — otherwise this is a conflict (SPEC §2.7) and we
+    // must not silently overwrite either side.
     const data = await storage.sync.get()
+    const current = await buildUploadSnapshot(data)
+    const currentPayload = syncPayloadHash(current)
+    const remotePayload = syncPayloadHash(normalizeExternalSync(result.sync))
+    const decision = startupPayloadDecision(local, provider, remotePayload, currentPayload, lastSyncedPayload)
+
+    if (decision.pendingUpload) {
+        // Local has unsynced edits AND remote moved on → conflict. Stop and
+        // let the user pick Upload (local wins) or Download (remote wins).
+        startupFreshnessChecked = false
+        surfaceSyncConflict(
+            tradThis(
+                'Local and remote both changed since last sync. Click Send to overwrite remote, or Get to overwrite local.',
+            ),
+        )
+        return 'conflict'
+    }
+
+    // Remote is newer and the local side is clean → safe to auto-download.
     const next = await applyDownloadedSync(data, result.sync)
     lastSyncedPayload = syncPayloadHash(next)
-    await storage.local.set(provider.syncedPatch(result.metadata))
+    await recordRemoteSyncSuccess(provider, result.metadata, lastSyncedPayload)
     // Just downloaded fresh remote state — any writes that landed during
     // the download are reflected in `next`, so drop the pending flag.
     pendingUpload = false
     startupFreshnessChecked = true
     fadeOut()
     return 'downloaded'
+}
+
+// Park a conflict message and render it once the settings panel is mounted
+// (startup sync runs before the settings DOM exists). Picked up by the
+// onSettingsLoad callback in synchronization().
+function surfaceSyncConflict(message: string): void {
+    pendingConflictMessage = message
+}
+
+function clearSyncConflict(): void {
+    pendingConflictMessage = ''
+    gistsyncform.reset()
 }
 
 async function updateSyncOption(update: SyncUpdate): Promise<void> {
@@ -220,12 +299,15 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                     const result = await provider.download(local)
                     const next = await applyDownloadedSync(data, result.sync)
                     lastSyncedPayload = syncPayloadHash(next)
-                    await storage.local.set({
-                        ...provider.syncedPatch(result.metadata),
-                        ...provider.fetchedPatch(new Date().toISOString()),
-                    })
+                    await recordRemoteSyncSuccess(
+                        provider,
+                        result.metadata,
+                        lastSyncedPayload,
+                        new Date().toISOString(),
+                    )
                     pendingUpload = false
                     startupFreshnessChecked = true
+                    clearSyncConflict()
                     gistsyncform.accept()
                     fadeOut()
                 } catch (err) {
@@ -251,33 +333,32 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
             gistsyncform.load()
 
             try {
-                const lastSyncedAt = provider.getLastSyncedAt(local)
-
-                if (provider.getResourceId(local) && lastSyncedAt) {
-                    const remoteUpdatedAt = await provider.fetchUpdatedAt(local)
-                    if (remoteUpdatedAt && isRemoteNewer(remoteUpdatedAt, lastSyncedAt) && !confirmRemoteOverwrite) {
-                        confirmRemoteOverwrite = true
-                        gistsyncform.warn(
-                            tradThis('Remote data is newer than local. Click send again to overwrite remote.'),
-                        )
-                        return
-                    }
+                const freshness = await remoteFreshness(local, provider)
+                if (freshness === 'unknown') {
+                    gistsyncform.warn(tradThis('Cannot connect to GitHub.'))
+                    return
                 }
 
-                const latest = getSettingsTextAreaSync() ??
-                    await bootstrapBookmarksFromConfig(await storage.sync.get())
+                if (freshness === 'newer' && !confirmRemoteOverwrite) {
+                    confirmRemoteOverwrite = true
+                    gistsyncform.warn(
+                        tradThis('Remote data is newer than local. Click send again to overwrite remote.'),
+                    )
+                    return
+                }
+
+                const latest = await buildUploadSnapshot()
 
                 const result = await provider.upload(local, latest)
                 lastSyncedPayload = syncPayloadHash(latest)
                 pendingUpload = false
                 confirmRemoteOverwrite = false
                 startupFreshnessChecked = true
+                clearSyncConflict()
 
                 gistsyncform.accept()
 
-                await storage.local.set(provider.syncedPatch(result))
-
-                provider.setStatusNow(result.resourceId)
+                await recordRemoteSyncSuccess(provider, result, lastSyncedPayload)
             } catch (error) {
                 gistsyncform.warn(error as string)
             } finally {
@@ -291,6 +372,7 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
         local.remoteResourceId = ''
         local.remoteLastSyncedAt = undefined
         startupFreshnessChecked = true
+        clearSyncConflict()
         await storage.local.remove('gistToken')
         for (const key of getRemoteProvider({ ...local, syncType: 'gist' })?.clearPatch() ?? []) {
             await storage.local.remove(key)
@@ -433,8 +515,6 @@ async function applyDownloadedSync(current: Sync, incoming: Partial<Sync>): Prom
     await storage.sync.clear()
     await storage.sync.set(next)
 
-    sessionStorage.setItem('skipBookmarkSync', '1')
-
     return next
 }
 
@@ -451,25 +531,72 @@ function isRemoteNewer(remoteIso: string, localIso: string): boolean {
     return remote - local > 1000
 }
 
-function getSettingsTextAreaSync(): Sync | undefined {
-    const textarea = document.getElementById('settings-data') as HTMLTextAreaElement | null
-    const value = textarea?.value.trim()
+function startupPayloadDecision(
+    local: Local,
+    provider: RemoteProvider,
+    remotePayload: string,
+    currentPayload: string,
+    runtimePayload: string,
+): StartupPayloadDecision {
+    const syncedPayload = local.lastSyncedPayload || runtimePayload || remotePayload
+    const contentChangedSinceSync = syncedPayload
+        ? currentPayload !== syncedPayload
+        : hasUnsyncedLocalTimestamp(local, provider)
 
-    if (!value) {
-        return
-    }
-
-    try {
-        const parsed = JSON.parse(value) as Partial<Sync>
-
-        if (parsed?.links) {
-            return normalizeExternalSync(parsed)
+    if (contentChangedSinceSync) {
+        return {
+            pendingUpload: true,
+            runtimePayload: syncedPayload,
         }
-
-        throw 'Settings JSON is missing required fields.'
-    } catch (_) {
-        throw 'Invalid settings JSON.'
     }
+
+    return {
+        pendingUpload: false,
+        runtimePayload: currentPayload,
+        persistedPayload: currentPayload,
+    }
+}
+
+function hasUnsyncedLocalTimestamp(local: Local, provider: RemoteProvider): boolean {
+    const localUpdatedAt = local.localConfigUpdatedAt
+    const lastSyncedAt = provider.getLastSyncedAt(local)
+
+    return !!localUpdatedAt && !!lastSyncedAt && isRemoteNewer(localUpdatedAt, lastSyncedAt)
+}
+
+async function remoteFreshness(local: Local, provider: RemoteProvider): Promise<RemoteFreshness> {
+    const lastSyncedAt = provider.getLastSyncedAt(local)
+
+    if (!provider.getResourceId(local) || !lastSyncedAt) {
+        return 'current'
+    }
+
+    const remoteUpdatedAt = await provider.fetchUpdatedAt(local)
+
+    if (!remoteUpdatedAt) {
+        return 'unknown'
+    }
+
+    return isRemoteNewer(remoteUpdatedAt, lastSyncedAt) ? 'newer' : 'current'
+}
+
+async function buildUploadSnapshot(data?: Sync): Promise<Sync> {
+    await waitForPendingBackgroundWrites()
+    return await buildBookmarkSnapshotFromConfig(data ?? await storage.sync.get())
+}
+
+async function recordRemoteSyncSuccess(
+    provider: RemoteProvider,
+    metadata: RemoteMetadata,
+    payload: string,
+    fetchedAt?: string,
+): Promise<void> {
+    await storage.local.set({
+        ...provider.syncedPatch(metadata),
+        ...(fetchedAt ? provider.fetchedPatch(fetchedAt) : {}),
+        lastSyncedPayload: payload,
+    })
+    provider.setStatusNow(metadata)
 }
 
 function normalizeExternalSync(data: Partial<Sync>): Sync {
@@ -485,5 +612,22 @@ function syncPayloadHash(data: Sync): string {
 // 仅供集成测试访问内部函数；不要在生产代码中使用。
 export const __testing = {
     applyDownloadedSync,
+    buildUploadSnapshot,
+    completeStartupFreshnessCheck,
+    doAutoUpload,
+    remoteFreshness,
+    resetSyncRuntimeForTests(payload = ''): void {
+        if (autoUploadTimer) {
+            clearTimeout(autoUploadTimer)
+        }
+        syncLocked = false
+        autoUploadTimer = 0
+        lastSyncedPayload = payload
+        confirmRemoteOverwrite = false
+        startupFreshnessChecked = true
+        pendingUpload = false
+        pendingConflictMessage = ''
+    },
+    startupPayloadDecision,
     syncPayloadHash,
 }

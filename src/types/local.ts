@@ -17,6 +17,7 @@ export interface Local {
     remoteLastSyncedAt?: string
     remoteLastFetchedAt?: string
     localConfigUpdatedAt?: string
+    lastSyncedPayload?: string
     syncType?: SyncType
 
     // Backgrounds

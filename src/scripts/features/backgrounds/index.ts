@@ -2,6 +2,7 @@ import { applyUrls, getUrlsAsCollection, initUrlsEditor, urlsCacheControl } from
 import { handleBackgroundActions, initBackgroundActionsEvents } from '../contextmenu.ts'
 import { settingsBackgroundColor } from '../others.ts'
 import { toggleCredits, updateCredits } from './credits.ts'
+import { backgroundQueryValue, backgroundSourcePatch, mergeBackgroundPatch, queryCollectionName } from './query.ts'
 import {
     currentBackgroundRuntimeVersion,
     invalidateBackgroundRuntime,
@@ -27,6 +28,7 @@ import { storage } from '../../storage.ts'
 import type { Background, BackgroundImage, Frequency } from '../../../types/shared.ts'
 import type { Backgrounds, Sync } from '../../../types/sync.ts'
 import type { Local } from '../../../types/local.ts'
+import type { BackgroundPatch } from './query.ts'
 
 type BackgroundSize = 'full' | 'small'
 
@@ -39,13 +41,19 @@ interface CollectionSetReturn {
     fromApi: (json: Record<string, Background[]>) => Local
 }
 
+interface BackgroundQueryUpdate {
+    targetId: string
+    value: string
+}
+
 interface BackgroundUpdate {
     freq?: string
     type?: string
     blur?: string
     blurenter?: true
     color?: string
-    query?: SubmitEvent
+    query?: BackgroundQueryUpdate
+    querydraft?: BackgroundQueryUpdate
     files?: FileList | null
     bright?: string
     refresh?: Event
@@ -61,6 +69,8 @@ const propertiesUpdateDebounce = debounce(filtersUpdate, 600)
 const colorUpdateDebounce = debounce(solidUpdate, 600)
 const formBackgroundUserColl = networkForm('f_background-user-coll')
 const formBackgroundUserSearch = networkForm('f_background-user-search')
+const pendingBackgroundWrites = new Set<Promise<void>>()
+let backgroundPatchQueue: Promise<void> = Promise.resolve()
 
 export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
     if (init) {
@@ -108,7 +118,19 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
 
 // 	Storage update
 
-export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> {
+export function backgroundUpdate(update: BackgroundUpdate): Promise<void> {
+    const pendingWrite = tracksImmediateBackgroundWrite(update) ? trackPendingBackgroundWrite() : undefined
+
+    return runBackgroundUpdate(update, pendingWrite?.done).finally(() => pendingWrite?.done())
+}
+
+export async function waitForPendingBackgroundWrites(): Promise<void> {
+    while (pendingBackgroundWrites.size > 0) {
+        await Promise.allSettled([...pendingBackgroundWrites])
+    }
+}
+
+async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => void): Promise<void> {
     const updateVersion = currentBackgroundRuntimeVersion()
     const data = await storage.sync.get('backgrounds')
     const local = await storage.local.get()
@@ -117,7 +139,7 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
         return
     }
 
-    data.backgrounds.queries ??= {}
+    data.backgrounds.query ??= ''
     local.backgroundCollections ??= {}
     local.backgroundFiles ??= {}
 
@@ -141,7 +163,11 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
     if (isBackgroundType(update.type)) {
         data.backgrounds.type = update.type
         unlockBackgroundFrequency(data.backgrounds)
-        storage.sync.set({ backgrounds: data.backgrounds })
+        await saveBackgroundPatch({
+            type: data.backgrounds.type,
+            frequency: data.backgrounds.frequency,
+        })
+        markSaved?.()
         createProviderSelect(data.backgrounds)
         handleBackgroundOptions(data.backgrounds)
         backgroundsInit(data, local)
@@ -167,7 +193,12 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
             delete data.backgrounds.pausedUrl
         }
 
-        storage.sync.set({ backgrounds: data.backgrounds })
+        await saveBackgroundPatch({
+            frequency: data.backgrounds.frequency,
+            pausedImage: data.backgrounds.pausedImage,
+            pausedUrl: data.backgrounds.pausedUrl,
+        })
+        markSaved?.()
         handleBackgroundOptions(data.backgrounds)
     }
 
@@ -196,7 +227,13 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
         if (unlocked) {
             data.backgrounds.color = update.color
-            storage.sync.set({ backgrounds: data.backgrounds })
+            await saveBackgroundPatch({
+                color: data.backgrounds.color,
+                frequency: data.backgrounds.frequency,
+                pausedImage: data.backgrounds.pausedImage,
+                pausedUrl: data.backgrounds.pausedUrl,
+            })
+            markSaved?.()
         }
 
         applyBackground(update.color)
@@ -210,7 +247,12 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.files) {
         if (unlockBackgroundFrequency(data.backgrounds)) {
-            storage.sync.set({ backgrounds: data.backgrounds })
+            await saveBackgroundPatch({
+                frequency: data.backgrounds.frequency,
+                pausedImage: data.backgrounds.pausedImage,
+                pausedUrl: data.backgrounds.pausedUrl,
+            })
+            markSaved?.()
         }
 
         addLocalBackgrounds(update.files, local)
@@ -239,7 +281,8 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (isBackgroundTexture(update.texture)) {
         data.backgrounds.texture = { type: update.texture }
-        storage.sync.set({ backgrounds: data.backgrounds })
+        await saveBackgroundPatch({ texture: data.backgrounds.texture })
+        markSaved?.()
         handleBackgroundOptions(data.backgrounds)
         applyTexture(data.backgrounds.texture)
     }
@@ -264,8 +307,17 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
 
     if (update.provider) {
         unlockBackgroundFrequency(data.backgrounds)
+        const previousProvider = data.backgrounds[data.backgrounds.type]
+        const query = previousProvider === update.provider ? data.backgrounds.query : ''
+
         data.backgrounds[data.backgrounds.type] = update.provider
-        storage.sync.set({ backgrounds: data.backgrounds })
+        data.backgrounds.query = query
+        await saveBackgroundPatch({
+            ...backgroundSourcePatch(data.backgrounds.type, update.provider),
+            frequency: data.backgrounds.frequency,
+            query,
+        })
+        markSaved?.()
         handleBackgroundOptions(data.backgrounds)
 
         const isNotEmpty = local.backgroundCollections[update.provider]?.length > 0
@@ -276,26 +328,47 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
         }
     }
 
+    if (update.querydraft !== undefined) {
+        const collectionName = queryCollectionName(update.querydraft.targetId, data.backgrounds)
+        const query = update.querydraft.value
+
+        data.backgrounds[data.backgrounds.type] = collectionName
+        data.backgrounds.query = query
+
+        await saveBackgroundPatch({
+            ...backgroundSourcePatch(data.backgrounds.type, collectionName),
+            query,
+        })
+        markSaved?.()
+        handleBackgroundOptions(data.backgrounds)
+    }
+
     if (update.query !== undefined) {
-        const collectionName = data.backgrounds[data.backgrounds.type]
-        const target = update.query.target as HTMLElement
-        const input = target.querySelector<HTMLInputElement>('input')
-        let query = input?.value ?? ''
+        const collectionName = queryCollectionName(update.query.targetId, data.backgrounds)
+        let query = update.query.value
 
         // 0. extract unsplash collection from URL
 
         const isCorrectCollection = collectionName === 'unsplash-images-collections'
-        const startsWithUrl = query.startsWith('https://unsplash.com/collections/')
+        const collectionUrlPrefix = 'https://unsplash.com/collections/'
+        const startsWithUrl = query.startsWith(collectionUrlPrefix)
         if (isCorrectCollection && startsWithUrl) {
-            query = query.replace('https://unsplash.com/collections/', '').slice(0, query.indexOf('/'))
+            query = query.slice(collectionUrlPrefix.length).split('/')[0] ?? ''
         }
 
         // 1. Save query
 
         unlockBackgroundFrequency(data.backgrounds)
+        data.backgrounds[data.backgrounds.type] = collectionName
         local.backgroundCollections[collectionName] = []
-        data.backgrounds.queries[collectionName] = query
-        storage.sync.set({ backgrounds: data.backgrounds })
+        data.backgrounds.query = query
+
+        await saveBackgroundPatch({
+            ...backgroundSourcePatch(data.backgrounds.type, collectionName),
+            frequency: data.backgrounds.frequency,
+            query,
+        })
+        markSaved?.()
 
         // 2. Handle empty query
 
@@ -309,14 +382,50 @@ export async function backgroundUpdate(update: BackgroundUpdate): Promise<void> 
             return
         }
 
-        formBackgroundUserColl.load()
-        formBackgroundUserSearch.load()
+        const queryForm = update.query.targetId.includes('coll') ? formBackgroundUserColl : formBackgroundUserSearch
+        const queryInputId = update.query.targetId.includes('coll')
+            ? 'i_background-user-coll'
+            : 'i_background-user-search'
+
+        queryForm.load()
 
         handleBackgroundOptions(data.backgrounds)
         await backgroundCacheControl(data.backgrounds, local)
 
-        formBackgroundUserColl.accept(collectionName)
-        formBackgroundUserSearch.accept(collectionName)
+        queryForm.accept(queryInputId, query)
+    }
+}
+
+function tracksImmediateBackgroundWrite(update: BackgroundUpdate): boolean {
+    return update.query !== undefined ||
+        update.querydraft !== undefined ||
+        update.provider !== undefined ||
+        update.type !== undefined ||
+        update.freq !== undefined ||
+        update.color !== undefined ||
+        update.files !== undefined ||
+        update.texture !== undefined
+}
+
+function trackPendingBackgroundWrite(): { done: () => void } {
+    let resolve = (): void => {}
+    let finished = false
+    const promise = new Promise<void>((done) => {
+        resolve = done
+    })
+
+    pendingBackgroundWrites.add(promise)
+    promise.finally(() => pendingBackgroundWrites.delete(promise))
+
+    return {
+        done: () => {
+            if (finished) {
+                return
+            }
+
+            finished = true
+            resolve()
+        },
     }
 }
 
@@ -364,7 +473,11 @@ export async function filtersUpdate(
         data.backgrounds.texture = texture
     }
 
-    storage.sync.set({ backgrounds: data.backgrounds })
+    await saveBackgroundPatch({
+        ...(blur !== undefined ? { blur } : {}),
+        ...(bright !== undefined ? { bright } : {}),
+        ...(texture !== undefined ? { texture } : {}),
+    })
 }
 
 async function solidUpdate(value: string, runtimeVersion = currentBackgroundRuntimeVersion()): Promise<void> {
@@ -379,7 +492,25 @@ async function solidUpdate(value: string, runtimeVersion = currentBackgroundRunt
     }
 
     data.backgrounds.color = value
-    storage.sync.set({ backgrounds: data.backgrounds })
+    await saveBackgroundPatch({ color: value })
+}
+
+async function saveBackgroundPatch(patch: BackgroundPatch): Promise<Backgrounds> {
+    let saved: Backgrounds | undefined
+
+    const queuedPatch = backgroundPatchQueue.catch(() => {}).then(async () => {
+        const latest = await storage.sync.get('backgrounds')
+        const backgrounds = mergeBackgroundPatch(latest.backgrounds, patch)
+
+        await storage.sync.set({ backgrounds })
+        saved = backgrounds
+    })
+
+    backgroundPatchQueue = queuedPatch.then(() => {}, () => {})
+
+    await queuedPatch
+
+    return saved!
 }
 
 //	Cache & network
@@ -446,7 +577,7 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
 
     if (backgrounds.frequency === 'pause') {
         backgrounds.pausedImage = list[0]
-        storage.sync.set({ backgrounds })
+        await saveBackgroundPatch({ pausedImage: backgrounds.pausedImage })
     }
 
     if (list.length > 1) {
@@ -515,7 +646,7 @@ async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<str
     }
 
     const screen = `?h=${height}&w=${width}`
-    const query = backgrounds.queries?.[collectionName] ?? ''
+    const query = backgroundQueryValue(backgrounds, collectionName)
     const search = query ? `&query=${query}` : ''
 
     const url = base + path + screen + search
@@ -927,8 +1058,8 @@ function handleProviderOptions(backgrounds: Backgrounds): void {
         domusersearchoption.classList.toggle('shown', hasSearch)
 
         if (collectionName !== lastShownCollectionName) {
-            domusercoll.value = backgrounds.queries?.[collectionName] ?? ''
-            domusersearch.value = backgrounds.queries?.[collectionName] ?? ''
+            domusercoll.value = hasCollections ? backgrounds.query : ''
+            domusersearch.value = hasSearch ? backgrounds.query : ''
             lastShownCollectionName = collectionName
         }
     }

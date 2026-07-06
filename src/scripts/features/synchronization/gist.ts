@@ -1,5 +1,5 @@
 import { getLang, tradThis } from '../../utils/translations.ts'
-import { stableStringify } from '../../utils/stringify.ts'
+import { stringify } from '../../utils/stringify.ts'
 import { isStorageDefault, storage } from '../../storage.ts'
 
 import type { Sync } from '../../../types/sync.ts'
@@ -25,42 +25,30 @@ interface GistFile {
     size: number
 }
 
-export function setGistStatusNow(gistId?: string): void {
-    const wrapper = document.getElementById('gist-sync-status-wrapper') as HTMLElement
-    const base = document.getElementById('gist-sync-status-base') as HTMLSpanElement
+export function setGistStatusNow(gistId?: string, updatedAt = new Date().toISOString()): void {
+    const wrapper = document.getElementById('gist-sync-status-wrapper')
+    const base = document.getElementById('gist-sync-status-base') as HTMLSpanElement | null
 
-    const dateString = new Date().toLocaleString(getLang(), {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    })
+    cachedStatus = undefined
 
-    document.querySelector('#gist-sync-status')?.remove()
-
-    if (gistId) {
-        const link = document.createElement('a')
-        link.id = 'gist-sync-status'
-        link.href = `https://gist.github.com/${gistId}`
-        link.textContent = dateString
-        wrapper?.appendChild(link)
-    } else {
-        const span = document.createElement('span')
-        span.id = 'gist-sync-status'
-        span.textContent = dateString
-        wrapper?.appendChild(span)
+    if (!wrapper || !base) {
+        return
     }
 
-    base.textContent = tradThis('Last update')
+    if (gistId) {
+        renderStatus(wrapper, base, updatedAt, `https://gist.github.com/${gistId}`, gistId)
+        return
+    }
+
+    renderStatusTime(wrapper, base, updatedAt)
 }
 
 // 节流：toggleSyncSettingsOption 在多处调用（settings 加载、改 token/url、切 syncType …），
 // 每次都打一次 GitHub。短时间内反复点设置面板的人会暴打 API。
 // 60s 内复用上次成功结果，不再 fetch。
 const STATUS_FETCH_THROTTLE_MS = 60_000
-let cachedStatus: { at: number; updatedAt: string; htmlUrl: string; key: string } | undefined
+let cachedStatus: { at: number; updatedAt: string; htmlUrl: string; key: string; resourceId: string } | undefined
+let latestRenderedStatus: { resourceId: string; updatedAt: number } | undefined
 
 export async function setGistStatus(token?: string, id?: string): Promise<boolean> {
     const wrapper = document.getElementById('gist-sync-status-wrapper') as HTMLElement
@@ -82,7 +70,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
     const now = Date.now()
 
     if (cachedStatus && cachedStatus.key === cacheKey && now - cachedStatus.at < STATUS_FETCH_THROTTLE_MS) {
-        renderStatus(wrapper, base, cachedStatus.updatedAt, cachedStatus.htmlUrl)
+        renderStatus(wrapper, base, cachedStatus.updatedAt, cachedStatus.htmlUrl, cachedStatus.resourceId)
         return true
     }
 
@@ -95,7 +83,7 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
     const persistedHit = lastFetchedAt && now - lastFetchedAt < STATUS_FETCH_THROTTLE_MS
 
     if (persistedHit && syncedAt) {
-        renderStatus(wrapper, base, syncedAt, `https://gist.github.com/${id}`)
+        renderStatus(wrapper, base, syncedAt, `https://gist.github.com/${id}`, id)
         return true
     }
 
@@ -116,15 +104,25 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
     }
 
     const json = await resp.json() as { updated_at: string; html_url: string }
-    cachedStatus = { at: now, updatedAt: json.updated_at, htmlUrl: json.html_url, key: cacheKey }
+    cachedStatus = { at: now, updatedAt: json.updated_at, htmlUrl: json.html_url, key: cacheKey, resourceId: id }
     storage.local.set({
         remoteLastFetchedAt: new Date(now).toISOString(),
     })
-    renderStatus(wrapper, base, json.updated_at, json.html_url)
+    renderStatus(wrapper, base, json.updated_at, json.html_url, id)
     return true
 }
 
-function renderStatus(wrapper: HTMLElement, base: HTMLSpanElement, isoDate: string, htmlUrl: string): void {
+function renderStatus(
+    wrapper: HTMLElement,
+    base: HTMLSpanElement,
+    isoDate: string,
+    htmlUrl: string,
+    resourceId: string,
+): void {
+    if (shouldIgnoreStaleStatus(resourceId, isoDate)) {
+        return
+    }
+
     const dateString = new Date(isoDate).toLocaleString(getLang(), {
         day: '2-digit',
         month: '2-digit',
@@ -143,6 +141,40 @@ function renderStatus(wrapper: HTMLElement, base: HTMLSpanElement, isoDate: stri
 
     wrapper?.appendChild(link)
     base.textContent = tradThis('Last update')
+}
+
+function renderStatusTime(wrapper: HTMLElement, base: HTMLSpanElement, isoDate: string): void {
+    const dateString = new Date(isoDate).toLocaleString(getLang(), {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    })
+
+    document.querySelector('#gist-sync-status')?.remove()
+
+    const span = document.createElement('span')
+    span.id = 'gist-sync-status'
+    span.textContent = dateString
+    wrapper.appendChild(span)
+    base.textContent = tradThis('Last update')
+}
+
+function shouldIgnoreStaleStatus(resourceId: string, isoDate: string): boolean {
+    const updatedAt = new Date(isoDate).getTime()
+
+    if (Number.isNaN(updatedAt)) {
+        return false
+    }
+
+    if (latestRenderedStatus?.resourceId === resourceId && updatedAt < latestRenderedStatus.updatedAt) {
+        return true
+    }
+
+    latestRenderedStatus = { resourceId, updatedAt }
+    return false
 }
 
 export interface GistRetrieveResult {
@@ -210,7 +242,7 @@ export interface GistSendResult {
 
 export async function sendGist(token: string, id: string | undefined, data: Sync): Promise<GistSendResult> {
     const description = 'File automatically generated by Bonjourr.'
-    const files = { [GIST_FILENAME]: { content: stableStringify(data, 2) } }
+    const files = { [GIST_FILENAME]: { content: stringify(data) } }
 
     if (isStorageDefault(data)) {
         throw new Error(GIST_ERROR.DEFAULT)

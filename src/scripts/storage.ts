@@ -48,6 +48,7 @@ interface Storage {
 }
 
 const SYNC_RELOAD_SNAPSHOT_KEY = 'bonjourr-sync-reload-snapshot'
+let syncWriteQueue: Promise<void> = Promise.resolve()
 
 // 之前所有写失败都被 try/catch 吞掉只 console.warn，用户毫无察觉。
 // dispatch 一个事件让 settings 面板（或任何想监听的地方）显示个 banner。
@@ -111,6 +112,8 @@ function storageTypeFn(): StorageTypeReturn {
 //	Synced data
 
 async function syncGet(_key?: string | string[]): Promise<Sync> {
+    await syncWriteQueue.catch(() => {})
+
     switch (storage.type.get()) {
         case 'webext-local': {
             const { syncStorage } = await chrome.storage.local.get() as Local
@@ -123,17 +126,23 @@ async function syncGet(_key?: string | string[]): Promise<Sync> {
     }
 }
 
-async function syncSet(keyval: Record<string, unknown>): Promise<void> {
+function syncSet(keyval: Record<string, unknown>): Promise<void> {
+    const sanitized = stripBookmarkMirrorFromPatch(keyval)
+
+    return enqueueSyncWrite(() => syncSetNow(sanitized))
+}
+
+async function syncSetNow(sanitized: Record<string, unknown>): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
             try {
                 const local = await chrome.storage.local.get('syncStorage') as Local
                 const data = {
                     ...local.syncStorage,
-                    ...keyval,
+                    ...sanitized,
                 }
                 await chrome.storage.local.set({ syncStorage: data })
-                dispatchSyncWriteIfContentChanged(local.syncStorage, data, keyval)
+                dispatchSyncWriteIfContentChanged(local.syncStorage, data, sanitized)
             } catch (err) {
                 reportStorageError('sync-write', err)
             }
@@ -141,21 +150,21 @@ async function syncSet(keyval: Record<string, unknown>): Promise<void> {
         }
 
         case 'localstorage': {
-            if (typeof keyval !== 'object') {
+            if (typeof sanitized !== 'object') {
                 return
             }
 
             try {
                 const data = verifyDataAsSync(parse<Sync>(localStorage.bonjourr) ?? {})
 
-                for (const [k, v] of Object.entries(keyval)) {
+                for (const [k, v] of Object.entries(sanitized)) {
                     data[k] = v
                 }
 
                 const previous = verifyDataAsSync(parse<Sync>(localStorage.bonjourr) ?? {})
                 localStorage.bonjourr = JSON.stringify(data ?? {})
                 globalThis.dispatchEvent(new Event('storage'))
-                dispatchSyncWriteIfContentChanged(previous, data, keyval)
+                dispatchSyncWriteIfContentChanged(previous, data, sanitized)
             } catch (err) {
                 // QuotaExceededError / Safari 私密模式 / Firefox 阻止
                 reportStorageError('sync-write', err)
@@ -203,7 +212,13 @@ function isOnlySelectedFolderChange(
     return deepEqual(previousComparable, nextComparable)
 }
 
-async function syncRemove(key: string): Promise<void> {
+function syncRemove(key: string): Promise<void> {
+    return enqueueSyncWrite(async () => {
+        await syncRemoveNow(key)
+    })
+}
+
+async function syncRemoveNow(key: string): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
             try {
@@ -234,7 +249,11 @@ async function syncRemove(key: string): Promise<void> {
     }
 }
 
-async function syncClear(): Promise<void> {
+function syncClear(): Promise<void> {
+    return enqueueSyncWrite(syncClearNow)
+}
+
+async function syncClearNow(): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
             await chrome.storage.local.remove('syncStorage')
@@ -248,6 +267,12 @@ async function syncClear(): Promise<void> {
 
         default:
     }
+}
+
+function enqueueSyncWrite(write: () => Promise<void>): Promise<void> {
+    const queued = syncWriteQueue.catch(() => {}).then(write)
+    syncWriteQueue = queued.then(() => {}, () => {})
+    return queued
 }
 
 //	Local data
@@ -306,6 +331,10 @@ async function localGet(keys?: string | string[]): Promise<Local> {
 
             for (const key of neededKeys) {
                 const item = globalThis.localStorage.getItem(key)
+                if (key === 'lastSyncedPayload') {
+                    result[key] = item
+                    continue
+                }
                 const isJson = item && (item.startsWith('{') || item.startsWith('['))
                 const isBool = item && (item === 'true' || item === 'false')
                 const isNoom = item && Number.isNaN(Number(item)) === false
@@ -494,14 +523,16 @@ export function isStorageDefault(data: Sync): boolean {
 }
 
 function verifyDataAsSync(data: Partial<Sync> = {}): Sync {
-    return {
+    const sync = {
         ...SYNC_DEFAULT,
         ...data,
     }
+    normalizeLinksState(sync)
+    stripBookmarkMirrorFromLinks(sync.links)
+    return sync
 }
 
 function verifyDataAsLocal(data: Partial<Local> = {}): Local {
-    //@ts-ignore -> `x-icon-${string}` index signatures are incompatible.
     return {
         ...LOCAL_DEFAULT,
         ...data,
@@ -549,9 +580,11 @@ function clearStagedSyncForReload(): void {
 }
 
 async function persistSyncSnapshot(type: StorageType, data: Sync): Promise<boolean> {
+    const sanitized = verifyDataAsSync(data)
+
     switch (type) {
         case 'webext-local': {
-            return await chrome.storage.local.set({ syncStorage: data }).then(() => true).catch((err) => {
+            return await chrome.storage.local.set({ syncStorage: sanitized }).then(() => true).catch((err) => {
                 reportStorageError('sync-reload-persist', err)
                 return false
             })
@@ -559,7 +592,7 @@ async function persistSyncSnapshot(type: StorageType, data: Sync): Promise<boole
 
         case 'localstorage': {
             try {
-                localStorage.bonjourr = JSON.stringify(data)
+                localStorage.bonjourr = JSON.stringify(sanitized)
                 return true
             } catch (err) {
                 reportStorageError('sync-reload-persist', err)
@@ -567,4 +600,27 @@ async function persistSyncSnapshot(type: StorageType, data: Sync): Promise<boole
             }
         }
     }
+}
+
+function stripBookmarkMirrorFromPatch(keyval: Record<string, unknown>): Record<string, unknown> {
+    if (!('links' in keyval)) {
+        return keyval
+    }
+
+    const links = keyval.links
+
+    if (!links || typeof links !== 'object' || Array.isArray(links)) {
+        return keyval
+    }
+
+    const next = { ...keyval }
+    next.links = { ...(links as Record<string, unknown>) }
+    stripBookmarkMirrorFromLinks(next.links as Sync['links'])
+    return next
+}
+
+function stripBookmarkMirrorFromLinks(links: Sync['links']): void {
+    const bookmarkLinks = links as Sync['links'] & { folders?: unknown; favorites?: unknown }
+    delete bookmarkLinks.folders
+    delete bookmarkLinks.favorites
 }

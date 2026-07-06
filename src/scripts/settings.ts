@@ -1,12 +1,16 @@
 import { darkmode, favicon, tabTitle } from './features/others.ts'
 import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
-import { backgroundUpdate, initBackgroundOptions } from './features/backgrounds/index.ts'
+import {
+    backgroundUpdate,
+    initBackgroundOptions,
+    waitForPendingBackgroundWrites,
+} from './features/backgrounds/index.ts'
 import { resetBackgroundRuntimeCache } from './features/backgrounds/cache.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
 import { synchronization } from './features/synchronization/index.ts'
 import { hideElements } from './features/hide.ts'
 import {
-    bootstrapBookmarksFromConfig,
+    buildBookmarkSnapshotFromConfig,
     holdBookmarkRefreshes,
     linksImport,
     replaceBookmarksFromConfig,
@@ -31,14 +35,14 @@ import { storage } from './storage.ts'
 import { parse } from './utils/parse.ts'
 
 import type { Langs } from '../types/shared.ts'
-import type { Sync } from '../types/sync.ts'
+import type { Sync, SyncSnapshot } from '../types/sync.ts'
 import type { Local } from '../types/local.ts'
 
 // Initialization
 
 let settingsInitSync: Sync
 let settingsInitLocal: Local
-let settingsJsonUpdateId = 0
+let settingsJsonUpdateQueue: Promise<void> = Promise.resolve()
 
 export function settingsInit(sync: Sync, local: Local): void {
     const showsettings = document.getElementById('show-settings')
@@ -126,7 +130,7 @@ function settingsInitEvent(event: Event): void {
     // 3. Can be deferred
 
     setTimeout(() => {
-        updateSettingsJson(sync)
+        updateSettingsJson()
         updateSettingsEvent()
         translateAriaLabels()
         settingsDrawerBar()
@@ -277,7 +281,9 @@ function initOptionsEvents(): void {
         const sync = await storage.sync.get()
         const local = await storage.local.get()
         quickLinks({ sync, local })
-        setTimeout(() => initFolders(sync), 10)
+        setTimeout(async () => {
+            initFolders(await buildBookmarkSnapshotFromConfig(sync))
+        }, 10)
 
         settingsNotifications({ 'accept-permissions': false })
     })
@@ -353,19 +359,54 @@ function initOptionsEvents(): void {
         backgroundUpdate({ color: this.value })
     })
 
-    paramId('i_background-provider').addEventListener('input', function (): void {
+    const saveBackgroundProvider = function (this: HTMLInputElement): void {
         backgroundUpdate({ provider: this.value })
+    }
+
+    paramId('i_background-provider').addEventListener('input', saveBackgroundProvider)
+    paramId('i_background-provider').addEventListener('change', saveBackgroundProvider)
+
+    const saveBackgroundQueryDraft = debounce((query: { targetId: string; value: string }) => {
+        void backgroundUpdate({ querydraft: query }).then(() => updateSettingsJson())
+    }, 250)
+
+    const saveBackgroundQuery = (event: Event): void => {
+        const target = event.currentTarget as HTMLFormElement | HTMLInputElement
+        const input = target instanceof HTMLInputElement ? target : target.querySelector<HTMLInputElement>('input')
+
+        void backgroundUpdate({
+            query: {
+                targetId: target.id,
+                value: input?.value ?? '',
+            },
+        }).then(() => updateSettingsJson())
+    }
+
+    const queueBackgroundQueryDraft = (event: Event): void => {
+        const target = event.currentTarget as HTMLInputElement
+
+        saveBackgroundQueryDraft({
+            targetId: target.id,
+            value: target.value,
+        })
+    }
+
+    paramId('f_background-user-coll').addEventListener('submit', function (event: SubmitEvent): void {
+        event.preventDefault()
+        saveBackgroundQuery(event)
     })
 
-    paramId('f_background-user-coll').addEventListener('submit', function (this, event: SubmitEvent): void {
-        backgroundUpdate({ query: event })
+    paramId('f_background-user-search').addEventListener('submit', function (event: SubmitEvent): void {
         event.preventDefault()
+        saveBackgroundQuery(event)
     })
 
-    paramId('f_background-user-search').addEventListener('submit', function (this, event: SubmitEvent): void {
-        backgroundUpdate({ query: event })
-        event.preventDefault()
-    })
+    paramId('i_background-user-coll').addEventListener('change', saveBackgroundQuery)
+    paramId('i_background-user-coll').addEventListener('blur', saveBackgroundQuery)
+    paramId('i_background-user-coll').addEventListener('input', queueBackgroundQueryDraft)
+    paramId('i_background-user-search').addEventListener('change', saveBackgroundQuery)
+    paramId('i_background-user-search').addEventListener('blur', saveBackgroundQuery)
+    paramId('i_background-user-search').addEventListener('input', queueBackgroundQueryDraft)
 
     paramId('i_freq').addEventListener('change', function (this: HTMLInputElement): void {
         backgroundUpdate({ freq: this.value })
@@ -803,8 +844,9 @@ async function copySettings(): Promise<void> {
     }
 }
 
-async function getLatestExportData(): Promise<Sync> {
-    return await bootstrapBookmarksFromConfig(await storage.sync.get())
+async function getLatestExportData(): Promise<SyncSnapshot> {
+    await waitForPendingBackgroundWrites()
+    return await buildBookmarkSnapshotFromConfig(await storage.sync.get())
 }
 
 async function saveImportFile(): Promise<void> {
@@ -897,7 +939,6 @@ async function importSettings(imported: Partial<Sync>): Promise<void> {
         await storage.sync.clear()
         await storage.sync.set(importedData)
 
-        sessionStorage.setItem('skipBookmarkSync', '1')
         fadeOut()
     } catch (err) {
         console.warn('Import settings failed', err)
@@ -931,20 +972,19 @@ async function resetSettings(action: 'yes' | 'no' | 'first'): Promise<void> {
     document.getElementById('reset-conf')?.classList.toggle('shown', action === 'first')
 }
 
-export async function updateSettingsJson(data?: Sync): Promise<void> {
-    const updateId = ++settingsJsonUpdateId
-
-    try {
-        const latest = data ?? await getLatestExportData()
-
-        if (updateId === settingsJsonUpdateId) {
-            updateTextArea(latest)
+export async function updateSettingsJson(data?: Sync | SyncSnapshot): Promise<void> {
+    const queuedUpdate = settingsJsonUpdateQueue.catch(() => {}).then(async () => {
+        try {
+            updateTextArea(data ?? await getLatestExportData())
+        } catch (err) {
+            console.warn(err)
         }
-    } catch (err) {
-        console.warn(err)
-    }
+    })
 
-    function updateTextArea(data: Sync): void {
+    settingsJsonUpdateQueue = queuedUpdate
+    await queuedUpdate
+
+    function updateTextArea(data: Sync | SyncSnapshot): void {
         const pre = document.getElementById('settings-data') as HTMLTextAreaElement | null
 
         if (pre && data.links) {

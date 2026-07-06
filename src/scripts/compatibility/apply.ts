@@ -49,7 +49,7 @@ function removeDeprecatedFields(data: Sync): void {
     delete (data.clock as unknown as Record<string, unknown>).analog
     delete (data.backgrounds as unknown as Record<string, unknown>).mute
     delete (data.backgrounds as unknown as Record<string, unknown>).fadein
-    data.backgrounds.queries ??= {}
+    delete (data.backgrounds as unknown as Record<string, unknown>).queries
 
     if (data.backgrounds.pausedImage) {
         data.backgrounds.type = 'images'
@@ -64,7 +64,7 @@ function removeDeprecatedFields(data: Sync): void {
         delete data.backgrounds.pausedUrl
     }
 
-    const images = [data.backgrounds.pausedImage, ...Object.values(data.backgrounds.queries).flat()]
+    const images = [data.backgrounds.pausedImage]
     for (const img of images) {
         if (img && typeof img === 'object' && 'exif' in img) {
             delete (img as Record<string, unknown>).exif

@@ -93,7 +93,7 @@ export const SYNC_DEFAULT: Sync = {
         color: '#222222',
         urls: '',
         images: '',
-        queries: {},
+        query: '',
         texture: {
             type: 'topographic',
             opacity: 0.4,
@@ -115,8 +115,6 @@ export const SYNC_DEFAULT: Sync = {
         newTab: true,
         titles: false,
         backgrounds: true,
-        folders: [],
-        favorites: [],
     },
 }
 
@@ -127,6 +125,7 @@ export const LOCAL_DEFAULT: Local = {
     remoteLastSyncedAt: '',
     remoteLastFetchedAt: '',
     localConfigUpdatedAt: '',
+    lastSyncedPayload: '',
     translations: undefined,
     backgroundUrls: {},
     backgroundFiles: {},

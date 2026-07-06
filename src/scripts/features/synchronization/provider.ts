@@ -29,7 +29,7 @@ export interface RemoteProvider {
     download: (local: Local) => Promise<RemoteSnapshot>
     upload: (local: Local, data: Sync) => Promise<RemoteMetadata>
     setStatus: (local?: Local) => void
-    setStatusNow: (resourceId?: string) => void
+    setStatusNow: (metadata?: RemoteMetadata) => void
 }
 
 export function getRemoteProvider(local?: Local): RemoteProvider | undefined {
@@ -83,6 +83,7 @@ export const gistProvider: RemoteProvider = {
             'remoteResourceId',
             'remoteLastSyncedAt',
             'remoteLastFetchedAt',
+            'lastSyncedPayload',
         ]
     },
 
@@ -126,7 +127,7 @@ export const gistProvider: RemoteProvider = {
         setGistStatus(local?.gistToken, local ? this.getResourceId(local) : undefined)
     },
 
-    setStatusNow(resourceId?: string): void {
-        setGistStatusNow(resourceId)
+    setStatusNow(metadata?: RemoteMetadata): void {
+        setGistStatusNow(metadata?.resourceId, metadata?.updatedAt)
     },
 }
