@@ -1,6 +1,6 @@
 import './init.test.ts'
 
-import { assertEquals } from '@std/assert'
+import { assert, assertEquals, assertStringIncludes } from '@std/assert'
 import { storage } from '../src/scripts/storage.ts'
 import { LOCAL_DEFAULT, SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { buildBookmarkSnapshotFromConfig } from '../src/scripts/features/links/bookmarks.ts'
@@ -10,7 +10,13 @@ import type { Local } from '../src/types/local.ts'
 import type { Sync } from '../src/types/sync.ts'
 import type { RemoteProvider, RemoteSnapshot } from '../src/scripts/features/synchronization/provider.ts'
 
-const { completeStartupFreshnessCheck, syncPayloadHash } = __testing
+const {
+    autoSyncOnStartup,
+    completeStartupFreshnessCheck,
+    getPendingConflictMessage,
+    resetSyncRuntimeForTests,
+    syncPayloadHash,
+} = __testing
 
 // fadeOut() schedules location.reload(); stub it so the test runner isn't killed.
 function stubReload(): void {
@@ -182,5 +188,74 @@ Deno.test({
         assertEquals((await storage.sync.get('backgrounds')).backgrounds.query, '')
         assertEquals(renderedMetadata, remote.metadata)
         sessionStorage.clear()
+    },
+})
+
+// The conflict message must tell the user WHICH side is newer: it carries the
+// local and remote last-changed timestamps so a human can decide between
+// Send (local wins) and Get (remote wins).
+Deno.test({
+    name: 'conflict message includes local and remote last-changed timestamps',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        stubReload()
+        resetSyncRuntimeForTests()
+        await seedLocalWithSky()
+
+        const local = localState({
+            remoteLastSyncedAt: '2026-01-01T00:00:00.000Z',
+            localConfigUpdatedAt: '2026-01-02T00:00:00.000Z',
+        })
+        const provider = testProvider(remoteSnapshotWithoutSky('2026-01-03T00:00:00.000Z'))
+
+        const result = await completeStartupFreshnessCheck(local, provider)
+        const message = getPendingConflictMessage()
+
+        assertEquals(result, 'conflict')
+        assertStringIncludes(message, 'Local and remote both changed since last sync.')
+        assertStringIncludes(message, 'Local last changed')
+        assertStringIncludes(message, 'Remote last changed')
+        assertStringIncludes(message, 'Click Send to overwrite remote, or Get to overwrite local.')
+        // Both timestamps are valid ISO dates → neither line falls back to "unknown".
+        assert(!message.includes('unknown'))
+        assertEquals(message.split('\n').length, 4)
+
+        resetSyncRuntimeForTests()
+        sessionStorage.clear()
+    },
+})
+
+// A dead network on startup is not an application error. It must not reach
+// console.warn (Chrome's extension error panel collects those); instead a
+// human-readable message is parked for the settings sync form.
+Deno.test({
+    name: 'startup sync network failure stays silent in console and parks a message for the sync form',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        resetSyncRuntimeForTests()
+
+        const originalFetch = globalThis.fetch
+        const originalWarn = console.warn
+        const warnings: unknown[][] = []
+        globalThis.fetch = () => Promise.reject(new TypeError('Failed to fetch'))
+        console.warn = (...args: unknown[]) => {
+            warnings.push(args)
+        }
+
+        try {
+            const result = await autoSyncOnStartup(localState({
+                remoteLastSyncedAt: '2026-01-01T00:00:00.000Z',
+            }))
+
+            assertEquals(result, 'failed')
+            assertEquals(getPendingConflictMessage(), 'Cannot connect to GitHub.')
+            assertEquals(warnings.length, 0)
+        } finally {
+            globalThis.fetch = originalFetch
+            console.warn = originalWarn
+            resetSyncRuntimeForTests()
+        }
     },
 })

@@ -1,6 +1,7 @@
 import { getLang, tradThis } from '../../utils/translations.ts'
 import { stringify } from '../../utils/stringify.ts'
 import { isStorageDefault, storage } from '../../storage.ts'
+import { SyncNetworkError } from './errors.ts'
 
 import type { Sync } from '../../../types/sync.ts'
 
@@ -390,7 +391,12 @@ async function gistFetch(
         return resp
     }
 
-    throw lastError instanceof Error ? lastError : new Error(GIST_ERROR.NOCONN)
+    // 5xx 重试耗尽保留原错误；fetch 本身抛出的（TypeError: Failed to fetch、
+    // AbortError 超时）都是连接层问题，统一归类为网络错误。
+    if (lastError instanceof Error && lastError.message === GIST_ERROR.OTHER) {
+        throw lastError
+    }
+    throw new SyncNetworkError(GIST_ERROR.NOCONN)
 }
 
 const GIST_MAX_RETRIES = 3

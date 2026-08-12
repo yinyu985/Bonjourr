@@ -1,4 +1,5 @@
 import { getRemoteProvider } from './provider.ts'
+import { SyncNetworkError } from './errors.ts'
 import { waitForPendingBackgroundWrites } from '../backgrounds/index.ts'
 import { resetBackgroundRuntimeCache } from '../backgrounds/cache.ts'
 import {
@@ -9,7 +10,7 @@ import {
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { mergeImportedConfig } from '../../compatibility/apply.ts'
 import { stableStringify } from '../../utils/stringify.ts'
-import { tradThis } from '../../utils/translations.ts'
+import { getLang, tradThis } from '../../utils/translations.ts'
 import { fadeOut } from '../../shared/dom.ts'
 import { networkForm } from '../../shared/form.ts'
 import { SYNC_DEFAULT } from '../../defaults.ts'
@@ -105,7 +106,15 @@ async function autoSyncOnStartup(local: Local): Promise<StartupSyncResult> {
     try {
         return await completeStartupFreshnessCheck(local, provider)
     } catch (err) {
-        console.warn('Auto sync on startup failed', err)
+        // 断网/瞬时网络故障不是异常状况：console.warn 会被 Chrome 扩展错误
+        // 面板收集并吓到用户。降级为 info，改在设置面板的同步表单上提示；
+        // 自动上传保持暂停（freshness 未过）。
+        if (err instanceof SyncNetworkError) {
+            console.info('Auto sync on startup skipped: network unavailable')
+            surfaceSyncConflict(err.message)
+        } else {
+            console.warn('Auto sync on startup failed', err)
+        }
         return 'failed'
     } finally {
         releaseSyncLock()
@@ -165,7 +174,7 @@ async function doAutoUpload(): Promise<void> {
         if (freshness !== 'current') {
             pendingUpload = false
             if (freshness === 'unknown') {
-                console.warn('Auto upload skipped: cannot verify remote freshness')
+                console.info('Auto upload skipped: cannot verify remote freshness')
             }
             return
         }
@@ -183,7 +192,11 @@ async function doAutoUpload(): Promise<void> {
         pendingUpload = false
         await recordRemoteSyncSuccess(provider, result, payload)
     } catch (err) {
-        console.warn('Auto upload failed', err)
+        if (err instanceof SyncNetworkError) {
+            console.info('Auto upload skipped: network unavailable')
+        } else {
+            console.warn('Auto upload failed', err)
+        }
     } finally {
         releaseSyncLock()
     }
@@ -208,17 +221,21 @@ async function completeStartupFreshnessCheck(
     // 提示用户手动上传或下载来建立基线。绝不能在这里把远程内容盖到本机。
     if (!lastSyncedAt) {
         startupFreshnessChecked = false
-        surfaceSyncConflict(
-            tradThis('Remote sync has no baseline yet. Click Get to download remote, or Send to upload local.'),
-        )
+        surfaceSyncConflict(buildSyncConflictMessage(
+            tradThis('Remote sync has no baseline yet.'),
+            tradThis('Click Get to download remote, or Send to upload local.'),
+            local.localConfigUpdatedAt,
+            result.metadata.updatedAt,
+        ))
         return 'conflict'
     }
 
+    const data = await storage.sync.get()
+    const current = await buildUploadSnapshot(data)
+    const currentPayload = syncPayloadHash(current)
+    const remotePayload = syncPayloadHash(normalizeExternalSync(result.sync))
+
     if (!isRemoteNewer(result.metadata.updatedAt, lastSyncedAt)) {
-        const data = await storage.sync.get()
-        const current = await buildUploadSnapshot(data)
-        const currentPayload = syncPayloadHash(current)
-        const remotePayload = syncPayloadHash(normalizeExternalSync(result.sync))
         const decision = startupPayloadDecision(local, provider, remotePayload, currentPayload, lastSyncedPayload)
 
         lastSyncedPayload = decision.runtimePayload
@@ -235,21 +252,18 @@ async function completeStartupFreshnessCheck(
     // Remote is newer. Before letting remote wins, make sure the local side
     // has no unsynced edits — otherwise this is a conflict (SPEC §2.7) and we
     // must not silently overwrite either side.
-    const data = await storage.sync.get()
-    const current = await buildUploadSnapshot(data)
-    const currentPayload = syncPayloadHash(current)
-    const remotePayload = syncPayloadHash(normalizeExternalSync(result.sync))
     const decision = startupPayloadDecision(local, provider, remotePayload, currentPayload, lastSyncedPayload)
 
     if (decision.pendingUpload) {
         // Local has unsynced edits AND remote moved on → conflict. Stop and
         // let the user pick Upload (local wins) or Download (remote wins).
         startupFreshnessChecked = false
-        surfaceSyncConflict(
-            tradThis(
-                'Local and remote both changed since last sync. Click Send to overwrite remote, or Get to overwrite local.',
-            ),
-        )
+        surfaceSyncConflict(buildSyncConflictMessage(
+            tradThis('Local and remote both changed since last sync.'),
+            tradThis('Click Send to overwrite remote, or Get to overwrite local.'),
+            local.localConfigUpdatedAt,
+            result.metadata.updatedAt,
+        ))
         return 'conflict'
     }
 
@@ -609,12 +623,47 @@ function syncPayloadHash(data: Sync): string {
     return stableStringify({ ...data, links, notes })
 }
 
+function buildSyncConflictMessage(
+    intro: string,
+    outro: string,
+    localUpdatedAt: string | undefined,
+    remoteUpdatedAt: string | undefined,
+): string {
+    return [
+        intro,
+        `${tradThis('Local last changed')}: ${formatSyncTime(localUpdatedAt)}`,
+        `${tradThis('Remote last changed')}: ${formatSyncTime(remoteUpdatedAt)}`,
+        outro,
+    ].join('\n')
+}
+
+function formatSyncTime(iso?: string): string {
+    const time = iso ? new Date(iso).getTime() : Number.NaN
+
+    if (Number.isNaN(time)) {
+        return tradThis('unknown')
+    }
+
+    return new Date(time).toLocaleString(getLang(), {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    })
+}
+
 // 仅供集成测试访问内部函数；不要在生产代码中使用。
 export const __testing = {
     applyDownloadedSync,
+    autoSyncOnStartup,
     buildUploadSnapshot,
     completeStartupFreshnessCheck,
     doAutoUpload,
+    getPendingConflictMessage(): string {
+        return pendingConflictMessage
+    },
     remoteFreshness,
     resetSyncRuntimeForTests(payload = ''): void {
         if (autoUploadTimer) {
