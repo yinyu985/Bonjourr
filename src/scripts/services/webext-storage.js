@@ -4,7 +4,29 @@ globalThis.startupStorage = {
     local: undefined,
 }
 
-chrome.storage.local.get().then((data) => {
+const startupStorageKeys = [
+    'syncStorage',
+    'fonts',
+    'fontface',
+    'translations',
+    'operaExplained',
+    'gistToken',
+    'unsplashAccessKey',
+    'remoteResourceId',
+    'remoteLastSyncedAt',
+    'remoteLastFetchedAt',
+    'localConfigUpdatedAt',
+    'lastSyncedPayload',
+    'syncType',
+    'backgroundCollections',
+    'backgroundUrls',
+    'backgroundFiles',
+    'backgroundLastChange',
+    'backgroundLastTrackedPhoto',
+    'backgroundCompressFiles',
+]
+
+chrome.storage.local.get(startupStorageKeys).then((data) => {
     globalThis.startupStorage.local = data
     globalThis.startupStorage.sync = data.syncStorage
 
@@ -13,8 +35,8 @@ chrome.storage.local.get().then((data) => {
             new CustomEvent('webextstorage'),
         )
     }
-})
+}).catch((err) => console.warn('Cannot preload extension storage', err))
 
 chrome.bookmarks?.getTree().then((data) => {
     globalThis.startupBookmarks = data
-})
+}).catch((err) => console.warn('Cannot preload bookmarks', err))

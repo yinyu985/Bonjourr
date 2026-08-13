@@ -1,4 +1,4 @@
-type Func = (...args: unknown[]) => void
+type Func = (...args: unknown[]) => void | Promise<void>
 
 type Transitioner = {
     first: (cb: Func) => void
@@ -34,25 +34,27 @@ export function transitioner(): Transitioner {
         cancel: () => clearTimeout(waitTimeout),
 
         transition: async (timeout: number, ...rest) => {
-            if (steps.first) {
-                steps.first(rest)
+            try {
+                if (steps.first) {
+                    await steps.first(rest)
+                }
+
+                await new Promise((r) => {
+                    waitTimeout = setTimeout(() => r(true), Math.min(timeout, 2000))
+                })
+
+                if (steps.after) {
+                    await steps.after(rest)
+                }
+            } finally {
+                if (steps.finally) {
+                    await steps.finally(rest)
+                }
+
+                steps.first = undefined
+                steps.after = undefined
+                steps.finally = undefined
             }
-
-            await new Promise((r) => {
-                waitTimeout = setTimeout(() => r(true), Math.min(timeout, 2000))
-            })
-
-            if (steps.after) {
-                await steps.after(rest)
-            }
-
-            if (steps.finally) {
-                steps.finally(rest)
-            }
-
-            steps.first = undefined
-            steps.after = undefined
-            steps.finally = undefined
         },
     }
 }

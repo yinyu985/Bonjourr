@@ -1,7 +1,7 @@
 import './init.test.ts'
 
-import { assertEquals } from '@std/assert'
-import { daylightPeriod, minutator, needsChange, suntime } from '../src/scripts/shared/time.ts'
+import { assertEquals, assertNotEquals } from '@std/assert'
+import { daylightPeriod, minutator, needsChange, setUserDate, suntime, userDate } from '../src/scripts/shared/time.ts'
 
 Deno.test('minutator converts date to minutes since midnight', () => {
     const d = new Date('2024-06-15T14:30:00')
@@ -16,6 +16,16 @@ Deno.test('minutator handles midnight', () => {
 Deno.test('minutator handles end of day', () => {
     const d = new Date('2024-06-15T23:59:00')
     assertEquals(minutator(d), 23 * 60 + 59)
+})
+
+Deno.test('userDate calculates a fresh date instead of returning a frozen startup object', () => {
+    setUserDate('auto')
+    const first = userDate()
+    first.setFullYear(2000)
+
+    const next = userDate()
+    assertNotEquals(next, first)
+    assertNotEquals(next.getFullYear(), 2000)
 })
 
 Deno.test('daylightPeriod returns night before sunrise', () => {
@@ -86,6 +96,19 @@ Deno.test('needsChange with "day" detects day change', () => {
 
     assertEquals(needsChange('day', sameDay.getTime()), false)
     assertEquals(needsChange('day', yesterday.getTime()), true)
+})
+
+Deno.test('needsChange with "day" detects a different month with the same day number', () => {
+    const now = new Date()
+    let monthsAgo = 1
+    let previousMonth = new Date(now.getFullYear(), now.getMonth() - monthsAgo, now.getDate(), now.getHours())
+
+    while (previousMonth.getDate() !== now.getDate()) {
+        monthsAgo += 1
+        previousMonth = new Date(now.getFullYear(), now.getMonth() - monthsAgo, now.getDate(), now.getHours())
+    }
+
+    assertEquals(needsChange('day', previousMonth.getTime()), true)
 })
 
 Deno.test('needsChange with unknown frequency returns false', () => {

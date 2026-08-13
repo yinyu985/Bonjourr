@@ -27,6 +27,7 @@ type CustomFontUpdate = {
 }
 
 const FONTS_CDN = 'https://cdn.jsdelivr.net/fontsource/fonts'
+const FONTS_VERSION = '5.2.6'
 const FONT_CHOICES: Fontsource[] = [
     {
         id: 'nunito',
@@ -179,7 +180,7 @@ export const systemfont = (() => {
 
 export function customFont(init?: Font, event?: CustomFontUpdate): void {
     if (event) {
-        updateCustomFont(event)
+        void updateCustomFont(event).catch((err) => console.warn('Cannot update font settings', err))
         return
     }
 
@@ -288,7 +289,7 @@ function handleLangSwitch(font: Font): void {
 
     // remove font if not available with subset
     if (newfont === undefined) {
-        updateCustomFont({ family: '' })
+        void updateCustomFont({ family: '' }).catch((err) => console.warn('Cannot reset incompatible font', err))
         return
     }
 
@@ -330,20 +331,22 @@ function displayFont({ family, size, weight, system }: Font): void {
         ? systemfont.weights[systemfont.weights.indexOf(weight) - 1]
         : weight
     const subset = getRequiredSubset()
-    const fontId = family.toLocaleLowerCase().replaceAll(' ', '-')
     const fontfacedom = document.getElementById('fontface')
-    const fontsource = FONT_CHOICES.find((item) => item.id === fontId || item.family === family)
+    const fontsource = FONT_CHOICES.find((item) => item.family === family)
+    const safeFamily = family.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replace(/[\r\n]/g, ' ')
 
     // 切字体/语言时**替换**而不是追加；否则 <style id="fontface"> 会越来越胖，
     // 累积所有曾经选过的 @font-face 规则。切到 system 字体也清空。
     if (fontfacedom) {
-        if (system) {
+        if (system || !fontsource) {
             fontfacedom.textContent = ''
         } else {
+            const fontId = fontsource.id
+            const safeWeight = fontsource.weights.includes(Number(weight)) ? weight : '400'
             let fontface = `
-				@font-face {font-family: "${family}";
+				@font-face {font-family: "${safeFamily}";
 					font-display: swap;
-					src: url(${FONTS_CDN}/${fontId}@latest/latin-${weight}-normal.woff2) format('woff2');
+					src: url(${FONTS_CDN}/${fontId}@${FONTS_VERSION}/latin-${safeWeight}-normal.woff2) format('woff2');
 				}
 			`
 
@@ -355,7 +358,7 @@ function displayFont({ family, size, weight, system }: Font): void {
         }
     }
 
-    document.documentElement.style.setProperty('--font-family', family ? `"${family}"` : null)
+    document.documentElement.style.setProperty('--font-family', family ? `"${safeFamily}"` : null)
     document.documentElement.style.setProperty('--font-weight', weight)
     document.documentElement.style.setProperty('--font-weight-clock', family ? weight : clockWeight)
     setFontSize(size)
@@ -438,10 +441,7 @@ function fontCanBeSelected(font: Fontsource, subset: string): boolean {
 }
 
 function systemFontChecker(family: string): boolean {
-    // Needs a special method to detect system fonts.
-    // Because of fingerprinting concerns,
-    // Firefox and safari made fonts.check() useless
-
+    // Compare rendered widths because FontFaceSet.check() can report false positives.
     const p = document.createElement('p')
     p.setAttribute('style', 'position: absolute; opacity: 0; font-family: invalid font;')
     p.textContent = `mqlskdjfhgpaozieurytwnxbcv?./,;:1234567890${tradThis('New tab')}`

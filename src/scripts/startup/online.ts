@@ -1,43 +1,22 @@
-import { BROWSER, IS_MOBILE, PLATFORM, SYSTEM_OS } from '../defaults.ts'
+import { IS_MOBILE } from '../defaults.ts'
 import { backgroundsInit } from '../features/backgrounds/index.ts'
-import { onSettingsLoad } from '../utils/onsettingsload.ts'
 import { needsChange } from '../shared/time.ts'
 import { storage } from '../storage.ts'
 import { clock } from '../features/clock/index.ts'
 
 export function onlineAndMobile(): void {
-    const dominterface = document.getElementById('interface') as HTMLDivElement
-    const onlineFirefoxMobile = PLATFORM === 'online' && BROWSER === 'firefox' && IS_MOBILE
-    const onlineSafariIos = PLATFORM === 'online' && BROWSER === 'safari' && SYSTEM_OS === 'ios'
     let visibilityHasChanged = false
-    let firefoxRafTimeout: number
+
+    // PWA support was retired. Explicitly unregister older installations and
+    // remove their version caches; deleting the registration source alone
+    // would leave an already-installed worker controlling returning users.
+    void removeLegacyPwa().catch((err) => {
+        console.warn('Legacy PWA cleanup failed', err)
+    })
 
     if (IS_MOBILE) {
-        document.addEventListener('visibilitychange', updateOnVisibilityChange)
-    }
-
-    if (onlineFirefoxMobile) {
-        // Firefox cannot -moz-fill-available with height
-        // On desktop, uses fallback 100vh
-        // On mobile, sets height dynamically because vh is bad on mobile
-
-        updateAppHeight()
-
-        // Fix for opening tabs Firefox iOS
-        if (SYSTEM_OS === 'ios') {
-            firefoxRafTimeout = globalThis.requestAnimationFrame(triggerAnimationFrame)
-            setTimeout(() => cancelAnimationFrame(firefoxRafTimeout), 500)
-        }
-    }
-
-    if (onlineSafariIos) {
-        onSettingsLoad(() => {
-            const inputs = document.querySelectorAll('input[type="text"], input[type="url"], textarea')
-
-            for (const input of inputs) {
-                input.addEventListener('focus', disableTouchAction)
-                input.addEventListener('blur', enableTouchAction)
-            }
+        document.addEventListener('visibilitychange', () => {
+            void updateOnVisibilityChange().catch((err) => console.warn('Mobile resume update failed', err))
         })
     }
 
@@ -67,29 +46,45 @@ export function onlineAndMobile(): void {
             backgroundsInit(sync, local)
         }
     }
+}
 
-    function triggerAnimationFrame(): void {
-        updateAppHeight()
-        firefoxRafTimeout = requestAnimationFrame(triggerAnimationFrame)
+async function removeLegacyPwa(): Promise<void> {
+    if ('serviceWorker' in navigator) {
+        const expectedScope = new URL('./', globalThis.location.href).href
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(
+            registrations.filter((registration) => {
+                const worker = registration.active ?? registration.waiting ?? registration.installing
+                if (registration.scope !== expectedScope || !worker) return false
+                return new URL(worker.scriptURL).pathname.endsWith('/service-worker.js')
+            }).map((registration) => registration.unregister()),
+        )
     }
 
-    function updateAppHeight(): void {
-        document.documentElement.style.setProperty('--app-height', `${globalThis.innerHeight}px`)
+    if ('caches' in globalThis) {
+        const keys = await caches.keys()
+        const legacyVersionCache = /^v?\d+\.\d+\.\d+(?:[-+].+)?$/
+        await Promise.all(
+            keys.filter((key) => legacyVersionCache.test(key)).map(async (key) => {
+                if (await isBonjourrCache(key)) await caches.delete(key)
+            }),
+        )
+    }
+}
+
+async function isBonjourrCache(key: string): Promise<boolean> {
+    const cache = await caches.open(key)
+    const candidates = [
+        new URL('./', globalThis.location.href).href,
+        new URL('./index.html', globalThis.location.href).href,
+    ]
+
+    for (const url of candidates) {
+        const response = await cache.match(url)
+        if (!response) continue
+        const html = await response.clone().text()
+        if (html.includes('id="background-wrapper"') && html.includes('id="linkblocks"')) return true
     }
 
-    function disableTouchAction(): void {
-        const settingsDom = document.getElementById('settings') as HTMLElement
-        if (dominterface && settingsDom) {
-            dominterface.style.touchAction = 'none'
-            settingsDom.style.touchAction = 'none'
-        }
-    }
-
-    function enableTouchAction(): void {
-        const settingsDom = document.getElementById('settings') as HTMLElement
-        if (dominterface && settingsDom) {
-            dominterface.style.removeProperty('touch-action')
-            settingsDom.style.removeProperty('touch-action')
-        }
-    }
+    return false
 }

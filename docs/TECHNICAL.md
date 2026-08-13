@@ -1,18 +1,35 @@
 # Technical Documentation
 
-
 ### Build Commands
 
-Use Deno when running tasks. 
+Use Deno when running tasks.
 
 - Full Build: `deno task build`
 - Platform-Specific (Dev Mode):
   - Chrome: `deno task chrome`
-  - Firefox: `deno task firefox`
   - Edge: `deno task edge`
-  - Safari: `deno task safari`
   - Online (Web version): `deno task online`
 - Serve Locally: `deno task serve` (runs on port 8000 by default)
+
+### Build Output and Lazy Settings
+
+The production build emits ES modules with code splitting. Startup loads only `index.html`, the main stylesheet, and the
+main script graph. Settings are a deliberately deferred boundary:
+
+- `settings.html` is fetched only on the first settings interaction.
+- `settings.css` contains settings-only and responsive styles and is enabled at the same time.
+- `settings.ts` and the CSS/URL editor chunks are loaded through dynamic imports.
+
+Keep settings-only imports out of `index.ts`, startup feature modules, and `style.css`; a static import would silently
+pull the deferred payload back into every new-tab load.
+
+### Unsplash BYOK boundary
+
+Unsplash image sources call `api.unsplash.com` directly with an Access Key supplied by the user. The key is local-only:
+Chrome/Edge use `chrome.storage.local`, while the online build uses the dedicated `bonjourr-local-secrets` IndexedDB.
+It must never be added to `Sync`, exported JSON, remote payloads, or recovery archives. API responses are runtime
+validated, image URLs remain hotlinked, each newly selected photo calls its official `download_location`, and visible
+photographer/Unsplash attribution is required. The original Bonjourr service is not a fallback.
 
 ### Linting & Formatting
 
@@ -86,7 +103,8 @@ Bonjourr strictly follows Deno's built-in formatting and linting rules.
 
 ### Core Entry Point: The Dispatcher
 
-Each feature exports a single function that acts as a state switcher. It handles two distinct phases: 
+Each feature exports a single function that acts as a state switcher. It handles two distinct phases:
+
 - Initialization
 - Updates
 
@@ -127,6 +145,7 @@ This internal function processes partial changes from the settings menu.
 ### Settings Wiring (`src/scripts/settings.ts`)
 
 The settings module acts as a declarative controller that connects HTML inputs to feature functions.
+`src/scripts/settings-loader.ts` owns the first-interaction HTML/CSS/module load and then invokes `settingsInit` once.
 
 Settings are wired using standard DOM events or the `onclickdown` utility. The convention is to pass `undefined` as the
 first argument to signify a live update.
@@ -140,8 +159,8 @@ paramId('i_feature-property').addEventListener('input', function () {
 
 ### Input Mapping Convention
 
-| UI Input Type            | Event         | Feature Payload                |
-| :----------------------- | :------------ | :----------------------------- |
+| UI Input Type        | Event         | Feature Payload                |
+| :------------------- | :------------ | :----------------------------- |
 | Sliders / Ranges     | `input`       | `{ property: this.value }`     |
 | Dropdowns / Selects  | `change`      | `{ property: this.value }`     |
 | Checkboxes / Toggles | `onclickdown` | `{ property: target.checked }` |
@@ -169,11 +188,12 @@ in a specific order.
 ### Import Order
 
 1. `_global.css` - Must be imported first (CSS custom properties and global variables)
-2. Interface styles (global layout, backgrounds, settings display)
-3. Settings menu styles (global settings, inputs, dropdowns)
-4. Components (reusable dialog boxes, forms)
-5. Features (time, links, fonts, custom CSS, etc.)
-6. `_responsive.css` - Must be imported last (responsive breakpoints)
+2. Interface styles (global layout, backgrounds, settings trigger)
+3. Startup components and features (time, links, bookmarks, notes, etc.)
+4. `_responsive.css` - startup-interface responsive breakpoints; imported last
+
+Settings use the separate `src/styles/settings.css` entry point. It imports settings modules, the network form and code
+editor styles, then `settings/responsive.css` last. Do not re-add those files to `style.css`.
 
 ### File Structure Convention
 
@@ -231,7 +251,7 @@ Light and dark themes are handled via data attributes:
 
 - Use `@supports` for feature detection
 - Provide fallbacks for modern CSS features
-- Only target modern Chromium, Firefox, and Safari. No IE or Opera Mini.
+- The extension targets modern Chrome and Edge. The ordinary web build remains browser accessible.
 
 #### 2. Responsive Design
 
@@ -288,5 +308,5 @@ Light and dark themes are handled via data attributes:
 
 ### Browser Support
 
-- Modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
+- Modern Chrome and Edge
 - No polyfills or shims for older browser support

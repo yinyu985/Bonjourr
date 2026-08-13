@@ -1,4 +1,3 @@
-import { updateSettingsJson } from '../settings.ts'
 import { getLang, tradThis } from '../utils/translations.ts'
 import { debounce } from '../utils/debounce.ts'
 import { storage } from '../storage.ts'
@@ -109,7 +108,10 @@ function toggleNotes(force?: boolean): void {
 }
 
 function createNote(): void {
-    const id = `note-${Math.random().toString(36).slice(2, 10)}`
+    let id = ''
+    do {
+        id = `note-${Math.random().toString(36).slice(2, 10)}`
+    } while (noteState.records.some((note) => note.id === id))
 
     noteState.records.unshift({
         id,
@@ -135,7 +137,7 @@ function deleteNote(noteId: string): void {
     noteState.records = noteState.records.filter((note) => note.id !== noteId)
     noteState.active = noteState.records[0]?.id ?? ''
 
-    storage.sync.set({ notes: noteState })
+    persist(true)
     renderNotes()
 }
 
@@ -144,9 +146,9 @@ function updateActiveNote(update: Partial<NoteRecord>): void {
         return
     }
 
-    applyNoteUpdate(noteState.active, update)
+    const active = applyNoteUpdate(noteState.active, update)
     persist()
-    renderNotes(false)
+    renderNoteTimestamp(active)
 }
 
 function updateNote(noteId: string, update: Partial<NoteRecord>): void {
@@ -154,18 +156,19 @@ function updateNote(noteId: string, update: Partial<NoteRecord>): void {
     persist(true)
 }
 
-function applyNoteUpdate(noteId: string, update: Partial<NoteRecord>): void {
-    noteState.records = noteState.records.map((note) => {
-        if (note.id !== noteId) {
-            return note
-        }
+function applyNoteUpdate(noteId: string, update: Partial<NoteRecord>): NoteRecord | undefined {
+    const index = noteState.records.findIndex((note) => note.id === noteId)
+    if (index === -1) {
+        return
+    }
 
-        return {
-            ...note,
-            ...update,
-            updatedAt: new Date().toISOString(),
-        }
-    })
+    const updated = {
+        ...noteState.records[index],
+        ...update,
+        updatedAt: new Date().toISOString(),
+    }
+    noteState.records[index] = updated
+    return updated
 }
 
 function selectNote(noteId: string): void {
@@ -304,22 +307,21 @@ function startInlineRename(_row: HTMLElement, titleSpan: HTMLSpanElement, noteId
     titleSpan.addEventListener('keydown', handleKeydown)
 }
 
-let pendingPersist: Promise<void> = Promise.resolve()
-
-const debouncedPersist = debounce(() => {
-    pendingPersist = pendingPersist.then(async () => {
-        await storage.sync.set({ notes: noteState })
-    })
-}, 300)
+const debouncedPersist = debounce(
+    async (state: NotesState) => {
+        await storage.sync.set({ notes: state })
+    },
+    300,
+    { barrier: true },
+)
 
 function persist(immediate = false): void {
+    debouncedPersist(structuredClone(noteState))
+
     if (immediate) {
-        pendingPersist = pendingPersist.then(async () => {
-            await storage.sync.set({ notes: noteState })
-            updateSettingsJson()
+        void debouncedPersist.flush().catch((err) => {
+            console.warn('[Notes] Cannot persist notes', err)
         })
-    } else {
-        debouncedPersist()
     }
 }
 

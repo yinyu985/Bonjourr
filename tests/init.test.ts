@@ -1,5 +1,4 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
-import 'fake-indexeddb/auto'
 
 GlobalRegistrator.register({
     url: 'http://localhost:3000',
@@ -23,6 +22,12 @@ document.body.innerHTML = `
 // 不先 init，否则会撞上 `chrome is not defined`。这里集中处理一次。
 const { storage } = await import('../src/scripts/storage.ts')
 storage.type.init()
+
+// Feature tests run under an http:// Happy DOM page, while production is now
+// Chrome/Edge-extension only. Install a mutable in-memory bookmarks API so
+// upload/restore tests exercise the same mandatory live-read path as production.
+const { installDefaultBookmarkMock } = await import('./bookmarks-mock.ts')
+installDefaultBookmarkMock()
 
 // Happy DOM schedules a short initialization timer. Let it settle before Deno
 // starts tests that use the shared document, otherwise leak detection can

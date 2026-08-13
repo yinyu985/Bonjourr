@@ -65,12 +65,12 @@ export function turnRefreshButton(event: Event, canTurn: boolean): void {
 }
 
 export function fadeOut(): void {
-    const dominterface = document.getElementById('interface') as HTMLElement
-    dominterface.click()
-    dominterface.style.transition = 'opacity .4s'
+    const dominterface = document.getElementById('interface') as HTMLElement | null
+    dominterface?.click()
+    if (dominterface) dominterface.style.transition = 'opacity .4s'
 
     setTimeout(() => {
-        dominterface.style.opacity = '0'
+        if (dominterface) dominterface.style.opacity = '0'
     })
 
     setTimeout(() => {

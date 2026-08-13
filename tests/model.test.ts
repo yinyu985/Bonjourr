@@ -54,6 +54,7 @@ function makeFolder(id: string, title: string, items: (LinkElem | LinkSubfolder)
 
 Deno.test('isElem identifies link elements', () => {
     assert(isElem({ id: 'a', title: 'A', url: 'https://a.com' }))
+    assert(!isElem({ id: 'a', title: 'A' }))
     assert(!isElem({ id: 'b', title: 'B', items: [] }))
     assert(!isElem(undefined))
     assert(!isElem(null))

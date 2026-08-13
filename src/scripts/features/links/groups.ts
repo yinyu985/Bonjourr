@@ -25,6 +25,8 @@ export function setGroupFocus(focused: boolean): void {
         if (!hasRendered) {
             import('./bookmarks.ts').then(async ({ buildBookmarkSnapshotFromConfig }) => {
                 initFavorites(await buildBookmarkSnapshotFromConfig(await storage.sync.get()))
+            }).catch((err) => {
+                console.warn('Cannot refresh bookmarks before opening folders', err)
             })
         }
     }
@@ -98,7 +100,7 @@ function changeFolder(event: Event): void {
     transition.first(hideCurrentFolder)
     transition.after(recreateLinksFromNewFolder)
     transition.finally(showNewFolder)
-    transition.transition(100)
+    void transition.transition(100).catch((err) => console.warn('Cannot switch bookmark folder', err))
 
     async function recreateLinksFromNewFolder(): Promise<void> {
         const buttons = document.querySelectorAll<HTMLElement>('#link-mini button')
@@ -110,7 +112,9 @@ function changeFolder(event: Event): void {
             div.classList.remove('selected-group')
         }
         button.classList.add('selected-group')
-        await storage.sync.set({ links: { ...data.links, selectedFolder: folderId } })
+        await storage.sync.update((current) => {
+            current.links.selectedFolder = folderId
+        })
         data.links.selectedFolder = folderId
         initblocks(data)
     }

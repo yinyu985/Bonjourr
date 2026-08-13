@@ -2,7 +2,7 @@
 
 [简体中文](./README.zh-CN.md)
 
-Bonjourr is a minimalist, highly customizable new tab extension for modern browsers.
+Bonjourr is a minimalist, highly customizable new tab extension for Chrome and Edge.
 
 This repository is forked from [victrme/Bonjourr](https://github.com/victrme/Bonjourr). It has evolved into a
 privacy-focused new tab page built around a clean interface, browser bookmark links, and local customization.
@@ -12,7 +12,7 @@ privacy-focused new tab page built around a clean interface, browser bookmark li
 - Minimal new tab page with a quiet, customizable interface
 - Quick Links shown from the browser's native bookmarks
 - Read-only bookmark groups that follow the browser bookmark structure
-- Backgrounds from images, videos, remote URLs, local files, or solid colors
+- Backgrounds from Unsplash, remote URLs, local files, or solid colors
 - Background filters, texture overlays, local media options, and video mute controls
 - Digital clock with seconds, 12-hour time, time zone, and date format options
 - Simple memo panel for lightweight notes
@@ -21,7 +21,14 @@ privacy-focused new tab page built around a clean interface, browser bookmark li
 - Dark mode, tab title, tab icon, and layout controls
 - Settings import/export and synchronization through GitHub Gist or a remote URL
 - Multilanguage support, including English and Simplified Chinese
-- Privacy-focused: no account requirement and no generative AI features
+- Privacy-focused: no account is required unless the optional Unsplash provider is enabled
+
+### Unsplash backgrounds
+
+The fork does not use the original Bonjourr API and does not ship a shared Unsplash credential. To enable Unsplash
+random, search, or collection backgrounds, create an Unsplash developer application and paste its **Access Key** in
+Background settings. Never enter the Secret Key. The Access Key stays on the current device and is excluded from
+exports, GitHub Gist sync, and recovery snapshots.
 
 ## Built With
 
@@ -38,7 +45,6 @@ Release archives are named by platform, for example:
 
 - `bonjourr-chrome.zip`
 - `bonjourr-edge.zip`
-- `bonjourr-firefox.zip`
 
 ### Chrome
 
@@ -47,22 +53,12 @@ Release archives are named by platform, for example:
 3. Click "Load unpacked".
 4. Select the unzipped `chrome` folder.
 
-### Firefox
-
-1. Open `about:debugging#/runtime/this-firefox`.
-2. Click "Load Temporary Add-on".
-3. Select `manifest.json` inside the unzipped `firefox` folder.
-
 ### Edge
 
 1. Open `edge://extensions`.
 2. Enable Developer mode.
 3. Click "Load unpacked".
 4. Select the unzipped `edge` folder.
-
-### Safari
-
-Follow the install steps from the [upstream Safari repository](https://github.com/victrme/Bonjourr-Safari).
 
 ## Run Locally
 
@@ -81,8 +77,6 @@ These tasks generate browser extension builds under `release/<platform>`:
 ```bash
 deno task chrome
 deno task edge
-deno task firefox
-deno task safari
 ```
 
 After building, load the generated folder in your browser, for example `release/chrome` in Chrome or

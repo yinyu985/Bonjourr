@@ -3,20 +3,17 @@ import { langList } from '../src/scripts/langs.ts'
 const langs = Object.keys(langList)
 
 const englishDict = JSON.parse(Deno.readTextFileSync('./_locales/en/translations.json'))
-const files = []
 
 for (const lang of langs) {
     const isCorrect = lang.length === 2 || (lang.length === 5 && lang[2] === '-')
     const isNotEnglish = lang !== 'en'
 
     if (isCorrect && isNotEnglish) {
-        files.push(translateFile(lang))
+        translateFile(lang)
     }
 }
 
-await Promise.all(files)
-
-async function translateFile(lang: string): Promise<void> {
+function translateFile(lang: string): void {
     const translations = Deno.readTextFileSync(`./_locales/${lang}/translations.json`)
     const newDict: Record<string, string> = {}
     let removed = 0
@@ -48,18 +45,15 @@ async function translateFile(lang: string): Promise<void> {
     const hasMissingKeys = missingKeys.length > 0
 
     if (hasMissingKeys) {
-        const language = langList[lang as keyof typeof langList]
-        const message = `Translate in ${language}.\n\n${JSON.stringify(missingKeys)}`
-        const translations = await llmTranslation(message)
-
-        if (translations) {
-            for (const key of missingKeys) {
-                const trn = translations[key]
-
-                newDict[key] = trn
-                added++
-            }
+        for (const key of missingKeys) {
+            // Keep the translation task deterministic and independent from
+            // the original Bonjourr service. English is a safe visible
+            // fallback until a maintainer replaces it with a native string.
+            newDict[key] = englishDict[key] ?? key
+            added++
         }
+
+        console.warn(`${lang}: added English fallbacks for ${missingKeys.join(', ')}`)
     }
 
     // 3. Order translations
@@ -79,31 +73,4 @@ async function translateFile(lang: string): Promise<void> {
 
     // 5. Info
     console.info(`${lang.slice(0, 2)}: [removed: ${removed}, added: ${added}]`)
-}
-
-async function llmTranslation(body: string): Promise<Record<string, string> | undefined> {
-    const path = 'https://services.bonjourr.fr/translate'
-    const response = await fetch(path, { body, method: 'POST' })
-
-    if (response.status === 200) {
-        const json = await response.json() as TranslateApiResponse
-        const dict: Record<string, string> = {}
-
-        for (const row of json.data) {
-            dict[row.in] = row.out
-        }
-
-        return dict
-    }
-
-    if (response.status === 429) {
-        console.warn('429 rate limited')
-    }
-}
-
-interface TranslateApiResponse {
-    data: {
-        in: string
-        out: string
-    }[]
 }

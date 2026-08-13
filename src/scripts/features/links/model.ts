@@ -151,7 +151,11 @@ export function removeFolder(data: Sync, id: string): LinkFolder | undefined {
 
 export function isElem(link: unknown): link is LinkElem {
     const value = link as LinkElem | LinkSubfolder | undefined
-    return !!value && typeof value.id === 'string' && typeof value.title === 'string' && !isSubfolder(value)
+    return !!value &&
+        typeof value.id === 'string' &&
+        typeof value.title === 'string' &&
+        typeof (value as LinkElem).url === 'string' &&
+        !isSubfolder(value)
 }
 
 export function isSubfolder(link: unknown): link is LinkSubfolder {

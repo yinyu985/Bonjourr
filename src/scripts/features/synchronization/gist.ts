@@ -24,6 +24,8 @@ interface GistFile {
     language: string
     raw_url: string
     size: number
+    content?: string
+    truncated?: boolean
 }
 
 export function setGistStatusNow(gistId?: string, updatedAt = new Date().toISOString()): void {
@@ -106,8 +108,10 @@ export async function setGistStatus(token?: string, id?: string): Promise<boolea
 
     const json = await resp.json() as { updated_at: string; html_url: string }
     cachedStatus = { at: now, updatedAt: json.updated_at, htmlUrl: json.html_url, key: cacheKey, resourceId: id }
-    storage.local.set({
+    void storage.local.set({
         remoteLastFetchedAt: new Date(now).toISOString(),
+    }).catch((err) => {
+        console.warn('Cannot persist GitHub status timestamp', err)
     })
     renderStatus(wrapper, base, json.updated_at, json.html_url, id)
     return true
@@ -137,11 +141,23 @@ function renderStatus(
 
     const link = document.createElement('a')
     link.id = 'gist-sync-status'
-    link.href = htmlUrl
+    link.href = trustedGistPageUrl(htmlUrl, resourceId)
+    link.rel = 'noopener noreferrer'
+    link.target = '_blank'
     link.textContent = dateString
 
     wrapper?.appendChild(link)
     base.textContent = tradThis('Last update')
+}
+
+function trustedGistPageUrl(value: string, resourceId: string): string {
+    try {
+        const url = new URL(value)
+        if (url.protocol === 'https:' && url.hostname === 'gist.github.com') return url.href
+    } catch (_) {
+        // Use the provider-owned fallback below.
+    }
+    return `https://gist.github.com/${encodeURIComponent(resourceId)}`
 }
 
 function renderStatusTime(wrapper: HTMLElement, base: HTMLSpanElement, isoDate: string): void {
@@ -185,7 +201,7 @@ export interface GistRetrieveResult {
 
 export async function retrieveGist(token: string, id?: string): Promise<GistRetrieveResult> {
     type GistGet = {
-        files: Record<string, { content: string } | undefined>
+        files: Record<string, GistFile | undefined>
         updated_at?: string
     }
 
@@ -201,16 +217,33 @@ export async function retrieveGist(token: string, id?: string): Promise<GistRetr
     })
 
     const gist = (await req.json()) as GistGet
-    const content = gist?.files?.[GIST_FILENAME]?.content
+    const file = gist?.files?.[GIST_FILENAME]
+    let content = file?.content
 
-    if (!content) {
+    if ((file?.size ?? 0) > MAX_REMOTE_CONFIG_BYTES) {
+        throw new Error(GIST_ERROR.JSON)
+    }
+
+    // GitHub truncates large Gist file bodies in the metadata response. Fetch
+    // the authenticated raw URL explicitly rather than treating it as missing
+    // or parsing partial JSON.
+    if (file?.truncated) {
+        if (!file.raw_url) throw new Error(GIST_ERROR.NOGIST)
+        const rawUrl = trustedGistRawUrl(file.raw_url)
+        const raw = await gistFetch(rawUrl, { headers: gistHeaders(token) })
+        content = await raw.text()
+    }
+
+    if (
+        !content || content.length > MAX_REMOTE_CONFIG_BYTES || !gist.updated_at || !isValidTimestamp(gist.updated_at)
+    ) {
         throw new Error(GIST_ERROR.NOGIST)
     }
 
     try {
         return {
             sync: JSON.parse(content),
-            updatedAt: gist.updated_at ?? new Date().toISOString(),
+            updatedAt: gist.updated_at,
         }
     } catch (_) {
         throw new Error(GIST_ERROR.JSON)
@@ -230,7 +263,7 @@ export async function fetchGistUpdatedAt(token: string, id: string): Promise<str
             headers: gistHeaders(token),
         })
         const json = await resp.json() as { updated_at?: string }
-        return json.updated_at
+        return json.updated_at && isValidTimestamp(json.updated_at) ? json.updated_at : undefined
     } catch (_) {
         return
     }
@@ -257,10 +290,13 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
             method: 'POST',
         })
 
-        const api = await resp.json() as { id: string; updated_at?: string }
+        const api = await resp.json() as { id?: string; updated_at?: string }
+        if (!api.id || !api.updated_at || !isValidTimestamp(api.updated_at)) {
+            throw new Error(GIST_ERROR.JSON)
+        }
         return {
             id: api.id,
-            updatedAt: api.updated_at ?? new Date().toISOString(),
+            updatedAt: api.updated_at,
         }
     }
 
@@ -287,17 +323,23 @@ export async function sendGist(token: string, id: string | undefined, data: Sync
             method: 'POST',
         })
 
-        const api = await createResp.json() as { id: string; updated_at?: string }
+        const api = await createResp.json() as { id?: string; updated_at?: string }
+        if (!api.id || !api.updated_at || !isValidTimestamp(api.updated_at)) {
+            throw new Error(GIST_ERROR.JSON)
+        }
         return {
             id: api.id,
-            updatedAt: api.updated_at ?? new Date().toISOString(),
+            updatedAt: api.updated_at,
         }
     }
 
     const json = await resp.json() as { updated_at?: string }
+    if (!json.updated_at || !isValidTimestamp(json.updated_at)) {
+        throw new Error(GIST_ERROR.JSON)
+    }
     return {
         id,
-        updatedAt: json.updated_at ?? new Date().toISOString(),
+        updatedAt: json.updated_at,
     }
 }
 
@@ -306,14 +348,16 @@ export async function findGistId(token?: string): Promise<string | undefined> {
         throw new Error(GIST_ERROR.TOKEN)
     }
 
-    const resp = await gistFetch('https://api.github.com/gists?per_page=100', {
-        headers: gistHeaders(token),
-    })
+    for (let page = 1; page <= GIST_MAX_LIST_PAGES; page++) {
+        const resp = await gistFetch(`https://api.github.com/gists?per_page=100&page=${page}`, {
+            headers: gistHeaders(token),
+        })
+        const list = (await resp.json()) as GistItem[]
+        const file = list.find((gist) => !gist.public && gist.files[GIST_FILENAME]?.size > 0)
 
-    const list = (await resp.json()) as GistItem[]
-    const file = list.filter((gist) => !gist.public && gist.files[GIST_FILENAME]?.size > 0)[0]
-
-    return file?.id
+        if (file) return file.id
+        if (list.length < 100) return
+    }
 }
 
 function isGistIdValid(id?: string): boolean {
@@ -333,6 +377,27 @@ function isGistIdValid(id?: string): boolean {
     return true
 }
 
+function trustedGistRawUrl(value: string): string {
+    let url: URL
+
+    try {
+        url = new URL(value)
+    } catch (_) {
+        throw new Error(GIST_ERROR.JSON)
+    }
+
+    if (url.protocol !== 'https:' || url.hostname !== 'gist.githubusercontent.com') {
+        throw new Error(GIST_ERROR.JSON)
+    }
+
+    return url.href
+}
+
+function isValidTimestamp(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value) &&
+        Number.isFinite(new Date(value).getTime())
+}
+
 function gistHeaders(token: string): HeadersInit {
     return {
         Authorization: `Bearer ${token}`,
@@ -347,7 +412,7 @@ async function fetchGistWithTimeout(input: RequestInfo, init?: RequestInit): Pro
     const timeout = setTimeout(() => controller.abort(), ms)
 
     try {
-        return await fetch(input, { ...init, signal: controller.signal })
+        return await fetch(input, { cache: 'no-store', credentials: 'omit', ...init, signal: controller.signal })
     } finally {
         clearTimeout(timeout)
     }
@@ -400,9 +465,11 @@ async function gistFetch(
 }
 
 const GIST_MAX_RETRIES = 3
+const GIST_MAX_LIST_PAGES = 10
 const GIST_RETRY_DELAY_MS = 1500
 const GIST_READ_TIMEOUT_MS = 10000
 const GIST_WRITE_TIMEOUT_MS = 30000
+const MAX_REMOTE_CONFIG_BYTES = 4_000_000
 const GIST_FILENAME = 'bonjourr-export.json'
 
 const GIST_ERROR = {

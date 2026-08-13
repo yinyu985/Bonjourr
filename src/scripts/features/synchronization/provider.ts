@@ -124,7 +124,9 @@ export const gistProvider: RemoteProvider = {
     },
 
     setStatus(local?: Local): void {
-        setGistStatus(local?.gistToken, local ? this.getResourceId(local) : undefined)
+        void setGistStatus(local?.gistToken, local ? this.getResourceId(local) : undefined).catch((err) => {
+            console.warn('Cannot refresh GitHub synchronization status', err)
+        })
     },
 
     setStatusNow(metadata?: RemoteMetadata): void {

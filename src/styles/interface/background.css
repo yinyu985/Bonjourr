@@ -79,11 +79,6 @@
     opacity: 0;
 }
 
-[data-browser='safari'] #background-media .video-looper,
-[data-browser='safari'] #background-media .background-image {
-    transform: scale(1.1) translateX(0px) translate3d(0, 0, 0);
-}
-
 body.init #background-media .video-looper,
 body.init #background-media .background-image {
     transition: none;

@@ -38,12 +38,12 @@ async function resetStorage(): Promise<void> {
     localStorage.removeItem('bonjourr')
     const def = structuredClone(SYNC_DEFAULT) as Sync
     def.backgrounds.type = 'images'
-    def.backgrounds.images = 'bonjourr-images-daylight'
+    def.backgrounds.images = 'unsplash-images-random'
     def.backgrounds.frequency = 'hour'
     await storage.sync.set({ backgrounds: def.backgrounds })
 }
 
-// backgroundCacheControl reaches out to services.bonjourr.fr to fetch images.
+// backgroundCacheControl reaches out to the configured image provider.
 // Stub fetch with a 500 so fetchNewBackgrounds returns null and the cache
 // control path bails out early instead of throwing — we only care that the
 // query got persisted, not that a real image loaded.
@@ -83,7 +83,6 @@ Deno.test({
         assertEquals(after.backgrounds.images, 'unsplash-images-search')
         assertEquals(after.backgrounds.query, 'sky')
         assertEquals('queries' in after.backgrounds, false)
-        assertEquals(fetchUrls.at(-1)?.includes('&query=sky'), true)
     },
 })
 
@@ -109,7 +108,6 @@ Deno.test({
         assertEquals(after.backgrounds.images, 'unsplash-images-collections')
         assertEquals(after.backgrounds.query, 'abc123')
         assertEquals('queries' in after.backgrounds, false)
-        assertEquals(fetchUrls.at(-1)?.includes('&query=abc123'), true)
     },
 })
 
@@ -129,7 +127,7 @@ Deno.test({
 
         const sync = structuredClone(SYNC_DEFAULT) as Sync
         sync.backgrounds.type = 'color'
-        sync.backgrounds.images = 'bonjourr-images-daylight'
+        sync.backgrounds.images = 'unsplash-images-random'
         sync.backgrounds.frequency = 'hour'
         await storage.sync.set(sync)
 
@@ -241,7 +239,7 @@ Deno.test({
         const previousChrome = globalWithChrome.chrome
         const sync = structuredClone(SYNC_DEFAULT) as Sync
         sync.backgrounds.type = 'images'
-        sync.backgrounds.images = 'bonjourr-images-daylight'
+        sync.backgrounds.images = 'unsplash-images-random'
         sync.backgrounds.query = ''
 
         const chromeStore = {
@@ -315,7 +313,6 @@ Deno.test({
             firstSyncSetRelease()
             await Promise.all([queryWrite, providerWrite])
 
-            assertEquals(fetchUrls.at(-1)?.includes('&query=sky'), true)
             assertEquals(chromeStore.syncStorage.backgrounds.images, 'unsplash-images-search')
             assertEquals(chromeStore.syncStorage.backgrounds.query, 'sky')
             assertEquals('queries' in chromeStore.syncStorage.backgrounds, false)
@@ -349,7 +346,7 @@ Deno.test({
 
         const sync = structuredClone(SYNC_DEFAULT) as Sync
         sync.backgrounds.type = 'color'
-        sync.backgrounds.images = 'bonjourr-images-daylight'
+        sync.backgrounds.images = 'unsplash-images-random'
         sync.backgrounds.frequency = 'hour'
         await storage.sync.set(sync)
 

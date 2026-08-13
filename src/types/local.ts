@@ -21,10 +21,12 @@ export interface Local {
     syncType?: SyncType
 
     // Backgrounds
+    unsplashAccessKey?: string
     backgroundCollections: Record<string, Background[]>
     backgroundUrls: Record<string, BackgroundUrl>
     backgroundFiles: Record<string, BackgroundFile>
     backgroundLastChange?: string
+    backgroundLastTrackedPhoto?: string
     backgroundCompressFiles?: boolean
 
     // Online

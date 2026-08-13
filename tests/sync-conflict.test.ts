@@ -7,7 +7,7 @@ import { buildBookmarkSnapshotFromConfig } from '../src/scripts/features/links/b
 import { __testing } from '../src/scripts/features/synchronization/index.ts'
 
 import type { Local } from '../src/types/local.ts'
-import type { Sync } from '../src/types/sync.ts'
+import type { Sync, SyncSnapshot } from '../src/types/sync.ts'
 import type { RemoteProvider, RemoteSnapshot } from '../src/scripts/features/synchronization/provider.ts'
 
 const {
@@ -28,7 +28,8 @@ function stubReload(): void {
 // has unsplash-images-search selected but no keyword. "sky" is the local edit
 // that has not been uploaded yet.
 function remoteSnapshotWithoutSky(updatedAt: string): RemoteSnapshot {
-    const sync = structuredClone(SYNC_DEFAULT) as Sync
+    const sync = structuredClone(SYNC_DEFAULT) as SyncSnapshot
+    sync.links = { ...sync.links, folders: [], favorites: [], toolbarOrder: [] }
     sync.backgrounds.type = 'images'
     sync.backgrounds.images = 'unsplash-images-search'
     sync.backgrounds.query = ''
@@ -245,9 +246,11 @@ Deno.test({
         }
 
         try {
-            const result = await autoSyncOnStartup(localState({
+            const local = localState({
                 remoteLastSyncedAt: '2026-01-01T00:00:00.000Z',
-            }))
+            })
+            await storage.local.set(local)
+            const result = await autoSyncOnStartup(local)
 
             assertEquals(result, 'failed')
             assertEquals(getPendingConflictMessage(), 'Cannot connect to GitHub.')
@@ -256,6 +259,7 @@ Deno.test({
             globalThis.fetch = originalFetch
             console.warn = originalWarn
             resetSyncRuntimeForTests()
+            await storage.local.clear()
         }
     },
 })

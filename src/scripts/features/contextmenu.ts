@@ -1,9 +1,12 @@
 import { IS_MOBILE, SYSTEM_OS } from '../defaults.ts'
 import { transitioner } from '../utils/transitioner.ts'
 import { debounce } from '../utils/debounce.ts'
+import { requestHostPermission } from '../utils/permissions.ts'
 import { initCustomSelects } from '../shared/custom-select.ts'
-import { onclickdown } from 'clickdown/mod'
+import { onclickdown } from '../utils/clickdown.ts'
 import { backgroundUpdate } from './backgrounds/index.ts'
+import { safeUnsplashDownloadLocation } from './backgrounds/credits.ts'
+import { trackUnsplashDownload } from './backgrounds/unsplash.ts'
 import { storage } from '../storage.ts'
 
 import type { Backgrounds } from '../../types/sync.ts'
@@ -27,6 +30,11 @@ const sectionMatching: Record<string, Section> = {
         scrollto: 'time_title',
     },
 }
+const UNSPLASH_ASSET_ORIGINS = new Set([
+    'https://images.unsplash.com',
+    'https://image.unsplash.com',
+    'https://plus.unsplash.com',
+])
 
 const mainInterface = document.getElementById('interface') as HTMLDivElement
 const domdialog = document.getElementById('contextmenu') as HTMLDialogElement
@@ -85,7 +93,7 @@ export function openContextMenu(event: Event): void {
     const contextmenuTransition = transitioner()
     contextmenuTransition.first(() => domdialog?.show())
     contextmenuTransition.after(() => domdialog?.classList?.add('shown'))
-    contextmenuTransition.transition(10)
+    void contextmenuTransition.transition(10).catch((err) => console.warn('Cannot open context menu', err))
 
     if (clickedOnWidgets) {
         const allWidgets = Object.entries(eventLocation.widgets)
@@ -321,23 +329,26 @@ export function closeContextMenu(): void {
 export function handleBackgroundActions(backgrounds: Backgrounds): void {
     const type = backgrounds.type
     const freq = backgrounds.frequency
+    const downloadButton = document.getElementById('b_interface-background-download')
 
     document.getElementById('background-actions')?.setAttribute('data-type', type)
     document.getElementById('b_interface-background-pause')?.classList.toggle('paused', freq === 'pause')
-    document.getElementById('b_interface-background-download')?.toggleAttribute('disabled', type !== 'images')
+    if (type !== 'images') {
+        downloadButton?.setAttribute('disabled', '')
+    }
 }
 
 export function initBackgroundActionsEvents(): void {
     onclickdown(document.getElementById('b_interface-background-pause'), () => {
-        toggleBackgroundPause()
+        void toggleBackgroundPause().catch((err) => console.warn('Background pause failed', err))
     })
 
     onclickdown(document.getElementById('b_interface-background-refresh'), (event) => {
-        backgroundUpdate({ refresh: event })
+        void backgroundUpdate({ refresh: event }).catch((err) => console.warn('Background refresh failed', err))
     })
 
     onclickdown(document.getElementById('b_interface-background-download'), () => {
-        downloadImage()
+        void downloadImage().catch((err) => console.warn('Background download failed', err))
     })
 }
 
@@ -353,10 +364,10 @@ async function toggleBackgroundPause(): Promise<void> {
     }
 
     if (paused) {
-        backgroundUpdate({ freq: last })
+        await backgroundUpdate({ freq: last })
     } else {
         localStorage.lastBackgroundFreq = sync.backgrounds.frequency
-        backgroundUpdate({ freq: 'pause' })
+        await backgroundUpdate({ freq: 'pause' })
     }
 }
 
@@ -364,6 +375,7 @@ async function downloadImage(): Promise<void> {
     const dombutton = document.querySelector<HTMLButtonElement>('#b_interface-background-download')
     const domsave = document.querySelector<HTMLAnchorElement>('#download-background')
 
+    if (dombutton?.classList.contains('loading')) return
     if (!domsave) {
         console.warn('Download link is missing')
         return
@@ -371,29 +383,77 @@ async function downloadImage(): Promise<void> {
 
     dombutton?.classList.replace('idle', 'loading')
 
-    try {
-        const baseUrl = 'https://services.bonjourr.fr/unsplash'
-        const downloadUrl = new URL(domsave.dataset.downloadUrl ?? '')
-        const apiDownloadUrl = baseUrl + downloadUrl.pathname + downloadUrl.search
-        const downloadResponse = await fetch(apiDownloadUrl)
+    let objectUrl = ''
 
-        if (!downloadResponse) {
-            return
+    try {
+        const downloadLocation = safeUnsplashDownloadLocation(domsave.dataset.downloadLocation)
+        if (!downloadLocation) {
+            throw new Error('Background download endpoint is not an Unsplash API download location')
         }
 
-        const data: { url: string } = await downloadResponse.json()
-        const imageResponse = await fetch(data.url)
+        const local = await storage.local.get('unsplashAccessKey')
+        const accessKey = local.unsplashAccessKey?.trim()
+        if (!accessKey) {
+            throw new Error('An Unsplash Access Key is required to download this background')
+        }
+
+        const trackedUrl = await trackUnsplashDownload(downloadLocation, accessKey)
+        const imageUrl = safeUnsplashAssetUrl(trackedUrl)
+        if (!imageUrl) {
+            throw new Error('Unsplash returned an unexpected image URL')
+        }
+
+        if (!await requestHostPermission(imageUrl)) {
+            throw new Error('Permission to download from this image host was not granted')
+        }
+
+        const imageResponse = await fetch(imageUrl, {
+            credentials: 'omit',
+            redirect: 'error',
+            referrerPolicy: 'no-referrer',
+        })
 
         if (!imageResponse.ok) {
-            return
+            throw new Error(`Image download returned ${imageResponse.status}`)
         }
 
         const blob = await imageResponse.blob()
+        if (!blob.type.startsWith('image/')) {
+            throw new Error('Unsplash returned an unexpected download type')
+        }
 
-        domsave.href = URL.createObjectURL(blob)
-        domsave.download = downloadUrl.pathname.split('/')[2]
+        objectUrl = URL.createObjectURL(blob)
+        domsave.href = objectUrl
+        domsave.download = new URL(downloadLocation).pathname.split('/')[2]
         domsave.click()
     } finally {
         dombutton?.classList.replace('loading', 'idle')
+
+        if (objectUrl) {
+            setTimeout(() => {
+                URL.revokeObjectURL(objectUrl)
+                domsave.removeAttribute('href')
+            }, 1000)
+        }
+    }
+}
+
+export function safeUnsplashAssetUrl(value: string): URL | undefined {
+    try {
+        const url = new URL(value)
+
+        if (
+            url.protocol !== 'https:' ||
+            url.username ||
+            url.password ||
+            url.hash ||
+            !UNSPLASH_ASSET_ORIGINS.has(url.origin)
+        ) {
+            return
+        }
+
+        return url
+    } catch (_) {
+        return
     }
 }

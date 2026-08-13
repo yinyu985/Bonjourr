@@ -1,8 +1,4 @@
 @media (hover: none) and (pointer: coarse) {
-    .b_removethumb {
-        opacity: 1;
-    }
-
     #show-settings {
         -webkit-touch-callout: none;
         -webkit-user-select: none;
@@ -24,21 +20,11 @@
     }
 }
 
-@media screen and (max-height: 900px) {
-    aside {
-        font-size: 13px;
-    }
-}
-
 @media screen and (max-width: 600px) {
     html,
     body {
         font-size: 12px;
         overflow-y: auto;
-    }
-
-    .not-mobile {
-        display: none;
     }
 
     #linkblocks.text,
@@ -70,55 +56,6 @@
         width: 24px;
         height: 24px;
     }
-
-    aside {
-        top: 100dvh;
-        right: auto;
-        left: 0%;
-        bottom: -100dvh;
-        height: 100dvh;
-        width: 100%;
-        padding: 0 12px;
-        font-size: 14px;
-        border-radius: 1em;
-    }
-
-    aside.shown {
-        transform: translateX(0) translateY(-75dvh);
-    }
-
-    #mobile-drag-zone {
-        display: block;
-    }
-
-    #mobile-drag-zone + .settings-title {
-        margin-top: 0;
-    }
-
-    .settings-title {
-        margin: 32px 16px 0px 16px;
-    }
-
-    @supports not (min-height: 100dvh) {
-        aside {
-            top: 100vh;
-            bottom: -100vh;
-            height: 100vh;
-        }
-
-        #mobile-drag-zone.shown {
-            transform: translateY(-75vh);
-        }
-    }
-
-    aside::-webkit-scrollbar {
-        display: none;
-    }
-
-    #settings-footer {
-        width: 85%;
-        padding-bottom: 13vh;
-    }
 }
 
 /* fix iPhone notch in landscape */
@@ -138,50 +75,7 @@
     #image-background-overlay {
         position: fixed;
     }
-    aside,
-    button,
-    select,
-    option,
-    input,
-    #settings-footer {
-        font-size: 15px;
-    }
-
-    aside input[type='range']::-webkit-slider-thumb {
-        height: 25px;
-        width: 25px;
-        border-radius: 50px;
-    }
-
-    aside .settings-title {
-        margin: 32px 16px 0px 16px;
-    }
-
-    aside .wrapper {
-        padding: unset;
-        min-height: 38px;
-    }
-
-    aside input:not(.range, .switch),
-    aside .input-btn,
-    aside form button,
-    aside select {
-        min-height: 36px;
-        border-radius: 10px;
-    }
-
-    aside .input-btn.icon-only:hover {
-        background-color: initial;
-    }
-
-    aside .switch:checked:hover {
-        background-color: var(--color-green);
-    }
-
-    #settings .tooltip {
-        width: 25px;
-        height: 25px;
-        min-width: 25px;
+    button {
         font-size: 15px;
     }
 }

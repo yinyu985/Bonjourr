@@ -123,7 +123,7 @@
 }
 
 .link-group.in-folder .link-list {
-    display: flex; /* do not remove, fixes backdrop filter on Safari */
+    display: flex;
     justify-content: flex-start;
     align-items: flex-start;
     width: max-content;

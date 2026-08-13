@@ -71,7 +71,13 @@ function resetBackgroundDom(backgrounds?: Backgrounds): void {
     const wrapper = document.getElementById('background-wrapper')
     const media = document.getElementById('background-media')
 
-    Array.from(media?.childNodes ?? []).forEach((node) => node.remove())
+    Array.from(media?.children ?? []).forEach((node) => {
+        const objectUrl = (node as HTMLElement).dataset.objectUrl
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl)
+        }
+        node.remove()
+    })
 
     if (!backgrounds) {
         return

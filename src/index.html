@@ -5,24 +5,21 @@
 
         <meta charset="utf-8" />
         <meta name="theme-color" content="#000" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
         />
 
         <!-- default icon -->
-        <!-- icon -->
-        <!-- manifest -->
         <!-- webext-storage -->
 
         <link rel="stylesheet" href="src/styles/style.css" />
+        <link id="settings-styles" rel="stylesheet" data-href="src/styles/settings.css" />
         <style type="text/css" id="styles"></style>
         <style type="text/css" id="fontface"></style>
 
         <script src="src/scripts/help-mode.js" defer></script>
-        <script src="src/scripts/main.js" defer></script>
+        <script src="src/scripts/main.js" type="module"></script>
     </head>
 
     <body class="init loading">
@@ -37,6 +34,7 @@
                         title="Download the current background"
                         aria-label="Download the current background"
                         class="idle"
+                        disabled
                     >
                         <span id="idle-download" class="iconContainer">
                             <svg
@@ -200,6 +198,8 @@
             </div>
         </main>
 
+        <div id="background-attribution" role="note" hidden></div>
+
         <div id="show-notes">
             <button aria-label="Toggle notes panel" title="Toggle notes panel">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -229,9 +229,9 @@
             role="complementary"
             aria-label="Settings"
             aria-hidden="true"
+            data-content-src="settings.html"
             inert
         >
-            <!-- settings -->
         </aside>
 
         <section id="notes-panel" class="hidden" aria-label="Notes" inert>

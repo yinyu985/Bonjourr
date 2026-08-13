@@ -345,6 +345,9 @@ AND hasRemoteChanges == true
 - 下载远程覆盖本机前，必须保存当前本机 snapshot。
 - 上传本机覆盖远程前，如果已经拿到远程配置，应保存远程 snapshot；如果没有远程配置，至少必须保存当前本机 snapshot，并在
   UI 中明确这是覆盖远程操作。
+- 恢复点不得与普通 Plugin Config 共用同一个 JSON/localStorage 配额。Chrome/Edge 使用独立的 `chrome.storage.local`
+  archive key，Online 使用 IndexedDB；写入后必须回读校验。
+- 最多保留 3 份恢复点，按新到旧排列；重置普通设置不得删除恢复点。恢复点是仅本机的恢复数据，不进入 Remote payload。
 
 ### 2.8 启动同步
 
@@ -573,3 +576,18 @@ remotePayload = {
 
 `bonjourrSyncMeta` 属于单台机器，不得上传。notes 属于 `bonjourrSettings`，本地写入要快速落盘；远端上传可以
 debounce，但必须进入 upload snapshot hash。
+
+---
+
+## 12. Unsplash 与本机凭据边界
+
+- 项目不得调用原 Bonjourr 服务作为壁纸、下载追踪、URL 校验或翻译代理。
+- Unsplash 是用户自带 Access Key（BYOK）的可选能力；项目不提供共享 Key，也不得要求或保存 Secret Key。
+- `unsplashAccessKey` 只属于 `Local`：Chrome/Edge 写入 `chrome.storage.local`，Online 写入独立 IndexedDB。
+- Access Key 不得进入 `Sync`、导出 JSON、Remote payload、Gist、恢复快照、DOM dataset、URL、日志或
+  `localStorage` / `sessionStorage`。
+- 没有有效 Key 时不得请求 Unsplash API；已有本地/缓存背景可继续使用，没有可用图片时安全回退到配置中的纯色。
+- API JSON 和所有 URL 必须运行时严格校验。图片必须直接使用 Unsplash 返回的热链 URL；选中一张新壁纸以及显式下载时，
+  必须请求该图片的官方 `links.download_location`。
+- 显示 Unsplash 图片时，主界面必须提供可见的摄影师与 Unsplash 署名链接，并带 referral UTM 参数。
+- 网络失败、无效 Key、限流或响应损坏不得清空已有图片、写入不完整缓存或阻断新标签页其他功能启动。

@@ -26,13 +26,6 @@
 </div>
 
 <div class="param">
-    <div class="showall wrapper">
-        <label for="i_showall" class="trn">Show all settings</label>
-        <input id="i_showall" class="switch" type="checkbox" />
-    </div>
-
-    <hr />
-
     <div class="choose_language wrapper">
         <label for="i_lang" class="trn">Language</label>
         <select id="i_lang" class="lang"></select>
@@ -69,7 +62,7 @@
                     maxlength="2"
                     placeholder="🌤"
                     aria-label="Tab favicon"
-                    class="not-safari not-edge"
+                    class="not-edge"
                     autocomplete="off"
                     autocorrect="off"
                     spellcheck="false"
@@ -124,6 +117,65 @@
             <select id="i_background-provider"></select>
         </div>
 
+        <div id="unsplash-access-key-option" class="dropdown">
+            <hr />
+
+            <div class="wrapper unsplash-access-key-wrapper">
+                <label for="i_unsplash-access-key" class="trn">Unsplash Access Key</label>
+
+                <form id="f_unsplash-access-key" novalidate>
+                    <div class="unsplash-access-key-input">
+                        <input
+                            type="password"
+                            name="unsplash-access-key"
+                            id="i_unsplash-access-key"
+                            minlength="16"
+                            maxlength="200"
+                            pattern="[A-Za-z0-9_-]+"
+                            aria-describedby="unsplash-access-key-privacy unsplash-access-key-required unsplash-access-key-status"
+                            autocomplete="off"
+                            autocapitalize="none"
+                            autocorrect="off"
+                            spellcheck="false"
+                        />
+                        <button
+                            type="button"
+                            id="b_unsplash-access-key-toggle"
+                            class="input-btn"
+                            title="Show Access Key"
+                            aria-label="Show Access Key"
+                            aria-pressed="false"
+                        >
+                            <span class="trn">Show</span>
+                        </button>
+                    </div>
+
+                    <div class="unsplash-access-key-actions">
+                        <button type="submit" id="b_unsplash-access-key-save" class="param-btn">
+                            <span class="trn">Save</span>
+                        </button>
+                        <button type="button" id="b_unsplash-access-key-remove" class="param-btn btn-red">
+                            <span class="trn">Remove</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <small id="unsplash-access-key-privacy" class="unsplash-access-key-message trn">
+                Stored only on this device. Never included in exports, remote sync, or recovery snapshots.
+            </small>
+            <small
+                id="unsplash-access-key-required"
+                class="unsplash-access-key-message"
+                role="status"
+            ><span class="trn">An Unsplash Access Key is required for this provider.</span></small>
+            <small
+                id="unsplash-access-key-status"
+                class="unsplash-access-key-message trn"
+                aria-live="polite"
+            ></small>
+        </div>
+
         <div id="background-credit" class="dropdown">
             <hr />
             <div class="wrapper">
@@ -154,7 +206,7 @@
                             id="i_background-user-coll"
                             placeholder="XSCVKUH"
                             aria-label="Background collections"
-                            maxlength="256"
+                            maxlength="200"
                         />
                         <button type="submit">
                             <span></span>
@@ -472,7 +524,7 @@
     </div>
 
     <div id="quicklinks_options" class="dropdown">
-        <div class="not-safari not-online">
+        <div class="not-online">
             <hr />
 
             <div class="wrapper">
@@ -498,7 +550,7 @@
                 >Learn more</a>
             </p>
 
-            <div class="not-safari">
+            <div>
                 <hr />
 
                 <div class="linknewtab wrapper">
@@ -666,30 +718,6 @@
             </select>
         </div>
 
-        <div id="disabled-sync" class="dropdown firefox-only">
-            <hr />
-
-            <div class="wrapper">
-                <span>
-                    <span class="trn">Persistent storage</span>
-                    <button
-                        class="tooltip ttpersistentstorage"
-                        title="What is persistent storage?"
-                        aria-label="What is persistent storage?"
-                    >
-                        ?
-                    </button>
-                </span>
-                <button id="b_storage-persist" class="param-btn trn">Ask permission</button>
-            </div>
-
-            <p class="tooltiptext dropdown ttpersistentstorage">
-                <span class="trn"
-                >Enabling persistent storage ensures that Firefox will remember your settings for as long as
-                    possible.</span>
-            </p>
-        </div>
-
         <div id="gist-sync" class="dropdown">
             <hr />
 
@@ -787,7 +815,7 @@
             </button>
             <button
                 id="b_file-save"
-                class="param-btn not-safari"
+                class="param-btn"
                 title="Export a new settings file"
                 aria-label="Export a new settings file"
             >
@@ -796,6 +824,10 @@
             </button>
         </div>
     </div>
+</div>
+
+<div class="param" id="config-snapshots">
+    <div id="snapshots-list"></div>
 </div>
 
 <div class="param" id="reset-settings">
@@ -872,9 +904,7 @@
     <div id="donate">
         <p>
             <span class="trn">Consider</span>
-            <a href="https://github.com/yinyu985/Bonjourr" rel="noreferrer noopener" class="trn not-safari">donating</a>
-
-            <span class="trn safari-only">donating</span>
+            <a href="https://github.com/yinyu985/Bonjourr" rel="noreferrer noopener" class="trn">donating</a>
 
             <span class="trn">if you love Bonjourr</span>
         </p>

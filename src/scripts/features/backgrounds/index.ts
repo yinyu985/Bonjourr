@@ -1,7 +1,7 @@
 import { applyUrls, getUrlsAsCollection, initUrlsEditor, urlsCacheControl } from './urls.ts'
 import { handleBackgroundActions, initBackgroundActionsEvents } from '../contextmenu.ts'
 import { settingsBackgroundColor } from '../others.ts'
-import { toggleCredits, updateCredits } from './credits.ts'
+import { safeUnsplashDownloadLocation, toggleCredits, updateCredits } from './credits.ts'
 import { backgroundQueryValue, backgroundSourcePatch, mergeBackgroundPatch, queryCollectionName } from './query.ts'
 import {
     currentBackgroundRuntimeVersion,
@@ -10,6 +10,7 @@ import {
 } from './cache.ts'
 import { TEXTURE_RANGES } from './textures.ts'
 import { PROVIDERS } from './providers.ts'
+import { fetchUnsplashPhotos, trackUnsplashDownload, UnsplashError } from './unsplash.ts'
 import {
     addLocalBackgrounds,
     initFilesSettingsOptions,
@@ -19,10 +20,11 @@ import {
 } from './local.ts'
 
 import { colorInput, turnRefreshButton, webkitRangeTrackColor } from '../../shared/dom.ts'
-import { daylightPeriod, needsChange, userDate } from '../../shared/time.ts'
+import { needsChange, userDate } from '../../shared/time.ts'
 import { networkForm } from '../../shared/form.ts'
 import { rgbToHex } from '../../shared/generic.ts'
 import { debounce } from '../../utils/debounce.ts'
+import { tradThis } from '../../utils/translations.ts'
 import { storage } from '../../storage.ts'
 
 import type { Background, BackgroundImage, Frequency } from '../../../types/shared.ts'
@@ -46,7 +48,7 @@ interface BackgroundQueryUpdate {
     value: string
 }
 
-interface BackgroundUpdate {
+export interface BackgroundUpdate {
     freq?: string
     type?: string
     blur?: string
@@ -65,12 +67,31 @@ interface BackgroundUpdate {
     textureopacity?: string
 }
 
-const propertiesUpdateDebounce = debounce(filtersUpdate, 600)
-const colorUpdateDebounce = debounce(solidUpdate, 600)
+interface PendingBackgroundProperties {
+    blur?: number
+    bright?: number
+    texture?: Backgrounds['texture']
+}
+
+const propertiesUpdateDebounce = debounce(filtersUpdate, 600, { barrier: true })
+const colorUpdateDebounce = debounce(solidUpdate, 600, { barrier: true })
 const formBackgroundUserColl = networkForm('f_background-user-coll')
 const formBackgroundUserSearch = networkForm('f_background-user-search')
+const BACKGROUND_FETCH_TIMEOUT_MS = 10_000
+const MAX_BACKGROUND_REQUEST_PIXELS = 8_294_400
+const BACKGROUND_IMAGE_LOAD_TIMEOUT_MS = 20_000
+const DEFAULT_IMAGE_COLLECTION = 'unsplash-images-random'
+const UNSPLASH_BATCH_SIZE = 20
+const UNSPLASH_COLLECTIONS = new Set([
+    DEFAULT_IMAGE_COLLECTION,
+    'unsplash-images-collections',
+    'unsplash-images-search',
+])
+let pendingBackgroundProperties: PendingBackgroundProperties = {}
 const pendingBackgroundWrites = new Set<Promise<void>>()
+const pendingBackgroundWriteErrors: unknown[] = []
 let backgroundPatchQueue: Promise<void> = Promise.resolve()
+let keyChangeListenerInitialized = false
 
 export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
     if (init) {
@@ -89,6 +110,15 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
         pauseButton?.classList.toggle('paused', isPaused)
 
         initBackgroundActionsEvents()
+
+        if (!keyChangeListenerInitialized) {
+            document.addEventListener('unsplash-key-change', () => {
+                void handleUnsplashKeyChange().catch((err) => {
+                    console.warn('[Backgrounds] Cannot apply Unsplash Access Key change', err)
+                })
+            })
+            keyChangeListenerInitialized = true
+        }
     }
 
     toggleCredits(sync.backgrounds)
@@ -99,11 +129,15 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
 
     switch (sync.backgrounds.type) {
         case 'files': {
-            localFilesCacheControl(sync.backgrounds, local)
+            void localFilesCacheControl(sync.backgrounds, local).catch((err) => {
+                console.warn('[Backgrounds] Cannot load local background', err)
+            })
             break
         }
         case 'urls': {
-            urlsCacheControl(sync.backgrounds, local)
+            void urlsCacheControl(sync.backgrounds, local).catch((err) => {
+                console.warn('[Backgrounds] Cannot load URL background', err)
+            })
             break
         }
         case 'color': {
@@ -111,9 +145,42 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
             break
         }
         default: {
-            backgroundCacheControl(sync.backgrounds, local)
+            void backgroundCacheControl(sync.backgrounds, local).catch((err) => {
+                console.warn('[Backgrounds] Cannot load background collection', err)
+            })
         }
     }
+}
+
+async function handleUnsplashKeyChange(): Promise<void> {
+    invalidateBackgroundRuntime()
+
+    const [sync, local] = await Promise.all([storage.sync.get(), storage.local.get()])
+    const collections = Object.fromEntries(
+        Object.entries(local.backgroundCollections).filter(([key]) => !key.startsWith('unsplash-images-')),
+    )
+
+    local.backgroundCollections = collections
+    local.backgroundLastChange = ''
+    local.backgroundLastTrackedPhoto = ''
+    await storage.local.set({
+        backgroundCollections: collections,
+        backgroundLastChange: '',
+        backgroundLastTrackedPhoto: '',
+    })
+
+    if (sync.backgrounds.type !== 'images') return
+
+    removeBackgrounds()
+    updateCredits()
+
+    if (!local.unsplashAccessKey) {
+        showImageFallback(sync.backgrounds.color)
+        showUnsplashStatus('missing')
+        return
+    }
+
+    await backgroundCacheControl(sync.backgrounds, local, true)
 }
 
 // 	Storage update
@@ -121,12 +188,20 @@ export function backgroundsInit(sync: Sync, local: Local, init?: true): void {
 export function backgroundUpdate(update: BackgroundUpdate): Promise<void> {
     const pendingWrite = tracksImmediateBackgroundWrite(update) ? trackPendingBackgroundWrite() : undefined
 
-    return runBackgroundUpdate(update, pendingWrite?.done).finally(() => pendingWrite?.done())
+    return runBackgroundUpdate(update, pendingWrite?.done).catch((err) => {
+        pendingWrite?.fail(err)
+        throw err
+    }).finally(() => pendingWrite?.done())
 }
 
 export async function waitForPendingBackgroundWrites(): Promise<void> {
     while (pendingBackgroundWrites.size > 0) {
         await Promise.allSettled([...pendingBackgroundWrites])
+    }
+
+    if (pendingBackgroundWriteErrors.length > 0) {
+        const failures = pendingBackgroundWriteErrors.splice(0)
+        throw new AggregateError(failures, 'One or more background writes failed')
     }
 }
 
@@ -144,19 +219,21 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
     local.backgroundFiles ??= {}
 
     if (update.blurenter) {
-        blurResolutionControl(data, local)
+        await blurResolutionControl(data, local)
         return
     }
 
     if (update.blur !== undefined) {
-        applyFilters({ blur: Number.parseFloat(update.blur) })
-        propertiesUpdateDebounce({ blur: Number.parseFloat(update.blur) }, currentBackgroundRuntimeVersion())
+        const blur = Number.parseFloat(update.blur)
+        applyFilters({ blur })
+        queueBackgroundProperties({ blur })
         return
     }
 
     if (update.bright !== undefined) {
-        applyFilters({ bright: Number.parseFloat(update.bright) })
-        propertiesUpdateDebounce({ bright: Number.parseFloat(update.bright) }, currentBackgroundRuntimeVersion())
+        const bright = Number.parseFloat(update.bright)
+        applyFilters({ bright })
+        queueBackgroundProperties({ bright })
         return
     }
 
@@ -205,15 +282,15 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
     if (update.refresh) {
         switch (data.backgrounds.type) {
             case 'files': {
-                localFilesCacheControl(data.backgrounds, local, true)
+                await localFilesCacheControl(data.backgrounds, local, true)
                 break
             }
             case 'urls': {
-                urlsCacheControl(data.backgrounds, local, true)
+                await urlsCacheControl(data.backgrounds, local, true)
                 break
             }
             case 'images': {
-                backgroundCacheControl(data.backgrounds, local, true)
+                await backgroundCacheControl(data.backgrounds, local, true)
                 break
             }
         }
@@ -242,7 +319,7 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
 
     if (update.urlsapply) {
         unlockBackgroundFrequency(data.backgrounds)
-        applyUrls(data.backgrounds)
+        await applyUrls(data.backgrounds)
     }
 
     if (update.files) {
@@ -252,30 +329,30 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
                 pausedImage: data.backgrounds.pausedImage,
                 pausedUrl: data.backgrounds.pausedUrl,
             })
-            markSaved?.()
         }
 
-        addLocalBackgrounds(update.files, local)
+        await addLocalBackgrounds(update.files, local)
+        markSaved?.()
     }
 
     // Textures
 
     if (update.texturecolor !== undefined) {
         data.backgrounds.texture.color = update.texturecolor
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
+        queueBackgroundProperties({ texture: structuredClone(data.backgrounds.texture) })
         colorInput('texture-color', update.texturecolor)
         applyTexture(data.backgrounds.texture)
     }
 
     if (update.textureopacity !== undefined) {
         data.backgrounds.texture.opacity = Number.parseFloat(update.textureopacity)
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
+        queueBackgroundProperties({ texture: structuredClone(data.backgrounds.texture) })
         applyTexture(data.backgrounds.texture)
     }
 
     if (update.texturesize !== undefined) {
         data.backgrounds.texture.size = Number.parseInt(update.texturesize)
-        propertiesUpdateDebounce({ texture: data.backgrounds.texture }, currentBackgroundRuntimeVersion())
+        queueBackgroundProperties({ texture: structuredClone(data.backgrounds.texture) })
         applyTexture(data.backgrounds.texture)
     }
 
@@ -321,10 +398,12 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
         handleBackgroundOptions(data.backgrounds)
 
         const isNotEmpty = local.backgroundCollections[update.provider]?.length > 0
-        const isDefault = update.provider.includes('bonjourr')
+        const isDefault = update.provider === DEFAULT_IMAGE_COLLECTION
 
         if (isNotEmpty || isDefault) {
-            backgroundCacheControl(data.backgrounds, local)
+            void backgroundCacheControl(data.backgrounds, local).catch((err) => {
+                console.warn('[Backgrounds] Cannot load selected background provider', err)
+            })
         }
     }
 
@@ -373,7 +452,7 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
         // 2. Handle empty query
 
         if (query === '') {
-            storage.local.set({ backgroundCollections: local.backgroundCollections })
+            await storage.local.set({ backgroundCollections: local.backgroundCollections })
 
             formBackgroundUserColl.accept('')
             formBackgroundUserSearch.accept('')
@@ -396,6 +475,11 @@ async function runBackgroundUpdate(update: BackgroundUpdate, markSaved?: () => v
     }
 }
 
+function queueBackgroundProperties(patch: PendingBackgroundProperties): void {
+    pendingBackgroundProperties = { ...pendingBackgroundProperties, ...patch }
+    propertiesUpdateDebounce(structuredClone(pendingBackgroundProperties), currentBackgroundRuntimeVersion())
+}
+
 function tracksImmediateBackgroundWrite(update: BackgroundUpdate): boolean {
     return update.query !== undefined ||
         update.querydraft !== undefined ||
@@ -404,10 +488,12 @@ function tracksImmediateBackgroundWrite(update: BackgroundUpdate): boolean {
         update.freq !== undefined ||
         update.color !== undefined ||
         update.files !== undefined ||
+        update.refresh !== undefined ||
+        update.urlsapply !== undefined ||
         update.texture !== undefined
 }
 
-function trackPendingBackgroundWrite(): { done: () => void } {
+function trackPendingBackgroundWrite(): { done: () => void; fail: (err: unknown) => void } {
     let resolve = (): void => {}
     let finished = false
     const promise = new Promise<void>((done) => {
@@ -425,6 +511,11 @@ function trackPendingBackgroundWrite(): { done: () => void } {
 
             finished = true
             resolve()
+        },
+        fail: (err: unknown) => {
+            if (!finished) {
+                pendingBackgroundWriteErrors.push(err)
+            }
         },
     }
 }
@@ -453,6 +544,7 @@ export async function filtersUpdate(
     { blur, bright, texture }: Partial<Backgrounds>,
     runtimeVersion = currentBackgroundRuntimeVersion(),
 ): Promise<void> {
+    pendingBackgroundProperties = {}
     if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
         return
     }
@@ -477,7 +569,7 @@ export async function filtersUpdate(
         ...(blur !== undefined ? { blur } : {}),
         ...(bright !== undefined ? { bright } : {}),
         ...(texture !== undefined ? { texture } : {}),
-    })
+    }, runtimeVersion)
 }
 
 async function solidUpdate(value: string, runtimeVersion = currentBackgroundRuntimeVersion()): Promise<void> {
@@ -492,14 +584,25 @@ async function solidUpdate(value: string, runtimeVersion = currentBackgroundRunt
     }
 
     data.backgrounds.color = value
-    await saveBackgroundPatch({ color: value })
+    await saveBackgroundPatch({ color: value }, runtimeVersion)
 }
 
-async function saveBackgroundPatch(patch: BackgroundPatch): Promise<Backgrounds> {
+async function saveBackgroundPatch(
+    patch: BackgroundPatch,
+    runtimeVersion = currentBackgroundRuntimeVersion(),
+): Promise<Backgrounds> {
     let saved: Backgrounds | undefined
 
     const queuedPatch = backgroundPatchQueue.catch(() => {}).then(async () => {
         const latest = await storage.sync.get('backgrounds')
+
+        // A destructive import/download/reset invalidates the runtime before
+        // releasing the storage lock. Do not let an older async background
+        // task wake up afterwards and patch the newly committed config.
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+            saved = latest.backgrounds
+            return
+        }
         const backgrounds = mergeBackgroundPatch(latest.backgrounds, patch)
 
         await storage.sync.set({ backgrounds })
@@ -516,6 +619,8 @@ async function saveBackgroundPatch(patch: BackgroundPatch): Promise<Backgrounds>
 //	Cache & network
 
 async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): Promise<void> {
+    const runtimeVersion = currentBackgroundRuntimeVersion()
+
     if (backgrounds.type === 'color') {
         return
     }
@@ -538,19 +643,31 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
     needNew ??= needsChange(backgrounds.frequency, lastTime)
 
     if (list.length === 0) {
-        const json = await fetchNewBackgrounds(backgrounds)
+        const json = await fetchNewBackgrounds(backgrounds, local)
+
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
 
         if (json) {
             const newlocal = setCollection(backgrounds, local).fromApi(json)
             const newcoll = getCollection(backgrounds, newlocal)
 
             newlocal.backgroundLastChange = userDate().toString()
-            storage.local.set(newlocal)
+            await storage.local.set({
+                backgroundCollections: newlocal.backgroundCollections,
+                backgroundLastChange: newlocal.backgroundLastChange,
+            })
+
+            if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
 
             list = newcoll.images()
 
             preloadBackground(list[1])
         }
+    }
+
+    if (list.length === 0) {
+        showImageFallback(backgrounds.color)
+        return
     }
 
     if (isPreloading) {
@@ -577,7 +694,8 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
 
     if (backgrounds.frequency === 'pause') {
         backgrounds.pausedImage = list[0]
-        await saveBackgroundPatch({ pausedImage: backgrounds.pausedImage })
+        await saveBackgroundPatch({ pausedImage: backgrounds.pausedImage }, runtimeVersion)
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
     }
 
     if (list.length > 1) {
@@ -587,7 +705,11 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
 
         newlocal = setCollection(backgrounds, local).fromList(list)
         newlocal.backgroundLastChange = userDate().toString()
-        storage.local.set(newlocal)
+        await storage.local.set({
+            backgroundCollections: newlocal.backgroundCollections,
+            backgroundLastChange: newlocal.backgroundLastChange,
+        })
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
     }
 
     // 3. Apply image and get a new set if needed
@@ -595,7 +717,9 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
     applyBackground(list[0])
 
     if (list.length === 1 && navigator.onLine) {
-        const json = await fetchNewBackgrounds(backgrounds)
+        const json = await fetchNewBackgrounds(backgrounds, local)
+
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
 
         if (json) {
             const newlocal = setCollection(backgrounds, local).fromApi(json)
@@ -605,12 +729,15 @@ async function backgroundCacheControl(backgrounds: Backgrounds, local: Local, ne
             preloadBackground(newlist[0])
             preloadBackground(newlist[1])
 
-            storage.local.set({ backgroundCollections: newlocal.backgroundCollections })
+            await storage.local.set({ backgroundCollections: newlocal.backgroundCollections })
         }
     }
 }
 
-async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<string, Background[]> | null> {
+async function fetchNewBackgrounds(
+    backgrounds: Backgrounds,
+    local: Local,
+): Promise<Record<string, Background[]> | null> {
     switch (backgrounds.type) {
         case 'files':
         case 'urls':
@@ -621,22 +748,20 @@ async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<str
         default:
     }
 
-    const defaultCollection = 'bonjourr-images-daylight'
-    const collectionName = backgrounds[backgrounds.type] || defaultCollection
-    const [provider, type, category] = collectionName.split('-')
+    const collectionName = normalizedImageCollectionName(backgrounds.images)
+    const accessKey = local.unsplashAccessKey
 
-    if (!provider || !type || !category) {
-        console.warn(`[Backgrounds] Invalid collection name: "${collectionName}"`)
+    if (!accessKey) {
+        showUnsplashStatus('missing')
         return null
     }
 
-    const base = 'https://services.bonjourr.fr/backgrounds'
-    const path = `/${provider}/${type}/${category}`
-
-    const density = Math.max(2, globalThis.devicePixelRatio)
-    const ratio = globalThis.screen.width / globalThis.screen.height
-    let height = globalThis.screen.height * density
-    let width = globalThis.screen.width * density
+    const density = Math.min(2, Math.max(1, globalThis.devicePixelRatio || 1))
+    const screenWidth = Math.max(1, globalThis.screen.width)
+    const screenHeight = Math.max(1, globalThis.screen.height)
+    const ratio = screenWidth / screenHeight
+    let height = screenHeight * density
+    let width = screenWidth * density
 
     if (ratio >= 2) {
         width = height * 2
@@ -645,35 +770,41 @@ async function fetchNewBackgrounds(backgrounds: Backgrounds): Promise<Record<str
         height = width * 2
     }
 
-    const screen = `?h=${height}&w=${width}`
+    const scale = Math.min(1, Math.sqrt(MAX_BACKGROUND_REQUEST_PIXELS / (width * height)))
+    height = Math.round(height * scale)
+    width = Math.round(width * scale)
+
     const query = backgroundQueryValue(backgrounds, collectionName)
-    const search = query ? `&query=${query}` : ''
 
-    const url = base + path + screen + search
-    const resp = await fetch(url)
-
-    if (!resp.ok) {
-        console.warn(`[Backgrounds] Cannot fetch collection (${resp.status}): ${url}`)
+    if (
+        (collectionName === 'unsplash-images-search' || collectionName === 'unsplash-images-collections') &&
+        query.trim() === ''
+    ) {
         return null
     }
 
-    const contentType = resp.headers.get('content-type') ?? ''
-
-    if (!contentType.includes('application/json')) {
-        const body = await resp.text()
-        console.warn(`[Backgrounds] Unexpected response type: ${contentType || 'unknown'} (${body.slice(0, 120)})`)
+    try {
+        const source = collectionName === 'unsplash-images-search'
+            ? { type: 'search' as const, query }
+            : collectionName === 'unsplash-images-collections'
+            ? { type: 'collection' as const, id: query }
+            : { type: 'random' as const }
+        const images = await fetchUnsplashPhotos({
+            accessKey,
+            source,
+            width,
+            height,
+            count: UNSPLASH_BATCH_SIZE,
+            timeoutMs: BACKGROUND_FETCH_TIMEOUT_MS,
+        })
+        showUnsplashStatus()
+        return { [collectionName]: images }
+    } catch (err) {
+        const code = err instanceof UnsplashError ? err.code : 'network'
+        showUnsplashStatus(code)
+        console.warn(`[Backgrounds] Cannot fetch Unsplash collection (${code})`)
         return null
     }
-
-    const json = await resp.json()
-
-    const areImages = type === 'images' && Object.keys(json)?.every((key) => key.includes('images'))
-
-    if (areImages) {
-        return json
-    }
-
-    throw new Error('Received JSON is bad')
 }
 
 function findCollectionName(backgrounds: Backgrounds, local: Local): string {
@@ -694,16 +825,11 @@ function findCollectionName(backgrounds: Backgrounds, local: Local): string {
         return getCollectionNameFromMedia(pausedImage, local)
     }
 
-    const defaultCollection = 'bonjourr-images-daylight'
-    const collectionName = backgrounds.images || defaultCollection
-    const isDaylight = collectionName.includes('daylight')
+    return normalizedImageCollectionName(backgrounds.images)
+}
 
-    if (isDaylight) {
-        const period = daylightPeriod(userDate().getTime())
-        return `${collectionName}-${period}`
-    }
-
-    return collectionName
+function normalizedImageCollectionName(value: string): string {
+    return UNSPLASH_COLLECTIONS.has(value) ? value : DEFAULT_IMAGE_COLLECTION
 }
 
 function getCollectionNameFromMedia(media: Background, local: Local): string {
@@ -741,7 +867,7 @@ function getCollection(backgrounds: Backgrounds, local: Local): CollectionGetRet
 
     const images = (): BackgroundImage[] => {
         if (areOnlyImages(collection)) {
-            return collection
+            return collection.filter(isTrackableUnsplashImage)
         }
         throw new Error('Wrong background format')
     }
@@ -789,7 +915,7 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
 
     if (typeof media === 'string') {
         invalidateBackgroundRuntime()
-        Array.from(mediaWrapper?.childNodes ?? []).forEach((node) => node.remove())
+        Array.from(mediaWrapper?.children ?? []).forEach(releaseBackgroundNode)
         document.getElementById('background-wrapper')?.classList.remove('hidden')
         document.getElementById('background-wrapper')?.setAttribute('data-type', 'color')
         document.documentElement.style.setProperty('--solid-background', media)
@@ -808,28 +934,24 @@ export function applyBackground(media?: string | Background, res?: BackgroundSiz
         return
     }
 
+    if (isTrackableUnsplashImage(media)) {
+        document.getElementById('background-wrapper')?.setAttribute('data-type', 'images')
+    }
+
     // disables blur compression for animated gifs (flawed since some gifs aren't animated)
     resolution = media.mimetype === 'image/gif' ? 'full' : resolution
     const src = media.urls[resolution]
+    releaseUnusedObjectUrls(media, src)
     const runtimeVersion = currentBackgroundRuntimeVersion()
-    const item = createImageItem(src, media, runtimeVersion)
+    const item = createImageItem(src, media, runtimeVersion, () => {
+        retirePreviousBackgrounds(mediaWrapper, item, fast)
+    })
 
     item.dataset.res = resolution
-    mediaWrapper.prepend(item)
-
-    if (mediaWrapper?.childElementCount > 1) {
-        const children = Object.values(mediaWrapper?.children)
-        const notHiding = children.filter((child) => !child.className.includes('hiding'))
-        const lastVisible = notHiding.at(-1)
-
-        if (fast) {
-            document.body.classList.remove('init')
-            setTimeout(() => mediaWrapper?.lastElementChild?.remove(), 200)
-        } else {
-            lastVisible?.classList.add('hiding')
-            setTimeout(() => mediaWrapper?.lastElementChild?.remove(), 1200)
-        }
+    if (src.startsWith('blob:')) {
+        item.dataset.objectUrl = src
     }
+    mediaWrapper.prepend(item)
 }
 
 function createImageItem(
@@ -841,9 +963,21 @@ function createImageItem(
     const backgroundsWrapper = document.getElementById('background-wrapper')
     const div = document.createElement('div')
     const img = new Image()
+    let settled = false
+    const timeout = setTimeout(() => {
+        if (settled) return
+        settled = true
+        releaseBackgroundNode(div)
+        img.remove()
+        document.body.classList.remove('init')
+    }, BACKGROUND_IMAGE_LOAD_TIMEOUT_MS)
 
     const onImageReady = () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
         if (!isCurrentBackgroundRuntimeVersion(runtimeVersion) || !div.isConnected) {
+            releaseBackgroundNode(div)
             return
         }
 
@@ -854,7 +988,12 @@ function createImageItem(
         backgroundsWrapper?.classList.remove('hidden')
         applyThemeColor(media, img)
         updateCredits(media)
-        localStorage.setItem('backgroundCache', src)
+        void trackSelectedUnsplashPhoto(media)
+        if (src.startsWith('blob:')) {
+            localStorage.removeItem('backgroundCache')
+        } else {
+            localStorage.setItem('backgroundCache', src)
+        }
 
         if (callback) {
             callback()
@@ -874,6 +1013,13 @@ function createImageItem(
 
     queueMicrotask(() => {
         img.addEventListener('load', onImageReady)
+        img.addEventListener('error', () => {
+            if (settled) return
+            settled = true
+            clearTimeout(timeout)
+            releaseBackgroundNode(div)
+            document.body.classList.remove('init')
+        }, { once: true })
         img.src = src
 
         // If image is already cached, show it immediately without waiting for async load event.
@@ -890,16 +1036,112 @@ function createImageItem(
     return div
 }
 
+async function trackSelectedUnsplashPhoto(media: BackgroundImage): Promise<void> {
+    if (!isTrackableUnsplashImage(media)) return
+
+    try {
+        const local = await storage.local.get([
+            'unsplashAccessKey',
+            'backgroundLastTrackedPhoto',
+        ])
+        const accessKey = local.unsplashAccessKey
+
+        if (!accessKey || local.backgroundLastTrackedPhoto === media.id) return
+
+        await trackUnsplashDownload(media.download, accessKey, { timeoutMs: BACKGROUND_FETCH_TIMEOUT_MS })
+        await storage.local.set({ backgroundLastTrackedPhoto: media.id })
+    } catch (err) {
+        const code = err instanceof UnsplashError ? err.code : 'network'
+        showUnsplashStatus(code)
+        console.warn(`[Backgrounds] Cannot record Unsplash background selection (${code})`)
+    }
+}
+
+function isTrackableUnsplashImage(media: BackgroundImage): media is BackgroundImage & { id: string; download: string } {
+    return typeof media.id === 'string' && /^[A-Za-z0-9_-]+$/.test(media.id) &&
+        safeUnsplashDownloadLocation(media.download) !== undefined
+}
+
+function showImageFallback(color: string): void {
+    removeBackgrounds()
+    updateCredits()
+
+    const wrapper = document.getElementById('background-wrapper')
+    wrapper?.setAttribute('data-type', 'color')
+    wrapper?.classList.remove('hidden')
+    document.documentElement.style.setProperty('--solid-background', color)
+    document.documentElement.style.setProperty('--average-color', color)
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
+    settingsBackgroundColor(color)
+}
+
+function showUnsplashStatus(code?: UnsplashError['code']): void {
+    const status = document.getElementById('unsplash-access-key-status')
+    const required = document.getElementById('unsplash-access-key-required')
+
+    if (required) required.classList.toggle('shown', code === 'missing')
+    if (!status) return
+
+    const message = code === 'invalid'
+        ? 'Enter a valid Unsplash Access Key.'
+        : code === 'rate-limit'
+        ? 'Unsplash rate limit reached. Try again later.'
+        : code === 'network'
+        ? 'Could not reach Unsplash. Cached backgrounds remain available.'
+        : code === 'response'
+        ? 'Unsplash returned an invalid response.'
+        : ''
+
+    status.textContent = message ? tradThis(message) : ''
+    status.classList.toggle('shown', message !== '')
+    status.classList.toggle('error', message !== '')
+    status.classList.remove('success')
+}
+
+function retirePreviousBackgrounds(mediaWrapper: HTMLDivElement, current: HTMLDivElement, fast?: 'fast'): void {
+    document.body.classList.remove('init')
+    const previous = Array.from(mediaWrapper.children).filter((node) => node !== current)
+    const delay = fast ? 200 : 1200
+
+    for (const node of previous) {
+        if (!fast) {
+            node.classList.add('hiding')
+        }
+        setTimeout(() => releaseBackgroundNode(node), delay)
+    }
+}
+
+function releaseUnusedObjectUrls(media: BackgroundImage, selected: string): void {
+    const urls = new Set(Object.values(media.urls).filter((url): url is string => typeof url === 'string'))
+
+    for (const url of urls) {
+        if (url !== selected && url.startsWith('blob:')) {
+            URL.revokeObjectURL(url)
+        }
+    }
+}
+
+function releaseBackgroundNode(node: Element): void {
+    const objectUrl = (node as HTMLElement).dataset.objectUrl
+
+    if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+        delete (node as HTMLElement).dataset.objectUrl
+    }
+    node.remove()
+}
+
 // 写时间戳而不是裸布尔：用户在 preload 中途关掉 tab 时，原本的 'true'
 // 标志会永远卡死，后续每个新 tab 都会跳过 needsChange 判断、永远不切图。
 // 改成时间戳后，超过 PRELOAD_FLAG_TTL_MS 视为 stale 自动失效。
 const PRELOAD_FLAG_KEY = 'backgroundPreloadingAt'
 const PRELOAD_FLAG_TTL_MS = 30_000
+let preloadGeneration = 0
 
 function isPreloadingActive(): boolean {
     const raw = localStorage.getItem(PRELOAD_FLAG_KEY)
     if (!raw) return false
-    const ts = Number(raw)
+    const ts = Number(raw.split(':')[0])
     if (!Number.isFinite(ts) || Date.now() - ts > PRELOAD_FLAG_TTL_MS) {
         localStorage.removeItem(PRELOAD_FLAG_KEY)
         return false
@@ -912,7 +1154,8 @@ function preloadBackground(media: Background | undefined, res?: BackgroundSize):
         return
     }
 
-    localStorage.setItem(PRELOAD_FLAG_KEY, Date.now().toString())
+    const marker = `${Date.now()}:${++preloadGeneration}`
+    localStorage.setItem(PRELOAD_FLAG_KEY, marker)
 
     const resolution = res ? res : detectBackgroundSize()
     const src = media.urls[resolution]
@@ -920,22 +1163,34 @@ function preloadBackground(media: Background | undefined, res?: BackgroundSize):
     img.fetchPriority = 'low'
 
     return new Promise((resolve) => {
+        let settled = false
+        let timeout = 0
         const cleanup = () => {
-            localStorage.removeItem(PRELOAD_FLAG_KEY)
+            if (settled) return
+            settled = true
+            clearTimeout(timeout)
+            if (localStorage.getItem(PRELOAD_FLAG_KEY) === marker) {
+                localStorage.removeItem(PRELOAD_FLAG_KEY)
+            }
             img.remove()
             resolve(true)
         }
+        timeout = setTimeout(cleanup, BACKGROUND_IMAGE_LOAD_TIMEOUT_MS)
 
-        img.addEventListener('load', cleanup)
-        img.addEventListener('error', cleanup)
+        img.addEventListener('load', cleanup, { once: true })
+        img.addEventListener('error', cleanup, { once: true })
         img.src = src
     })
 }
 
 export function removeBackgrounds(): void {
     const mediaWrapper = document.getElementById('background-media') as HTMLDivElement
-    setTimeout(() => document.querySelector('#background-media div')?.classList.add('hiding'))
-    setTimeout(() => mediaWrapper.firstChild?.remove(), 2000)
+    const backgrounds = Array.from(mediaWrapper?.children ?? [])
+
+    for (const background of backgrounds) {
+        background.classList.add('hiding')
+        setTimeout(() => releaseBackgroundNode(background), 2000)
+    }
     localStorage.removeItem('backgroundCache')
 }
 
@@ -974,7 +1229,9 @@ function applyTexture(texture: Backgrounds['texture']): void {
 
 export function initBackgroundOptions(sync: Sync, local: Local): void {
     initFilesSettingsOptions(local)
-    initUrlsEditor(sync.backgrounds, local)
+    void initUrlsEditor(sync.backgrounds, local).catch((err) => {
+        console.warn('[Backgrounds] Cannot initialize URL editor', err)
+    })
     createProviderSelect(sync.backgrounds)
     handleBackgroundOptions(sync.backgrounds)
 }
@@ -1043,7 +1300,7 @@ function handleProviderOptions(backgrounds: Backgrounds): void {
 
     document.getElementById('background-provider-option')?.classList.add('shown')
 
-    const collectionName = backgrounds[backgrounds.type]
+    const collectionName = normalizedImageCollectionName(backgrounds.images)
     const hasCollections = collectionName.includes('coll')
     const hasSearch = collectionName.includes('search')
 
@@ -1091,23 +1348,28 @@ function createProviderSelect(backgrounds: Backgrounds): void {
     }
 
     if (backgrounds.type === 'images') {
-        backgroundProvider.value = backgrounds.images
+        backgroundProvider.value = normalizedImageCollectionName(backgrounds.images)
     }
 }
 
 async function blurResolutionControl(sync: Sync, local: Local): Promise<void> {
+    const runtimeVersion = currentBackgroundRuntimeVersion()
+
     if (sync.backgrounds.type === 'files') {
         const ids = lastUsedBackgroundFiles(local.backgroundFiles)
         const image = await mediaFromFiles(ids[0], local)
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
         applyBackground(image, 'full')
         return
     }
 
     const [current, next] = await getCurrentBackgrounds(sync, local)
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
 
     preloadBackground(current, 'small')
 
     preloadBackground(current, 'full')?.then(() => {
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) return
         applyBackground(current, 'full', 'fast')
         preloadBackground(next, 'full')
     })
@@ -1239,6 +1501,20 @@ function isFrequency(str = ''): str is Frequency {
     return ['tabs', 'hour', 'day', 'period', 'pause'].includes(str)
 }
 
-function areOnlyImages(list: Background[]): list is BackgroundImage[] {
-    return list?.every((item) => item.format === 'image')
+export function isBackgroundImage(value: unknown): value is BackgroundImage {
+    if (!isRecord(value) || value.format !== 'image' || !isRecord(value.urls)) return false
+    return typeof value.urls.full === 'string' && typeof value.urls.small === 'string'
+}
+
+function areOnlyImages(list: unknown): list is BackgroundImage[] {
+    return Array.isArray(list) && list.every(isBackgroundImage)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+export const __testing = {
+    normalizedImageCollectionName,
+    trackSelectedUnsplashPhoto,
 }

@@ -17,16 +17,15 @@ interface ClockUpdate {
 let pendingClockSize = 1
 let clockSizeFrame = 0
 
-const saveClockSize = debounce(async (size: number) => {
-    const data = await storage.sync.get('clock')
-
-    storage.sync.set({
-        clock: {
-            ...data.clock,
-            size,
-        },
-    })
-}, 400)
+const saveClockSize = debounce(
+    async (size: number) => {
+        await storage.sync.update((data) => {
+            data.clock.size = size
+        })
+    },
+    400,
+    { barrier: true },
+)
 
 function scheduleClockSize(size: number): void {
     pendingClockSize = size
@@ -43,7 +42,7 @@ function scheduleClockSize(size: number): void {
 
 export function clock(init?: Sync, event?: ClockUpdate): void {
     if (event) {
-        clockUpdate(event)
+        void clockUpdate(event).catch((err) => console.warn('Cannot update clock settings', err))
         return
     }
 
@@ -51,6 +50,9 @@ export function clock(init?: Sync, event?: ClockUpdate): void {
     const dateformat = init?.dateformat || 'eu'
 
     try {
+        if (init) {
+            document.getElementById('time')?.classList.toggle('hidden', !init.time)
+        }
         startClock({ clock: clockData, dateformat })
         clockSize(clockData.size)
         displayInterface('clock')
@@ -66,23 +68,14 @@ async function clockUpdate(update: ClockUpdate): Promise<void> {
         return
     }
 
-    const data = await storage.sync.get()
-
-    if (isDateFormat(update.dateformat)) {
-        data.dateformat = update.dateformat
-        storage.sync.set({ dateformat: update.dateformat })
-    }
-
-    data.clock = {
-        ampm: update.ampm ?? data.clock.ampm,
-        size: update.size ?? data.clock.size,
-        seconds: update.seconds ?? data.clock.seconds,
-        timezone: data.clock.timezone,
-    }
-
-    storage.sync.set({
-        clock: data.clock,
-        dateformat: data.dateformat,
+    const data = await storage.sync.update((data) => {
+        if (isDateFormat(update.dateformat)) data.dateformat = update.dateformat
+        data.clock = {
+            ampm: update.ampm ?? data.clock.ampm,
+            size: update.size ?? data.clock.size,
+            seconds: update.seconds ?? data.clock.seconds,
+            timezone: data.clock.timezone,
+        }
     })
 
     startClock({

@@ -19,19 +19,22 @@ import type { LinkNode } from '../../../types/shared.ts'
 export const DEFAULT_FAVICON = 'src/assets/interface/default-favicon.png'
 export const FOLDER_ICON = 'src/assets/interface/folder.svg'
 
-export function getDefaultIcon(url: string, refresh?: number): string {
-    return getRemoteFaviconUrl(url, refresh) ?? DEFAULT_FAVICON
+export function getDefaultIcon(url: string, _refresh?: number): string {
+    try {
+        new URL(url)
+
+        const extensionUrl = globalThis.chrome?.runtime?.getURL?.('/_favicon/')
+        return extensionUrl ? buildNativeFaviconUrl(url, extensionUrl) : DEFAULT_FAVICON
+    } catch (_) {
+        return DEFAULT_FAVICON
+    }
 }
 
-export function getRemoteFaviconUrl(url: string, refresh?: number): string | undefined {
-    try {
-        const host = new URL(url).hostname
-        if (!host) return undefined
-        const base = `https://icons.duckduckgo.com/ip3/${host}.ico`
-        return refresh ? `${base}?r=${refresh}` : base
-    } catch (_) {
-        return undefined
-    }
+export function buildNativeFaviconUrl(pageUrl: string, extensionUrl: string): string {
+    const faviconUrl = new URL(extensionUrl)
+    faviconUrl.searchParams.set('pageUrl', pageUrl)
+    faviconUrl.searchParams.set('size', '32')
+    return faviconUrl.toString()
 }
 
 export function getSelectedIds(): string[] {

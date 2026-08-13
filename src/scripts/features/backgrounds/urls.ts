@@ -1,5 +1,5 @@
 import { applyBackground, removeBackgrounds } from './index.ts'
-import { backgroundUrlsFromText } from './cache.ts'
+import { backgroundUrlsFromText, currentBackgroundRuntimeVersion, isCurrentBackgroundRuntimeVersion } from './cache.ts'
 import { stringMaxSize } from '../../shared/generic.ts'
 import { needsChange } from '../../shared/time.ts'
 import { storage } from '../../storage.ts'
@@ -9,15 +9,19 @@ import type { Background, BackgroundImage } from '../../../types/shared.ts'
 import type { EditorOptions, PrismEditor } from 'prism-code-editor'
 import type { Backgrounds } from '../../../types/sync.ts'
 
-type UrlInfos = {
-    state: BackgroundUrlState
-}
-
 let globalUrlValue = ''
 let backgroundUrlsEditor: PrismEditor
+const URL_CHECK_TIMEOUT_MS = 8000
+const URL_CHECK_CONCURRENCY = 4
+let urlValidationVersion = 0
 
-export function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): void {
-    syncLocalUrlsFromConfig(backgrounds, local)
+export async function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): Promise<void> {
+    const runtimeVersion = currentBackgroundRuntimeVersion()
+    await syncLocalUrlsFromConfig(backgrounds, local, runtimeVersion)
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
 
     if (backgrounds.frequency === 'pause' && backgrounds.pausedUrl) {
         applyBackground(urlAsBackgroundMedia(backgrounds.pausedUrl))
@@ -48,14 +52,19 @@ export function urlsCacheControl(backgrounds: Backgrounds, local: Local, needNew
 
         applyBackground(urlAsBackgroundMedia(url, metadata))
         local.backgroundUrls[url].lastUsed = now
-        storage.local.set(local)
+
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+            return
+        }
+
+        await storage.local.set({ backgroundUrls: local.backgroundUrls })
         return
     }
 
     applyBackground(urlAsBackgroundMedia(url, metadata))
 }
 
-function syncLocalUrlsFromConfig(backgrounds: Backgrounds, local: Local): void {
+async function syncLocalUrlsFromConfig(backgrounds: Backgrounds, local: Local, runtimeVersion: number): Promise<void> {
     const nextUrls = backgroundUrlsFromText(backgrounds.urls)
     const currentKeys = Object.keys(local.backgroundUrls ?? {}).toSorted()
     const nextKeys = Object.keys(nextUrls).toSorted()
@@ -69,7 +78,12 @@ function syncLocalUrlsFromConfig(backgrounds: Backgrounds, local: Local): void {
     }
 
     local.backgroundUrls = nextUrls
-    storage.local.set({ backgroundUrls: nextUrls })
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
+
+    await storage.local.set({ backgroundUrls: nextUrls })
 }
 
 export function lastUsedValidUrls(metadatas: Local['backgroundUrls']): string[] {
@@ -175,59 +189,108 @@ export function toggleUrlsButton(storage: string, value: string): void {
     }
 }
 
-export function applyUrls(backgrounds: Backgrounds): void {
+export async function applyUrls(backgrounds: Backgrounds): Promise<void> {
     const editorValue = backgroundUrlsEditor.value
     const backgroundUrls: Local['backgroundUrls'] = backgroundUrlsFromText(editorValue, 'NONE')
+    const validationVersion = ++urlValidationVersion
+    const runtimeVersion = currentBackgroundRuntimeVersion()
 
     globalUrlValue = backgrounds.urls = editorValue
-    storage.local.set({ backgroundUrls })
-    storage.sync.set({ backgrounds })
+    await storage.sync.set({ backgrounds })
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
+
+    await storage.local.set({ backgroundUrls })
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
 
     toggleUrlsButton('osef', 'osef')
-    checkUrlInfos(backgroundUrls)
+    void checkUrlInfos(backgroundUrls, validationVersion, runtimeVersion).catch((err) => {
+        console.warn('[Backgrounds] Cannot validate URL backgrounds', err)
+    })
 }
 
-async function checkUrlInfos(backgroundUrls: Local['backgroundUrls']): Promise<void> {
+async function checkUrlInfos(
+    backgroundUrls: Local['backgroundUrls'],
+    validationVersion: number,
+    runtimeVersion: number,
+): Promise<void> {
     const entries = Object.entries(backgroundUrls)
 
     for (const [url] of entries) {
         highlightUrlsEditorLine(url, 'LOADING')
     }
 
-    for (const [url, item] of entries) {
-        const infos = await getUrlInfos(url)
-        item.state = infos.state
-        highlightUrlsEditorLine(url, item.state)
-    }
+    let nextIndex = 0
+    const workers = Array.from({ length: Math.min(URL_CHECK_CONCURRENCY, entries.length) }, async () => {
+        while (
+            validationVersion === urlValidationVersion && isCurrentBackgroundRuntimeVersion(runtimeVersion) &&
+            nextIndex < entries.length
+        ) {
+            const [url, item] = entries[nextIndex++]
+            const state = await validateBackgroundUrl(url)
 
-    // 攒到最后一次写入，避免 N 个 URL = N 次 storage.local.set。
-    storage.local.set({ backgroundUrls })
+            // A newer Apply may have replaced the URL list while this network
+            // request was in flight. Never let the stale result repaint the
+            // editor or overwrite the newer metadata snapshot.
+            if (validationVersion !== urlValidationVersion || !isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+                return
+            }
+
+            item.state = state
+            highlightUrlsEditorLine(url, item.state)
+        }
+    })
+
+    await Promise.all(workers)
+
+    if (
+        validationVersion === urlValidationVersion && isCurrentBackgroundRuntimeVersion(runtimeVersion) &&
+        entries.length > 0
+    ) {
+        await storage.local.set({ backgroundUrls })
+    }
 }
 
-async function getUrlInfos(item: string): Promise<UrlInfos> {
+export async function validateBackgroundUrl(item: string): Promise<BackgroundUrlState> {
     let url: URL
 
-    // 1. URL 合法性
     try {
         url = new URL(item)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return 'NOT_URL'
+        }
     } catch (_) {
-        return { state: 'NOT_URL' }
+        return 'NOT_URL'
     }
 
-    // 2. 直连或走代理拉一次，看 content-type 是不是图片
-    const ok = (resp: Response) => resp.ok && (resp.headers.get('content-type') ?? '').startsWith('image/')
+    return await new Promise<BackgroundUrlState>((resolve) => {
+        const image = new Image()
+        let settled = false
 
-    try {
-        const resp = await fetch(url)
-        return { state: ok(resp) ? 'OK' : 'NOT_MEDIA' }
-    } catch (_) {
-        // 直连失败（CORS / DNS / 离线）才走代理
-    }
+        const finish = (state: BackgroundUrlState): void => {
+            if (settled) return
+            settled = true
+            clearTimeout(timeout)
+            image.onload = null
+            image.onerror = null
+            image.remove()
+            resolve(state)
+        }
 
-    try {
-        const resp = await fetch(`https://services.bonjourr.fr/backgrounds/proxy/${url}`)
-        return { state: ok(resp) ? 'OK' : 'NOT_MEDIA' }
-    } catch (_) {
-        return { state: 'CANT_REACH' }
-    }
+        const timeout = setTimeout(() => finish('CANT_REACH'), URL_CHECK_TIMEOUT_MS)
+        image.decoding = 'async'
+        image.referrerPolicy = 'no-referrer'
+        image.onload = () => finish(image.naturalWidth > 0 ? 'OK' : 'NOT_MEDIA')
+        image.onerror = () => finish('CANT_REACH')
+        image.src = url.href
+
+        if (image.complete) {
+            queueMicrotask(() => finish(image.naturalWidth > 0 ? 'OK' : 'NOT_MEDIA'))
+        }
+    })
 }

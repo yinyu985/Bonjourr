@@ -5,16 +5,28 @@ import { eventDebounce } from '../utils/debounce.ts'
 import { tradThis } from '../utils/translations.ts'
 import { storage } from '../storage.ts'
 
+let systemThemeQuery: MediaQueryList | undefined
+const updateSystemTheme = (event: MediaQueryListEvent): void => {
+    document.documentElement.dataset.theme = event.matches ? 'dark' : 'light'
+}
+
 export function favicon(val?: string, isEvent?: true): void {
     function createFavicon(emoji?: string): void {
-        const svgtext = `<text y=".9em" font-size="85">${emoji}</text>`
+        const escaped = emoji?.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;').replaceAll("'", '&apos;')
+        const svgtext = `<text y=".9em" font-size="85">${escaped}</text>`
         const svgtag = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${svgtext}</svg>`
-        const svgdata = `data:image/svg+xml,${svgtag}`
+        const svgdata = `data:image/svg+xml,${encodeURIComponent(svgtag)}`
         const domfavicon = document.querySelector<HTMLLinkElement>('#favicon')
 
-        if (domfavicon && emoji) {
-            domfavicon.href = svgdata
+        if (!domfavicon) return
+        if (!('defaultHref' in domfavicon.dataset)) {
+            domfavicon.dataset.defaultHref = domfavicon.getAttribute('href') ?? ''
         }
+
+        if (emoji) domfavicon.href = svgdata
+        else if (domfavicon.dataset.defaultHref) domfavicon.href = domfavicon.dataset.defaultHref
+        else domfavicon.removeAttribute('href')
     }
 
     if (BROWSER === 'edge') {
@@ -27,11 +39,7 @@ export function favicon(val?: string, isEvent?: true): void {
         document.getElementById('head-favicon')?.remove()
     }
 
-    if (BROWSER === 'firefox') {
-        setTimeout(() => createFavicon(val), 0)
-    } else {
-        createFavicon(val)
-    }
+    createFavicon(val)
 }
 
 export function tabTitle(val?: string, isEvent?: true): void {
@@ -48,6 +56,9 @@ export function darkmode(value: 'auto' | 'system' | 'enable' | 'disable', isEven
     const settings = document.querySelector<HTMLElement>('aside')
     let theme = 'light'
 
+    systemThemeQuery?.removeEventListener('change', updateSystemTheme)
+    systemThemeQuery = undefined
+
     switch (value) {
         case 'disable':
             theme = 'light'
@@ -58,7 +69,9 @@ export function darkmode(value: 'auto' | 'system' | 'enable' | 'disable', isEven
             break
 
         case 'system':
-            theme = globalThis.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+            systemThemeQuery = globalThis.matchMedia('(prefers-color-scheme: dark)')
+            theme = systemThemeQuery.matches ? 'dark' : 'light'
+            systemThemeQuery.addEventListener('change', updateSystemTheme)
             break
 
         default: {
@@ -71,19 +84,15 @@ export function darkmode(value: 'auto' | 'system' | 'enable' | 'disable', isEven
     document.documentElement.dataset.theme = theme
 
     if (isEvent) {
-        storage.sync.set({ dark: value })
+        void storage.sync.set({ dark: value }).catch((err) => {
+            console.warn('Failed to save theme preference', err)
+        })
         settings?.classList.add('change-theme')
 
         setTimeout(() => {
             settings?.classList.remove('change-theme')
         }, 333)
-
-        return
     }
-
-    globalThis.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
-        document.documentElement.dataset.theme = event.matches ? 'dark' : 'light'
-    })
 }
 
 export function settingsBackgroundColor(color?: string): void {

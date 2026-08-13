@@ -1,5 +1,8 @@
 let hasExportedSettings = false
 let helpModeShown = false
+const ARCHIVE_PREFIX = 'bonjourr-archive-'
+const ARCHIVE_DATABASE = 'bonjourr-archives'
+const ARCHIVE_STORE = 'archives'
 
 globalThis.window.addEventListener('load', function () {
     // if Bonjourr hasn't loaded after 5s, shows prompt
@@ -85,31 +88,40 @@ function resetOnce() {
 }
 
 async function resetApply() {
-    // const archiveData = btoa(encodeURI(await getDataAsString()))
-    const archiveData = await getDataAsString()
-    const archiveName = `bonjourr-archive-${new Date().toLocaleString()}`
+    try {
+        const archiveData = await getDataAsString()
+        const archiveName = `${ARCHIVE_PREFIX}${new Date().toISOString()}`
 
-    // Reset
+        // Persist and verify a recoverable copy before touching any settings.
+        // Help mode runs precisely when the main bundle may be broken, so it
+        // cannot rely on the normal snapshot module being available.
+        await saveRecoveryArchive(archiveName, archiveData)
 
-    if (typeof chrome !== 'undefined' && chrome?.storage) {
-        try {
-            await chrome.storage.sync?.clear()
-        } catch (err) {
-            console.warn('Sync storage reset failed', err)
-        }
-        await chrome.storage.local.clear()
-    }
-    if (localStorage) {
-        Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith('bonjourr-archive-') === false) {
-                localStorage.removeItem(key)
+        if (typeof chrome !== 'undefined' && chrome?.storage) {
+            const current = await chrome.storage.local.get()
+            const removableKeys = Object.keys(current).filter((key) =>
+                key !== 'backgroundFiles' && !key.startsWith(ARCHIVE_PREFIX)
+            )
+
+            // User-selected background blobs live in CacheStorage and their
+            // only index is backgroundFiles. A settings reset must preserve it.
+            if (removableKeys.length > 0) {
+                await chrome.storage.local.remove(removableKeys)
             }
-        })
+        }
+
+        for (const key of Object.keys(localStorage)) {
+            const preserve = key === 'backgroundFiles' || key === 'update-archive' ||
+                key.startsWith(ARCHIVE_PREFIX)
+            if (!preserve) localStorage.removeItem(key)
+        }
+        sessionStorage.clear()
+    } catch (err) {
+        console.warn('Cannot safely reset Bonjourr', err)
+        const resetBtnSpan = document.querySelector('#help-mode .reset span')
+        if (resetBtnSpan) resetBtnSpan.textContent = 'Reset failed — data was not cleared'
+        return
     }
-
-    // Apply archive back to localStorage
-
-    localStorage[archiveName] = archiveData
 
     // Update button
 
@@ -124,6 +136,77 @@ async function resetApply() {
     setTimeout(() => {
         globalThis.window.location.reload()
     }, 1000)
+}
+
+async function saveRecoveryArchive(key, value) {
+    if (typeof chrome !== 'undefined' && chrome?.storage) {
+        await chrome.storage.local.set({ [key]: value })
+        const stored = await chrome.storage.local.get(key)
+        if (stored[key] !== value) throw new Error('Cannot verify the recovery archive')
+        return
+    }
+
+    if (!globalThis.indexedDB) {
+        throw new Error('Recovery archive storage is unavailable')
+    }
+
+    const database = await openArchiveDatabase()
+    try {
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction(ARCHIVE_STORE, 'readwrite')
+            transaction.oncomplete = () => resolve()
+            transaction.onerror = () => reject(transaction.error ?? new Error('Cannot write the recovery archive'))
+            transaction.onabort = () => reject(transaction.error ?? new Error('Recovery archive write was aborted'))
+            transaction.objectStore(ARCHIVE_STORE).put(value, key)
+        })
+
+        const stored = await new Promise((resolve, reject) => {
+            const transaction = database.transaction(ARCHIVE_STORE, 'readonly')
+            const request = transaction.objectStore(ARCHIVE_STORE).get(key)
+            let result
+
+            request.onsuccess = () => {
+                result = request.result
+            }
+            transaction.oncomplete = () => resolve(result)
+            transaction.onerror = () => reject(transaction.error ?? new Error('Cannot read the recovery archive'))
+            transaction.onabort = () => reject(transaction.error ?? new Error('Recovery archive read was aborted'))
+        })
+
+        if (stored !== value) throw new Error('Cannot verify the recovery archive')
+    } finally {
+        database.close()
+    }
+}
+
+function openArchiveDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(ARCHIVE_DATABASE, 1)
+        let settled = false
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(ARCHIVE_STORE)) {
+                request.result.createObjectStore(ARCHIVE_STORE)
+            }
+        }
+        request.onsuccess = () => {
+            if (settled) {
+                request.result.close()
+                return
+            }
+            settled = true
+            resolve(request.result)
+        }
+        request.onerror = () => {
+            if (settled) return
+            settled = true
+            reject(request.error ?? new Error('Cannot open recovery archive storage'))
+        }
+        request.onblocked = () => {
+            if (settled) return
+            settled = true
+            reject(new Error('Recovery archive storage is blocked'))
+        }
+    })
 }
 
 /**
@@ -155,8 +238,6 @@ function createHelpModeDisplay() {
     const template = document.getElementById('help-mode-template')
     const fragment = template.content.cloneNode(true)
     const container = fragment.querySelector('#help-mode')
-    const startTimer = globalThis.performance.now()
-
     document.documentElement.prepend(container)
 
     const resetBtn = this.document.querySelector('.reset')
@@ -166,18 +247,6 @@ function createHelpModeDisplay() {
     if (hasExportedSettings) {
         resetBtn.disabled = false
     }
-
-    function setServerStatus(statusID, resp) {
-        const endTimer = Math.round(globalThis.performance.now() - startTimer)
-        const text = resp.ok ? ` · ${endTimer}ms` : resp.status
-        container.querySelector(`#${statusID}`).textContent = text
-        container.querySelector(`li:has(#${statusID})`).classList.add(resp.ok ? 'statusUp' : 'statusDown')
-    }
-
-    // Server statuses
-    fetch('https://services.bonjourr.fr').then((resp) => {
-        setServerStatus('help-status-backgrounds', resp)
-    })
 
     // LocalStorage
     if (Object.entries(localStorage).length !== 0) {
@@ -209,11 +278,11 @@ function createHelpModeDisplay() {
                 2,
             )
             container.querySelector('#syncstorage-container')?.classList.remove('hidden')
-        })
+        }).catch((err) => console.warn('Cannot read extension settings', err))
 
         chrome.storage.local.get().then((data) => {
             container.querySelector('#help-storage-local').textContent = JSON.stringify(data, undefined, 2)
             container.querySelector('#browserstorage-container')?.classList.remove('hidden')
-        })
+        }).catch((err) => console.warn('Cannot read extension storage', err))
     }
 }

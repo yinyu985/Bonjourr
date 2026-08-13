@@ -372,33 +372,6 @@ aside input[type='range']::-webkit-slider-runnable-track {
         #3d3c41;
 }
 
-/* firefox */
-aside input[type='range']::-moz-range-thumb {
-    background: #fff;
-    height: 16px;
-    width: 26px;
-    border-radius: 6px;
-    border: 0;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
-    margin-top: calc(4px * 0.5 - 16px * 0.5);
-}
-
-aside input[type='range']::-moz-range-track {
-    height: 4px;
-    border: none;
-    border-radius: 0.5em;
-    box-shadow: none;
-    background:
-        linear-gradient(var(--color-blue), var(--color-blue)) 0 / var(--sx) 100% no-repeat,
-        #efefef;
-}
-
-[data-theme='dark'] aside input[type='range']::-moz-range-track {
-    background:
-        linear-gradient(var(--color-blue), var(--color-blue)) 0 / var(--sx) 100% no-repeat,
-        #3d3c41;
-}
-
 /* old edge */
 aside input[type='range']::-ms-fill-upper {
     background: transparent;

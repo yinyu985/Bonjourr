@@ -17,8 +17,9 @@ export function operaExtensionExplainer(explained?: true): void {
     setTimeout(() => dialog.classList.add('shown'))
 
     button?.addEventListener('click', () => {
-        storage.local.set({ operaExplained: true })
-        document.body.classList.remove('loading')
-        dialog.close()
+        void storage.local.set({ operaExplained: true }).then(() => {
+            document.body.classList.remove('loading')
+            dialog.close()
+        }).catch((err) => console.warn('Cannot save Opera explanation state', err))
     })
 }

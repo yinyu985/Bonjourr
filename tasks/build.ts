@@ -2,12 +2,11 @@ import { ensureDirSync, existsSync } from '@std/fs'
 import { buildSync } from 'esbuild'
 import { httpServer } from './serve.ts'
 import { langList } from '../src/scripts/langs.ts'
-import { CURRENT_VERSION } from '../src/scripts/version.ts'
 
-type Platform = 'chrome' | 'firefox' | 'safari' | 'edge' | 'online'
+type Platform = 'chrome' | 'edge' | 'online'
 type Env = 'dev' | 'prod' | 'test'
 
-const PLATFORMS: Platform[] = ['chrome', 'firefox', 'safari', 'edge', 'online']
+const PLATFORMS: Platform[] = ['chrome', 'edge', 'online']
 const ENVS: Env[] = ['dev', 'prod', 'test']
 
 const args = Deno.args
@@ -18,35 +17,31 @@ const isPlatform = (s: string): s is Platform => PLATFORMS.includes(s as Platfor
 const _isEnv = (s: string): s is Env => ENVS.includes(s as Env)
 
 let hashedStylePath = 'src/styles/style.css'
+let hashedSettingsStylePath = 'src/styles/settings.css'
 let hashedScriptPath = 'src/scripts/main.js'
 
 // Main
+
+removeRetiredPlatformBuilds()
 
 if (env === 'dev' && platform === 'online') {
     httpServer(8000)
 }
 
 if (env === 'dev' && isPlatform(platform)) {
+    cleanPlatformBuild(platform)
     builder(platform, env)
     watcher(platform)
 }
 
 if (env === 'prod' && isPlatform(platform)) {
+    cleanPlatformBuild(platform)
     builder(platform, env)
 }
 
 if (env === 'prod' && platform === undefined) {
     for (const platform of PLATFORMS) {
-        const releasePath = `./release/${platform}`
-
-        if (existsSync(releasePath)) {
-            for (const entry of Deno.readDirSync(releasePath)) {
-                Deno.removeSync(`${releasePath}/${entry.name}`, {
-                    recursive: true,
-                })
-            }
-        }
-
+        cleanPlatformBuild(platform)
         builder(platform, env)
     }
 }
@@ -114,7 +109,6 @@ function addDirectories(platform: Platform): void {
 
 function html(platform: Platform, env: Env): void {
     const indexdata = Deno.readTextFileSync('src/index.html')
-    const settingsdata = Deno.readTextFileSync('src/settings.html')
     const helpModeData = Deno.readTextFileSync('src/help-mode.html')
 
     const faviconOnline = [
@@ -123,8 +117,6 @@ function html(platform: Platform, env: Env): void {
         '<link rel="alternate icon" href="src/assets/favicons/favicon.ico" type="image/x-icon" />',
     ].join('\n        ')
     const faviconExtension = '<link rel="icon" id="favicon" />'
-    const icon = '<link rel="apple-touch-icon" href="src/assets/favicons/apple-touch-icon.png" />'
-    const manifest = '<link rel="manifest" href="manifest.webmanifest">'
     const storage = '<script src="src/scripts/webext-storage.js"></script>'
 
     let html = indexdata
@@ -134,12 +126,6 @@ function html(platform: Platform, env: Env): void {
     } else if (platform !== 'edge') {
         html = html.replace('<!-- default icon -->', faviconExtension)
     }
-    if (platform === 'online') {
-        html = html.replace('<!-- icon -->', icon)
-    }
-    if (platform === 'online') {
-        html = html.replace('<!-- manifest -->', manifest)
-    }
     if (platform !== 'online') {
         html = html.replace('<!-- webext-storage -->', storage)
     }
@@ -147,20 +133,24 @@ function html(platform: Platform, env: Env): void {
     // Inject hashed asset paths for online prod builds
     if (platform === 'online' && env === 'prod') {
         html = html.replace('src/styles/style.css', hashedStylePath)
+        html = html.replace('src/styles/settings.css', hashedSettingsStylePath)
         html = html.replace('src/scripts/main.js', hashedScriptPath)
     }
 
-    html = html.replace('<!-- settings -->', settingsdata)
     html = html.replace('<!-- help-mode -->', helpModeData)
 
     Deno.writeTextFileSync(`release/${platform}/index.html`, html)
+    Deno.copyFileSync('src/settings.html', `release/${platform}/settings.html`)
 }
 
 function styles(platform: Platform, env: Env): void {
     try {
         if (platform === 'online' && env === 'prod') {
             const result = buildSync({
-                entryPoints: ['src/styles/style.css'],
+                entryPoints: [
+                    { in: 'src/styles/style.css', out: 'style' },
+                    { in: 'src/styles/settings.css', out: 'settings' },
+                ],
                 outdir: `release/${platform}/src/styles`,
                 entryNames: '[name]-[hash]',
                 format: 'iife',
@@ -170,24 +160,26 @@ function styles(platform: Platform, env: Env): void {
                 loader: {
                     '.svg': 'dataurl',
                     '.png': 'file',
-                    '.mp3': 'file',
                 },
             })
-            const outFile = Object.keys(result.metafile.outputs).find((f) => f.endsWith('.css'))
-            if (outFile) {
-                hashedStylePath = outFile.replace(`release/${platform}/`, '')
-            }
+            const styleOutput = findEntryOutput(result.metafile.outputs, 'src/styles/style.css')
+            const settingsOutput = findEntryOutput(result.metafile.outputs, 'src/styles/settings.css')
+            if (styleOutput) hashedStylePath = styleOutput.replace(`release/${platform}/`, '')
+            if (settingsOutput) hashedSettingsStylePath = settingsOutput.replace(`release/${platform}/`, '')
         } else {
             buildSync({
-                entryPoints: ['src/styles/style.css'],
-                outfile: `release/${platform}/src/styles/style.css`,
+                entryPoints: [
+                    { in: 'src/styles/style.css', out: 'style' },
+                    { in: 'src/styles/settings.css', out: 'settings' },
+                ],
+                outdir: `release/${platform}/src/styles`,
+                entryNames: '[name]',
                 format: 'iife',
                 bundle: true,
                 minify: platform === 'online',
                 loader: {
                     '.svg': 'dataurl',
                     '.png': 'file',
-                    '.mp3': 'file',
                 },
             })
         }
@@ -204,10 +196,13 @@ function scripts(platform: Platform, env: Env): void {
     try {
         if (platform === 'online' && env === 'prod') {
             const result = buildSync({
-                entryPoints: ['src/scripts/index.ts'],
+                entryPoints: [{ in: 'src/scripts/index.ts', out: 'main' }],
                 outdir: `release/${platform}/src/scripts`,
                 entryNames: '[name]-[hash]',
+                chunkNames: 'chunks/[name]-[hash]',
                 bundle: true,
+                splitting: true,
+                format: 'esm',
                 target: 'es2023',
                 minify: true,
                 metafile: true,
@@ -215,15 +210,19 @@ function scripts(platform: Platform, env: Env): void {
                     ENV: `"${env.toUpperCase()}"`,
                 },
             })
-            const outFile = Object.keys(result.metafile.outputs).find((f) => f.endsWith('.js'))
+            const outFile = findEntryOutput(result.metafile.outputs, 'src/scripts/index.ts')
             if (outFile) {
                 hashedScriptPath = outFile.replace(`release/${platform}/`, '')
             }
         } else {
             buildSync({
-                entryPoints: ['src/scripts/index.ts'],
-                outfile: `release/${platform}/src/scripts/main.js`,
+                entryPoints: [{ in: 'src/scripts/index.ts', out: 'main' }],
+                outdir: `release/${platform}/src/scripts`,
+                entryNames: '[name]',
+                chunkNames: 'chunks/[name]-[hash]',
                 bundle: true,
+                splitting: true,
+                format: 'esm',
                 target: 'es2023',
                 minify: platform === 'online',
                 sourcemap: env === 'dev',
@@ -245,21 +244,11 @@ function scripts(platform: Platform, env: Env): void {
         `release/${platform}/src/scripts/help-mode.js`,
     )
 
-    if (platform === 'online') {
-        const sw = Deno.readTextFileSync('src/scripts/services/service-worker.js')
-        Deno.writeTextFileSync(
-            `release/${platform}/service-worker.js`,
-            sw.replace("'__VERSION__'", `'${CURRENT_VERSION}'`),
-        )
-    } else {
-        const sw = Deno.readTextFileSync('src/scripts/services/service-worker.js')
-        Deno.writeTextFileSync(
-            `release/${platform}/src/scripts/service-worker.js`,
-            sw.replace("'__VERSION__'", `'${CURRENT_VERSION}'`),
-        )
-    }
-
     if (platform !== 'online') {
+        Deno.copyFileSync(
+            'src/scripts/services/extension-worker.js',
+            `release/${platform}/src/scripts/extension-worker.js`,
+        )
         Deno.copyFileSync(
             'src/scripts/services/webext-storage.js',
             `release/${platform}/src/scripts/webext-storage.js`,
@@ -267,25 +256,16 @@ function scripts(platform: Platform, env: Env): void {
     }
 }
 
+function findEntryOutput(
+    outputs: Record<string, { entryPoint?: string }>,
+    entryPoint: string,
+): string | undefined {
+    return Object.entries(outputs).find(([, output]) => output.entryPoint?.replaceAll('\\', '/') === entryPoint)?.[0]
+}
+
 function assets(platform: Platform): void {
     const source = `src/assets`
     const target = `release/${platform}/src/assets`
-
-    // Huge icons on web application
-
-    if (platform === 'online') {
-        Deno.copyFileSync(
-            `${source}/favicons/apple-touch-icon.png`,
-            `${target}/favicons/apple-touch-icon.png`,
-        )
-        Deno.copyFileSync(
-            `${source}/favicons/favicon-512x512.png`,
-            `${target}/favicons/favicon-512x512.png`,
-        )
-        copyDir(`${source}/screenshots`, `${target}/screenshots`)
-    }
-
-    // All other assets
 
     Deno.copyFileSync(
         `${source}/favicons/favicon-16x16.png`,
@@ -303,21 +283,36 @@ function assets(platform: Platform): void {
         `${source}/favicons/favicon-128x128.png`,
         `${target}/favicons/favicon-128x128.png`,
     )
-    Deno.copyFileSync(`${source}/favicons/favicon.ico`, `${target}/favicons/favicon.ico`)
-    copyDir(`${source}/interface`, `${target}/interface`)
+    if (platform === 'online') {
+        Deno.copyFileSync(`${source}/favicons/favicon.svg`, `${target}/favicons/favicon.svg`)
+        Deno.copyFileSync(`${source}/favicons/favicon.ico`, `${target}/favicons/favicon.ico`)
+    }
+    copyDir(`${source}/interface`, `${target}/interface`, new Set(['patterns']))
     copyDir(`${source}/labels`, `${target}/labels`)
-    copyDir(`${source}/sounds`, `${target}/sounds`)
 }
 
 function manifests(platform: Platform): void {
     if (platform === 'online') {
-        Deno.copyFileSync(
-            'src/manifests/manifest.webmanifest',
-            'release/online/manifest.webmanifest',
-        )
+        removeIfExists('release/online/manifest.webmanifest')
+        removeIfExists('release/online/service-worker.js')
         Deno.writeTextFileSync('release/online/.nojekyll', '')
     } else {
         Deno.copyFileSync(`src/manifests/${platform}.json`, `release/${platform}/manifest.json`)
+    }
+}
+
+function removeRetiredPlatformBuilds(): void {
+    removeIfExists('release/firefox')
+    removeIfExists('release/safari')
+}
+
+function cleanPlatformBuild(platform: Platform): void {
+    removeIfExists(`release/${platform}`)
+}
+
+function removeIfExists(path: string): void {
+    if (existsSync(path)) {
+        Deno.removeSync(path, { recursive: true })
     }
 }
 
@@ -360,15 +355,17 @@ async function watchTasks(path: string, callback: (filename: string) => void): P
     }
 }
 
-function copyDir(source: string, destination: string): void {
+function copyDir(source: string, destination: string, excludedNames = new Set<string>()): void {
     ensureDirSync(destination)
 
     for (const dirEntry of Deno.readDirSync(source)) {
+        if (excludedNames.has(dirEntry.name)) continue
+
         const srcPath = `${source}/${dirEntry.name}`
         const destPath = `${destination}/${dirEntry.name}`
 
         if (dirEntry.isDirectory) {
-            copyDir(srcPath, destPath)
+            copyDir(srcPath, destPath, excludedNames)
         } else {
             Deno.copyFileSync(srcPath, destPath)
         }

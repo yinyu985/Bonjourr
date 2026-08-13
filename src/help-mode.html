@@ -115,23 +115,6 @@
                 </details>
             </div>
 
-            <div id="server-status">
-                <h2>🗄️ Server status</h2>
-                <p>
-                    These are external services Bonjourr relies on to work properly. If any of them are down, it might
-                    cause issues. You can wait for them to recover or <b>contact us</b> if you think we aren't aware of
-                    the problem.
-                </p>
-
-                <ul>
-                    <li><b>Website</b> <span id="help-status-website"> · loading...</span></li>
-                    <li>
-                        <b>Background services</b>
-                        <span id="help-status-backgrounds"> · loading...</span>
-                    </li>
-                </ul>
-            </div>
-
             <div id="storage-data">
                 <h2>💾 Storage</h2>
 
@@ -331,53 +314,6 @@
             #help-mode details[open] summary::after {
                 transform: rotate(90deg);
                 color: #f3f4f6;
-            }
-
-            /* server statuses */
-
-            #server-status ul {
-                list-style: none;
-            }
-
-            #server-status ul li {
-                position: relative;
-            }
-
-            #server-status ul li:before {
-                content: '';
-                position: absolute;
-                width: 0.35rem;
-                height: 0.35rem;
-                top: 50%;
-                transform: translateY(-50%);
-                left: -0.85em;
-                border-radius: 9999px;
-                animation: pulse 2s ease infinite;
-                background-color: #ff8000;
-                box-shadow: 0 0 5px #ffb366;
-            }
-
-            #server-status ul li.statusUp:before {
-                background-color: #00ff00;
-                box-shadow: 0 0 5px #00ff00;
-            }
-
-            #server-status ul li.statusDown:before {
-                background-color: #ff0000;
-                box-shadow: 0 0 5px #ff4d4d;
-            }
-
-            @keyframes pulse {
-                0%,
-                to {
-                    opacity: 1;
-                    transform: scale(1) translateY(-50%);
-                }
-
-                50% {
-                    opacity: 0.4;
-                    transform: scale(1.2) translateY(-50%);
-                }
             }
         </style>
     </div>

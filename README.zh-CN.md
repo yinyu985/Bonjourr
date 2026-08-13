@@ -2,7 +2,7 @@
 
 [English](./README.md)
 
-Bonjourr 是一个极简、高度可定制的浏览器新标签页扩展。
+Bonjourr 是一个面向 Chrome 和 Edge 的极简、高度可定制的新标签页扩展。
 
 本仓库 fork 自 [victrme/Bonjourr](https://github.com/victrme/Bonjourr)。现在的 Bonjourr 更专注于干净的新标签页界面、浏览器书签链接和本地个性化配置。
 
@@ -11,7 +11,7 @@ Bonjourr 是一个极简、高度可定制的浏览器新标签页扩展。
 - 极简新标签页，界面安静且可定制
 - 快捷链接展示浏览器原生书签
 - 只读书签分组，跟随浏览器书签结构
-- 背景支持图片、视频、远程 URL、本地文件和纯色
+- 背景支持 Unsplash、远程 URL、本地文件和纯色
 - 背景滤镜、纹理叠加、本地媒体选项和视频静音控制
 - 数字时钟，支持秒数、12 小时制、时区和日期格式设置
 - 简单备忘录面板，用于轻量记录
@@ -20,7 +20,13 @@ Bonjourr 是一个极简、高度可定制的浏览器新标签页扩展。
 - 深色模式、标签页标题、标签页图标和页面布局控制
 - 支持通过 GitHub Gist 或远程 URL 导入导出和同步设置
 - 多语言支持，包含英文和简体中文
-- 注重隐私：无需账户，也不包含生成式 AI 功能
+- 注重隐私：仅在主动启用可选的 Unsplash 壁纸时需要相应账户
+
+### Unsplash 壁纸
+
+本 fork 不再调用原 Bonjourr API，也不内置共享的 Unsplash 凭据。若要启用 Unsplash 随机、搜索或合集壁纸，请创建
+Unsplash 开发者应用，并在背景设置中填写其 **Access Key**；不要填写 Secret Key。Access Key 只保存在当前设备，不会进入设置导出、
+GitHub Gist 同步或恢复快照。
 
 ## 技术栈
 
@@ -36,7 +42,6 @@ Bonjourr 是一个极简、高度可定制的浏览器新标签页扩展。
 
 - `bonjourr-chrome.zip`
 - `bonjourr-edge.zip`
-- `bonjourr-firefox.zip`
 
 ### Chrome
 
@@ -45,22 +50,12 @@ Bonjourr 是一个极简、高度可定制的浏览器新标签页扩展。
 3. 点击“加载已解压的扩展程序”。
 4. 选择解压后的 `chrome` 文件夹。
 
-### Firefox
-
-1. 打开 `about:debugging#/runtime/this-firefox`。
-2. 点击“临时载入附加组件”。
-3. 选择解压后的 `firefox` 文件夹里的 `manifest.json`。
-
 ### Edge
 
 1. 打开 `edge://extensions`。
 2. 启用开发者模式。
 3. 点击“加载解压缩的扩展”。
 4. 选择解压后的 `edge` 文件夹。
-
-### Safari
-
-请参考 [上游 Safari 仓库](https://github.com/victrme/Bonjourr-Safari) 的安装步骤。
 
 ## 本地运行
 
@@ -79,8 +74,6 @@ deno task online
 ```bash
 deno task chrome
 deno task edge
-deno task firefox
-deno task safari
 ```
 
 构建完成后，在浏览器中加载生成的文件夹，例如 Chrome 加载 `release/chrome`，Edge 加载 `release/edge`。

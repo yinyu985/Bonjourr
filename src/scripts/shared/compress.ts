@@ -6,6 +6,8 @@ interface CompressOptions {
     square?: boolean
 }
 
+const IMAGE_LOAD_TIMEOUT_MS = 15_000
+
 async function loadOnCanvas(url: string, options: CompressOptions): Promise<HTMLCanvasElement> {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -15,53 +17,75 @@ async function loadOnCanvas(url: string, options: CompressOptions): Promise<HTML
         throw new Error('Cannot get canvas context')
     }
 
-    await new Promise((resolve) => {
-        img.onload = () => {
-            const { size, square, raw } = options
+    await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            cleanup()
+            reject(new Error('Image loading timed out'))
+        }, IMAGE_LOAD_TIMEOUT_MS)
 
-            if (raw || !size) {
-                canvas.width = img.width
-                canvas.height = img.height
-                ctx?.drawImage(img, 0, 0)
-
-                img.remove()
-                resolve(true)
-                return
-            }
-
-            const isLandscape = img.width > img.height
-            let sx = 0
-            let sy = 0
-            let sWidth = img.width
-            let sHeight = img.height
-            let dWidth = size
-            let dHeight = size
-
-            if (!square) {
-                if (isLandscape) {
-                    dHeight = size
-                    dWidth = (img.width / img.height) * size
-                } else {
-                    dWidth = size
-                    dHeight = (img.height / img.width) * size
-                }
-            } else {
-                if (isLandscape) {
-                    sx = (img.width - img.height) / 2
-                    sWidth = sHeight = img.height
-                } else {
-                    sy = (img.height - img.width) / 2
-                    sWidth = sHeight = img.width
-                }
-            }
-
-            canvas.width = dWidth
-            canvas.height = dHeight
-
-            ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, dWidth, dHeight)
-
+        const cleanup = (): void => {
+            clearTimeout(timeout)
+            img.onload = null
+            img.onerror = null
             img.remove()
-            resolve(true)
+        }
+
+        img.onload = () => {
+            try {
+                const { size, square, raw } = options
+
+                if (raw || !size) {
+                    canvas.width = img.width
+                    canvas.height = img.height
+                    ctx.drawImage(img, 0, 0)
+
+                    cleanup()
+                    resolve()
+                    return
+                }
+
+                const isLandscape = img.width > img.height
+                let sx = 0
+                let sy = 0
+                let sWidth = img.width
+                let sHeight = img.height
+                let dWidth = size
+                let dHeight = size
+
+                if (!square) {
+                    if (isLandscape) {
+                        dHeight = size
+                        dWidth = (img.width / img.height) * size
+                    } else {
+                        dWidth = size
+                        dHeight = (img.height / img.width) * size
+                    }
+                } else {
+                    if (isLandscape) {
+                        sx = (img.width - img.height) / 2
+                        sWidth = sHeight = img.height
+                    } else {
+                        sy = (img.height - img.width) / 2
+                        sWidth = sHeight = img.width
+                    }
+                }
+
+                canvas.width = dWidth
+                canvas.height = dHeight
+
+                ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, dWidth, dHeight)
+
+                cleanup()
+                resolve()
+            } catch (err) {
+                cleanup()
+                reject(err)
+            }
+        }
+
+        img.onerror = () => {
+            cleanup()
+            reject(new Error('Cannot load image'))
         }
 
         img.src = url
@@ -75,13 +99,30 @@ export async function imageDimensions(src: string): Promise<{ width: number; hei
     let width = 4000
     let height = 3000
 
-    await new Promise((resolve) => {
-        img.addEventListener('load', () => {
+    await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            cleanup()
+            reject(new Error('Image dimensions timed out'))
+        }, IMAGE_LOAD_TIMEOUT_MS)
+
+        const cleanup = (): void => {
+            clearTimeout(timeout)
+            img.onload = null
+            img.onerror = null
+            img.remove()
+        }
+
+        img.onload = () => {
             width = img.width
             height = img.height
-            img.remove()
-            resolve(true)
-        })
+            cleanup()
+            resolve()
+        }
+
+        img.onerror = () => {
+            cleanup()
+            reject(new Error('Cannot read image dimensions'))
+        }
 
         img.src = src
     })
@@ -95,15 +136,35 @@ export async function compressAsBlob(elem: Blob | string, options: CompressOptio
     const ownsUrl = typeof elem === 'object'
     const url = ownsUrl ? URL.createObjectURL(elem) : elem
 
-    const canvas = await loadOnCanvas(url, options)
-    if (ownsUrl) URL.revokeObjectURL(url)
+    try {
+        const canvas = await loadOnCanvas(url, options)
+        const ctx = canvas.getContext('2d')
 
-    const ctx = canvas.getContext('2d')
-    const newBlob = await new Promise((resolve) => {
-        ctx?.canvas.toBlob(resolve, `image/${type}`, q)
-    })
+        if (!ctx) {
+            throw new Error('Cannot get canvas context')
+        }
 
-    return newBlob as Blob
+        return await new Promise<Blob>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Image compression timed out')), IMAGE_LOAD_TIMEOUT_MS)
+            try {
+                ctx.canvas.toBlob(
+                    (blob) => {
+                        clearTimeout(timeout)
+                        blob ? resolve(blob) : reject(new Error('Image compression failed'))
+                    },
+                    `image/${type}`,
+                    q,
+                )
+            } catch (err) {
+                clearTimeout(timeout)
+                reject(err)
+            }
+        })
+    } finally {
+        if (ownsUrl) {
+            URL.revokeObjectURL(url)
+        }
+    }
 }
 
 export async function compressAsDataUri(elem: Blob | string, options: CompressOptions): Promise<string> {
@@ -112,19 +173,26 @@ export async function compressAsDataUri(elem: Blob | string, options: CompressOp
     const ownsUrl = typeof elem === 'object'
     const url = ownsUrl ? URL.createObjectURL(elem) : elem
 
-    const canvas = await loadOnCanvas(url, options)
-    if (ownsUrl) URL.revokeObjectURL(url)
-
-    return canvas.toDataURL(`image/${type}`, q)
+    try {
+        const canvas = await loadOnCanvas(url, options)
+        return canvas.toDataURL(`image/${type}`, q)
+    } finally {
+        if (ownsUrl) {
+            URL.revokeObjectURL(url)
+        }
+    }
 }
 
 export async function svgToText(file: File): Promise<string> {
     const reader = new FileReader()
 
-    const data: string = await new Promise((resolve) => {
+    const data: string = await new Promise((resolve, reject) => {
         reader.onload = () => {
             resolve(reader.result?.toString() ?? '')
         }
+
+        reader.onerror = () => reject(reader.error ?? new Error('Cannot read SVG'))
+        reader.onabort = () => reject(new Error('SVG reading was aborted'))
 
         reader.readAsText(file)
     })

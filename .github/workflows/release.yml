@@ -19,8 +19,7 @@ jobs:
             - name: Package release artifacts
               run: |
                   cd release
-                  for dir in */; do
-                      platform="${dir%/}"
+                  for platform in chrome edge online; do
                       zip -r "../bonjourr-${platform}.zip" "$platform"
                   done
                   cd ..

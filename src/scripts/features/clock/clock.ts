@@ -10,10 +10,17 @@ export interface ClockStartOptions {
     dateformat: DateFormat
 }
 
-let clockInterval: number
+let clockTimer = 0
+let activeOptions: ClockStartOptions | undefined
+let lifecycleBound = false
+let timeVisibilityObserver: MutationObserver | undefined
+let lastDateKey = ''
+let lastVisibilityKey = ''
 
 export function startClock(options: ClockStartOptions): void {
-    const { clock, dateformat } = options
+    const { clock } = options
+    activeOptions = options
+    lastDateKey = ''
 
     document.getElementById('time')?.classList.toggle('seconds', clock.seconds)
 
@@ -23,35 +30,102 @@ export function startClock(options: ClockStartOptions): void {
         }
     })
 
-    const clocks = [{ region: '', timezone: 'auto' }]
+    setUserDate(clock.timezone)
+    bindClockLifecycle()
+    lastVisibilityKey = clockVisibilityKey()
+    scheduleClock(true)
+}
 
-    // <!> First timezone becomes global timezone
-    // <!> for everything in Bonjourr !
-    setUserDate(clocks[0].timezone)
+function bindClockLifecycle(): void {
+    if (!lifecycleBound) {
+        lifecycleBound = true
+        document.addEventListener('visibilitychange', handleClockVisibility)
+    }
 
-    start(true)
-    clearInterval(clockInterval)
-    clockInterval = setInterval(start, 1000)
-
-    function start(firstStart?: true): void {
-        for (let index = 0; index < clocks.length; index++) {
-            const { region, timezone } = clocks[index]
-            const domclock = getClock(index)
-            const domregion = domclock.querySelector<HTMLElement>('.clock-region')
-            const date = userDate(timezone)
-            const isNextHour = date.getMinutes() === 0
-
-            digital(domclock, clock, timezone)
-
-            if (isNextHour || firstStart) {
-                clockDate(domclock, date, dateformat, timezone)
-            }
-
-            if (domregion) {
-                domregion.textContent = region
-            }
+    if (!timeVisibilityObserver) {
+        const time = document.getElementById('time')
+        if (time) {
+            timeVisibilityObserver = new MutationObserver(handleClockVisibility)
+            timeVisibilityObserver.observe(time, { attributes: true, attributeFilter: ['class'], subtree: true })
         }
     }
+}
+
+function handleClockVisibility(): void {
+    const visibilityKey = clockVisibilityKey()
+    if (visibilityKey === lastVisibilityKey) {
+        return
+    }
+
+    lastVisibilityKey = visibilityKey
+    scheduleClock(true)
+}
+
+function scheduleClock(renderImmediately = false): void {
+    clearTimeout(clockTimer)
+    clockTimer = 0
+
+    const visible = getClockPartVisibility()
+    if (!activeOptions || document.hidden || (!visible.digital && !visible.date)) {
+        return
+    }
+
+    if (renderImmediately) {
+        renderClock()
+    }
+
+    const unit = visible.digital && activeOptions.clock.seconds ? 1_000 : 60_000
+    const delay = unit - Date.now() % unit + 10
+    clockTimer = setTimeout(() => {
+        renderClock()
+        scheduleClock()
+    }, delay)
+}
+
+function renderClock(): void {
+    if (!activeOptions) {
+        return
+    }
+
+    const { clock, dateformat } = activeOptions
+    const timezone = clock.timezone
+    const date = userDate(timezone)
+    const domclock = getClock(0)
+    const domregion = domclock.querySelector<HTMLElement>('.clock-region')
+    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+    const visible = getClockPartVisibility()
+
+    if (visible.digital) {
+        digital(domclock, clock, date)
+    }
+
+    if (visible.date && dateKey !== lastDateKey) {
+        lastDateKey = dateKey
+        clockDate(domclock, date, dateformat, timezone)
+    }
+
+    if (domregion?.textContent) {
+        domregion.textContent = ''
+    }
+}
+
+function getClockPartVisibility(): { digital: boolean; date: boolean } {
+    const time = document.getElementById('time')
+    const container = document.getElementById('time-container')
+    const timeHidden = !time || time.classList.contains('hidden')
+    const containerHidden = !container || container.classList.contains('he_hidden')
+    const digitalHidden = document.querySelector('.digital')?.classList.contains('he_hidden') ?? true
+    const dateHidden = document.querySelector('.clock-date')?.classList.contains('he_hidden') ?? true
+
+    return {
+        digital: !timeHidden && !containerHidden && !digitalHidden,
+        date: !timeHidden && !containerHidden && !dateHidden,
+    }
+}
+
+function clockVisibilityKey(): string {
+    const visible = getClockPartVisibility()
+    return `${document.hidden}:${visible.digital}:${visible.date}`
 }
 
 function getClock(index: number): HTMLDivElement {
@@ -72,8 +146,7 @@ function getClock(index: number): HTMLDivElement {
     return clone
 }
 
-function digital(wrapper: HTMLElement, clock: Clock, timezone: string): void {
-    const date = userDate(timezone)
+function digital(wrapper: HTMLElement, clock: Clock, date: Date): void {
     const domclock = wrapper.querySelector<HTMLElement>('.digital')
     const hh = wrapper.querySelector('.digital-hh') as HTMLElement
     const mm = wrapper.querySelector('.digital-mm') as HTMLElement
@@ -102,13 +175,21 @@ function digital(wrapper: HTMLElement, clock: Clock, timezone: string): void {
 
     domclock.classList.toggle('zero', !clock.ampm && h < 10)
 
-    hh.textContent = h.toString()
-    mm.textContent = m.toString()
-    ss.textContent = s.toString()
+    setText(hh, h.toString())
+    setText(mm, m.toString())
+    if (clock.seconds) {
+        setText(ss, s.toString())
+    }
 
     if (clock.ampm) {
         if (ampm && domclock.firstElementChild !== ampm) {
             domclock.insertBefore(ampm, domclock.firstElementChild)
         }
+    }
+}
+
+function setText(element: HTMLElement, value: string): void {
+    if (element.textContent !== value) {
+        element.textContent = value
     }
 }

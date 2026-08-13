@@ -6,10 +6,9 @@ deno task build
 
 # Archives builds with the correct name
 
-for folder in /release/*/; do
+for name in chrome edge online; do
+    folder="/release/$name"
     [ -d "$folder" ] || continue
-
-    name=$(basename "$folder")
     archive_name="bonjourr-${name}-${version}.zip"
 
     echo "Archiving $name..."

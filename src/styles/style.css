@@ -13,27 +13,8 @@
 @import './interface/error.css';
 @import './interface/opera.css';
 
-/*
- * "Global" is the settings menu itself and its classes
- * "Other" are not reused small single styling
- * "Blocks" are not reusable parts of the settings menu
- * "Reusables" are inputs, hr, titles, etc
- * "Dedicated" dropdowns folder for easy update
- */
-@import './settings/global.css';
-@import './settings/other.css';
-@import './settings/dropdowns.css';
-@import './settings/dragzone.css';
-@import './settings/notifications.css';
-@import './settings/backgrounds.css';
-@import './settings/management.css';
-@import './settings/footer.css';
-@import './settings/inputs.css';
-@import './settings/tooltips.css';
-
 /* Components that can be used anywhere (interface or settings) */
 @import './components/dialog';
-@import './components/networkform';
 
 /* Baked-in features and dialogs */
 @import './features/time';
@@ -41,7 +22,6 @@
 @import './features/grid';
 @import './features/contextmenu';
 @import './features/bookmarks';
-@import './features/csseditor';
 @import './features/notes';
 
 /* <!> Responsive must be imported last */

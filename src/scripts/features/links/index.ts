@@ -4,7 +4,7 @@ import { collapseAllPanels, folderClick } from './folders.ts'
 import { createTitle, DEFAULT_FAVICON, FOLDER_ICON, getDefaultIcon, isElem, isSubfolder } from './helpers.ts'
 import { createLink, FAVORITES_FOLDER, getFolder, linksWithBookmarks } from './model.ts'
 
-import { EXTENSION, PLATFORM } from '../../defaults.ts'
+import { EXTENSION } from '../../defaults.ts'
 import { displayInterface } from '../../shared/display.ts'
 import { getHTMLTemplate } from '../../shared/dom.ts'
 import { eventDebounce } from '../../utils/debounce.ts'
@@ -38,6 +38,9 @@ const domlinkblocks = document.getElementById('linkblocks') as HTMLDivElement
 const domlinkmini = document.getElementById('link-mini') as HTMLDivElement
 export const FAVORITES_GROUP = FAVORITES_FOLDER
 let initIconList: [HTMLImageElement, string][] = []
+let latestSnapshot: SyncSnapshot | undefined
+let linksVisibilityObserver: MutationObserver | undefined
+let linksWereVisible = true
 
 const INTERNAL_URL_SCHEMES = [
     'about:',
@@ -62,7 +65,7 @@ domlinkblocks.addEventListener('click', (event: MouseEvent) => {
         const tabs = EXTENSION?.tabs as typeof chrome.tabs | undefined
         if (tabs) {
             event.preventDefault()
-            tabs.create({ url: anchor.href })
+            void tabs.create({ url: anchor.href }).catch((err) => console.warn('Cannot open data bookmark', err))
         }
         return
     }
@@ -85,9 +88,9 @@ function openInternalUrl(url: string, newTab: boolean): void {
         return
     }
     if (newTab) {
-        tabs.create({ url })
+        void tabs.create({ url }).catch((err) => console.warn('Cannot open internal bookmark', err))
     } else {
-        tabs.update({ url })
+        void tabs.update({ url }).catch((err) => console.warn('Cannot navigate to internal bookmark', err))
     }
 }
 
@@ -109,6 +112,13 @@ export async function quickLinks(init?: LinksInit, event?: LinksUpdate): Promise
     domlinkblocks.classList.toggle('hidden', !sync.links.enabled)
 
     const snapshot = await initBookmarkSync(sync)
+    latestSnapshot = snapshot
+    observeLinksVisibility()
+
+    if (!snapshot.links.enabled) {
+        displayInterface('links')
+        return
+    }
 
     initFolders(snapshot, !!init)
     initRows(snapshot.links.rows, snapshot.links.style)
@@ -122,18 +132,27 @@ export function initblocks(sync: SyncSnapshot): true {
     collapseAllPanels()
 
     initIconList = []
+    latestSnapshot = sync
+
+    if (!sync.links.enabled || domlinkblocks.classList.contains('hidden')) {
+        displayInterface('links')
+        return true
+    }
+
     const activeFolders: RenderFolder[] = getVisibleRenderFolders(sync)
 
     for (const folder of activeFolders) {
-        const div = document.querySelector<HTMLDivElement>(`.link-group[data-group="${folder.folder.id}"]`)
+        const div = [...document.querySelectorAll<HTMLDivElement>('.link-group')].find((candidate) =>
+            candidate.dataset.group === folder.folder.id
+        ) ?? null
         folder.div = div
         folder.items = folder.folder.items
     }
 
-    const divs = activeFolders.map((folder) => folder.div)
+    const activeDivs = new Set(activeFolders.map((folder) => folder.div))
 
     for (const div of document.querySelectorAll<HTMLDivElement>('#linkblocks .link-group')) {
-        if (!divs.includes(div)) {
+        if (!activeDivs.has(div)) {
             div.remove()
         }
     }
@@ -148,17 +167,26 @@ export function initblocks(sync: SyncSnapshot): true {
             throw new Error('Template not found')
         }
 
-        const existingItems = [...linklist.querySelectorAll<HTMLLIElement>('li')]
+        const existingItems = new Map(
+            [...linklist.querySelectorAll<HTMLLIElement>('li')].map((li) => [li.id, li]),
+        )
 
         const sortedItems = [...activeFolder.items].sort((a, b) => {
             return (isSubfolder(a) ? 1 : 0) - (isSubfolder(b) ? 1 : 0)
         })
 
         for (const item of sortedItems) {
-            let li = existingItems.find((existing) => existing.id === item.id)
+            let li = existingItems.get(item.id)
+            const expectedClass = isElem(item) ? 'link-elem' : 'link-folder'
 
-            if (li) {
+            if (li?.classList.contains(expectedClass)) {
+                existingItems.delete(item.id)
                 li.removeAttribute('style')
+                if (isElem(item)) {
+                    updateElemElement(li, item, sync.links.newTab)
+                } else {
+                    updateSubfolderElement(li, item)
+                }
                 fragment.appendChild(li)
                 continue
             }
@@ -168,8 +196,7 @@ export function initblocks(sync: SyncSnapshot): true {
             fragment.appendChild(li)
         }
 
-        linklist.innerHTML = ''
-        linklist.appendChild(fragment)
+        linklist.replaceChildren(fragment)
 
         linktitle.textContent = activeFolder.folder.title
         linkgroup.dataset.group = activeFolder.folder.id
@@ -185,6 +212,34 @@ export function initblocks(sync: SyncSnapshot): true {
     displayInterface('links')
 
     return true
+}
+
+function observeLinksVisibility(): void {
+    if (linksVisibilityObserver) {
+        return
+    }
+
+    linksWereVisible = !domlinkblocks.classList.contains('hidden')
+    linksVisibilityObserver = new MutationObserver(() => {
+        if (!latestSnapshot) {
+            return
+        }
+
+        const enabled = !domlinkblocks.classList.contains('hidden')
+        if (enabled === linksWereVisible) {
+            return
+        }
+
+        linksWereVisible = enabled
+        latestSnapshot.links.enabled = enabled
+
+        if (enabled) {
+            initFolders(latestSnapshot)
+            initRows(latestSnapshot.links.rows, latestSnapshot.links.style)
+            initblocks(latestSnapshot)
+        }
+    })
+    linksVisibilityObserver.observe(domlinkblocks, { attributes: true, attributeFilter: ['class'] })
 }
 
 function getVisibleRenderFolders(sync: Sync): RenderFolder[] {
@@ -240,6 +295,18 @@ export function initFavorites(sync: SyncSnapshot): void {
 
 export function createSubfolderElement(link: LinkSubfolder): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-folder-template', 'li')
+    li.id = link.id
+    updateSubfolderElement(li, link)
+    const openFolder = (event: MouseEvent | KeyboardEvent): void => {
+        void folderClick(event).catch((err) => console.warn('Cannot open bookmark folder', err))
+    }
+    li.addEventListener('mouseup', openFolder)
+    li.addEventListener('keydown', openFolder)
+
+    return li
+}
+
+function updateSubfolderElement(li: HTMLLIElement, link: LinkSubfolder): void {
     const span = li.querySelector('span')
     const img = li.querySelector('img')
 
@@ -247,20 +314,18 @@ export function createSubfolderElement(link: LinkSubfolder): HTMLLIElement {
         throw new Error('Template not found')
     }
 
-    li.id = link.id
     span.textContent = createTitle(link)
-    // Static folder glyph — same gray tone as DEFAULT_FAVICON so subfolder
-    // rows align horizontally with link rows in the same list and look like
-    // the same family of icon.
     img.src = FOLDER_ICON
-    li.addEventListener('mouseup', folderClick)
-    li.addEventListener('keydown', folderClick)
-
-    return li
 }
 
 export function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement {
     const li = getHTMLTemplate<HTMLLIElement>('link-elem-template', 'li')
+    li.id = link.id
+    updateElemElement(li, link, openInNewtab)
+    return li
+}
+
+function updateElemElement(li: HTMLLIElement, link: LinkElem, openInNewtab: boolean): void {
     const span = li.querySelector('span')
     const anchor = li.querySelector('a')
     const img = li.querySelector('img')
@@ -269,26 +334,20 @@ export function createElem(link: LinkElem, openInNewtab: boolean): HTMLLIElement
         throw new Error('Template not found')
     }
 
-    li.id = link.id
     anchor.href = link.url
     span.textContent = createTitle(link)
-    initIconList.push([img, getIconFromLinkElem(link)])
+    const icon = getIconFromLinkElem(link)
+    if (img.dataset.faviconFor !== icon) {
+        img.dataset.faviconFor = icon
+        initIconList.push([img, icon])
+    }
 
     if (openInNewtab || link.url.startsWith('data:')) {
         anchor.target = '_blank'
+    } else {
+        anchor.removeAttribute('target')
     }
-
-    return li
 }
-
-// Per-host resolved icon: data URL or DEFAULT_FAVICON. This cache is runtime
-// only; Quick Links never persist custom or refreshed icon data.
-//
-// Map 自带插入顺序 → 拿来当 LRU 用：命中即"删后重 set"把它移到末尾。
-const ICON_CACHE_CAP = 500
-const iconResolvedByHost = new Map<string, string>()
-
-const iconInflightByHost = new Map<string, Promise<string>>()
 
 export function createIcons(): void {
     const resolved = initIconList
@@ -299,175 +358,11 @@ export function createIcons(): void {
     }
 }
 
-function touchIconCache(host: string, value: string): void {
-    // 删后再 set，让 host 落到 Map 末尾（最近使用）。
-    iconResolvedByHost.delete(host)
-    iconResolvedByHost.set(host, value)
-
-    while (iconResolvedByHost.size > ICON_CACHE_CAP) {
-        const oldest = iconResolvedByHost.keys().next().value
-        if (oldest === undefined) break
-        iconResolvedByHost.delete(oldest)
-    }
-}
-
-function getCachedIcon(host: string): string | undefined {
-    const value = iconResolvedByHost.get(host)
-    if (value !== undefined) {
-        // 命中也算一次访问，搬到末尾。
-        iconResolvedByHost.delete(host)
-        iconResolvedByHost.set(host, value)
-    }
-    return value
-}
-
-function hostFromDdgUrl(ddgUrl: string): string | undefined {
-    try {
-        const match = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
-        return match?.[1]
-    } catch (_) {
-        return undefined
-    }
-}
-
 function loadIconWithFallback(img: HTMLImageElement, primaryUrl: string): void {
-    if (!isDuckDuckGoUrl(primaryUrl)) {
-        img.addEventListener('error', () => {
-            img.src = DEFAULT_FAVICON
-        }, { once: true })
-        img.src = primaryUrl
-        return
-    }
-
-    const host = hostFromDdgUrl(primaryUrl)
-    if (!host) {
+    img.addEventListener('error', () => {
         img.src = DEFAULT_FAVICON
-        return
-    }
-
-    const cached = getCachedIcon(host)
-    if (cached) {
-        img.src = cached
-        return
-    }
-
-    img.src = 'src/assets/interface/loading.svg'
-    resolveHostIcon(host, primaryUrl).then((resolved) => {
-        img.src = resolved
-    })
-}
-
-function resolveHostIcon(host: string, ddgUrl: string): Promise<string> {
-    const inflight = iconInflightByHost.get(host)
-    if (inflight) {
-        return inflight
-    }
-
-    const promise = resolveHostIconInner(host, ddgUrl).then((value) => {
-        touchIconCache(host, value)
-        return value
-    }).finally(() => {
-        iconInflightByHost.delete(host)
-    })
-
-    iconInflightByHost.set(host, promise)
-    return promise
-}
-
-async function resolveHostIconInner(_host: string, ddgUrl: string): Promise<string> {
-    try {
-        const resp = await fetch(ddgUrl)
-        if (resp.ok) {
-            const blob = await resp.blob()
-            return await blobToDataUrl(blob)
-        }
-    } catch (_) {
-        // Offline / network error — fall through to Chrome path.
-    }
-
-    return await resolveChromeFaviconAsDataUrl(ddgUrl)
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = () => reject(reader.error ?? new Error('blob read failed'))
-        reader.readAsDataURL(blob)
-    })
-}
-
-async function resolveChromeFaviconAsDataUrl(ddgUrl: string): Promise<string> {
-    if (PLATFORM !== 'chrome') {
-        return DEFAULT_FAVICON
-    }
-
-    const original = originalUrlFromDuckDuckGo(ddgUrl)
-    if (!original) {
-        return DEFAULT_FAVICON
-    }
-
-    const chromeFaviconUrl = buildChromeFaviconUrl(original)
-
-    try {
-        const dataUrl = await imageUrlToDataUrl(chromeFaviconUrl)
-        return dataUrl
-    } catch (_) {
-        return DEFAULT_FAVICON
-    }
-}
-
-function imageUrlToDataUrl(url: string, timeoutMs = 1500): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const tmpImg = new Image()
-        tmpImg.crossOrigin = 'anonymous'
-        const timer = setTimeout(() => {
-            tmpImg.src = ''
-            reject(new Error('image load timeout'))
-        }, timeoutMs)
-        tmpImg.onload = () => {
-            clearTimeout(timer)
-            try {
-                const canvas = document.createElement('canvas')
-                canvas.width = tmpImg.naturalWidth || 32
-                canvas.height = tmpImg.naturalHeight || 32
-                const ctx = canvas.getContext('2d')
-                if (!ctx) {
-                    reject(new Error('no 2d context'))
-                    return
-                }
-                ctx.drawImage(tmpImg, 0, 0)
-                resolve(canvas.toDataURL('image/png'))
-            } catch (error) {
-                reject(error)
-            }
-        }
-        tmpImg.onerror = () => {
-            clearTimeout(timer)
-            reject(new Error('image load failed'))
-        }
-        tmpImg.src = url
-    })
-}
-
-function isDuckDuckGoUrl(url: string): boolean {
-    return url.startsWith('https://icons.duckduckgo.com/ip3/')
-}
-
-function originalUrlFromDuckDuckGo(ddgUrl: string): string | undefined {
-    try {
-        const m = new URL(ddgUrl).pathname.match(/^\/ip3\/(.+)\.ico$/)
-        return m ? `https://${m[1]}/` : undefined
-    } catch (_) {
-        return undefined
-    }
-}
-
-function buildChromeFaviconUrl(pageUrl: string): string {
-    const u = new URL(chrome.runtime.getURL('/_favicon/'))
-    u.searchParams.set('pageUrl', pageUrl)
-    u.searchParams.set('size', '32')
-    return u.toString()
+    }, { once: true })
+    img.src = primaryUrl
 }
 
 function initRows(row: number, style: string): void {
@@ -483,14 +378,14 @@ function initRows(row: number, style: string): void {
 }
 
 export async function linksUpdate(update: LinksUpdate): Promise<void> {
-    let data = await storage.sync.get()
+    const data = await storage.sync.get()
 
-    if (update.folders !== undefined) data = toggleFolders(update.folders, data)
-    if (update.newtab !== undefined) data = setOpenInNewTab(update.newtab, data)
+    if (update.folders !== undefined) toggleFolders(update.folders, data)
+    if (update.newtab !== undefined) setOpenInNewTab(update.newtab, data)
     if (update.styles) setLinkStyle(update.styles)
     if (update.row) setRows(update.row)
     if (update.iconradius) {
-        eventDebounce({ links: { ...data.links, iconRadius: Number(update.iconradius) } })
+        eventDebounce({ links: { iconRadius: Number(update.iconradius) } })
         setRadius(update.iconradius)
         data.links.iconRadius = Number(update.iconradius)
     }
@@ -499,7 +394,10 @@ export async function linksUpdate(update: LinksUpdate): Promise<void> {
         return
     }
 
-    await storage.sync.set(data)
+    await storage.sync.update((current) => {
+        if (update.folders !== undefined) current.links.foldersOn = update.folders
+        if (update.newtab !== undefined) current.links.newTab = update.newtab
+    })
 }
 
 function setOpenInNewTab(newtab: boolean, data: Sync): Sync {
@@ -543,7 +441,11 @@ async function setLinkStyle(styles: { style?: string; titles?: boolean; backgrou
     }
 
     if (dirty) {
-        await storage.sync.set({ links: data.links })
+        await storage.sync.update((current) => {
+            current.links.style = data.links.style
+            current.links.titles = data.links.titles
+            current.links.backgrounds = data.links.backgrounds
+        })
     }
 }
 
@@ -555,10 +457,9 @@ function setRows(row: string): void {
     const style = [...domlinkblocks.classList].filter(isLinkStyle)[0] ?? 'inline'
     const val = Number.parseInt(row ?? '6')
     initRows(val, style)
-    storage.sync.get().then((data) => {
+    void storage.sync.update((data) => {
         data.links.rows = val
-        eventDebounce({ links: data.links })
-    })
+    }).catch((err) => console.warn('Cannot save link row count', err))
 }
 
 export function validateLink(title: string, url: string, id?: string): LinkElem {
@@ -581,9 +482,9 @@ function getIconFromLinkElem(link: LinkElem): string {
         if (url.protocol === 'data:') {
             return DEFAULT_FAVICON
         }
-        return getDefaultIcon(url.origin + url.pathname)
-    } catch (_) {
         return getDefaultIcon(link.url)
+    } catch (_) {
+        return DEFAULT_FAVICON
     }
 }
 

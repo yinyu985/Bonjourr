@@ -23,13 +23,7 @@ export const SYSTEM_OS = iosUA.includes(navigator.platform) ||
     ? 'android'
     : 'unknown'
 
-export const PLATFORM = globalThis.location?.protocol === 'moz-extension:'
-    ? 'firefox'
-    : globalThis.location?.protocol === 'chrome-extension:'
-    ? 'chrome'
-    : globalThis.location?.protocol === 'safari-web-extension:'
-    ? 'safari'
-    : 'online'
+export const PLATFORM = globalThis.location?.protocol === 'chrome-extension:' ? 'chrome' : 'online'
 
 export const BROWSER = navigator?.userAgentData?.brands.some((b) => b.brand === 'Microsoft Edge')
     ? 'edge'
@@ -37,17 +31,9 @@ export const BROWSER = navigator?.userAgentData?.brands.some((b) => b.brand === 
     ? 'opera'
     : navigator?.userAgentData?.brands.some((b) => b.brand === 'Chromium')
     ? 'chrome'
-    : navigator.userAgent?.toLowerCase()?.indexOf('firefox') > -1
-    ? 'firefox'
-    : navigator.userAgent?.toLowerCase()?.indexOf('safari') > -1
-    ? 'safari'
     : 'other'
 
-export const EXTENSION: typeof chrome | typeof browser | undefined = PLATFORM === 'online'
-    ? undefined
-    : PLATFORM === 'firefox'
-    ? browser
-    : chrome
+export const EXTENSION: typeof chrome | undefined = PLATFORM === 'online' ? undefined : chrome
 
 export const IS_MOBILE = navigator.userAgentData
     ? navigator.userAgentData.mobile
@@ -68,7 +54,6 @@ export const SYNC_DEFAULT: Sync = {
     favicon: '',
     tabtitle: '',
     time: true,
-    showall: true,
     dateformat: 'auto',
     textShadow: 0,
     css: '',
@@ -80,9 +65,9 @@ export const SYNC_DEFAULT: Sync = {
         timezone: 'auto',
     },
     font: {
-        family: 'Nunito',
+        family: '',
         size: '7',
-        system: false,
+        system: true,
         weight: '400',
     },
     backgrounds: {
@@ -121,6 +106,7 @@ export const SYNC_DEFAULT: Sync = {
 export const LOCAL_DEFAULT: Local = {
     syncType: 'off',
     gistToken: '',
+    unsplashAccessKey: '',
     remoteResourceId: '',
     remoteLastSyncedAt: '',
     remoteLastFetchedAt: '',
@@ -132,4 +118,5 @@ export const LOCAL_DEFAULT: Local = {
     backgroundCollections: {},
     backgroundCompressFiles: true,
     backgroundLastChange: '',
+    backgroundLastTrackedPhoto: '',
 }

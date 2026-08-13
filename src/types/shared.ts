@@ -9,6 +9,7 @@ export type Background = BackgroundImage
 export type Frequency = 'tabs' | 'hour' | 'day' | 'period' | 'pause'
 
 export interface BackgroundImage {
+    id?: string
     format: 'image'
     mimetype?: string
     urls: {
@@ -41,7 +42,7 @@ export interface LinkSubfolder {
 
 declare global {
     var pageReady: boolean
-    var startupBookmarks: browser.bookmarks.BookmarkTreeNode[] | undefined
+    var startupBookmarks: chrome.bookmarks.BookmarkTreeNode[] | undefined
     var startupStorage: {
         sync?: Sync
         local?: Local

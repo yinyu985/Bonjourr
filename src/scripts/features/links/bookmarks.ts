@@ -1,8 +1,7 @@
-import { initblocks, validateLink } from './index.ts'
+import { initblocks } from './index.ts'
 import { initFolders } from './groups.ts'
-import { orderBookmarkToolbarChildren } from './bookmark-order.ts'
 import { isElem, isSubfolder } from './helpers.ts'
-import { FAVORITES_FOLDER, getFolderByTitle, linksWithBookmarks, removeFolder, syncWithBookmarks } from './model.ts'
+import { FAVORITES_FOLDER, syncWithBookmarks } from './model.ts'
 
 import { EXTENSION } from '../../defaults.ts'
 import { tradThis } from '../../utils/translations.ts'
@@ -11,34 +10,51 @@ import { settingsNotifications } from '../../utils/notifications.ts'
 import { getPermissions } from '../../utils/permissions.ts'
 import { storage } from '../../storage.ts'
 
-import type { LinkElem, LinkNode, LinkSubfolder } from '../../../types/shared.ts'
-import type { LinkFolder, Sync, SyncSnapshot } from '../../../types/sync.ts'
+import type { LinkElem, LinkNode } from '../../../types/shared.ts'
+import type { BookmarkLinksState, LinkFolder, Sync, SyncSnapshot } from '../../../types/sync.ts'
 
-type Treenode = browser.bookmarks.BookmarkTreeNode
+type Treenode = chrome.bookmarks.BookmarkTreeNode
+type BookmarksApi = NonNullable<NonNullable<typeof EXTENSION>['bookmarks']>
 
 type BookmarksFolder = {
+    kind: 'favorites' | 'folder'
     id: string
     title: string
     displayTitle?: string
-    bookmarks: BookmarksFolderItem[]
-    children: BookmarksFolder[]
+    items: LinkNode[]
 }
 
-type BookmarksFolderItem = {
-    id: string
-    parentId?: string
-    index?: number
+type BrowserBookmarkSnapshot = {
+    folders: BookmarksFolder[]
+    toolbarOrder: string[]
+}
+
+type ComparableNode = {
+    kind: 'bookmark' | 'folder'
     title: string
-    url: string
-    dateAdded: number
+    url?: string
+    items?: ComparableNode[]
+}
+
+export class BookmarkAccessError extends Error {
+    override name = 'BookmarkAccessError'
+}
+
+export class BookmarkRestoreError extends Error {
+    override name = 'BookmarkRestoreError'
 }
 
 let browserBookmarkFolders: BookmarksFolder[] = []
+let browserBookmarkToolbarOrder: string[] = []
 let bookmarkListenerAdded = false
 let bookmarkRestoreInProgress = false
 let bookmarkRefreshQueued = false
 let bookmarkRestoreReleaseTimer = 0
 let bookmarkDirtyTimer = 0
+let bookmarkRefreshTimer = 0
+let bookmarkRefreshRequested = false
+let bookmarkRefreshPromise: Promise<void> | undefined
+let bookmarksApiForTests: BookmarksApi | null | undefined
 
 export async function linksImport(): Promise<void> {
     const data = await storage.sync.get()
@@ -55,16 +71,24 @@ export function renderLinksFromSync(data: SyncSnapshot): void {
     initblocks(data)
 }
 
+// Startup rendering may use the preloaded tree if the live API is temporarily
+// unavailable. This cache is deliberately confined to startup rendering: an
+// upload or destructive restore must always prove that a fresh live read worked.
 export async function initBookmarkSync(data: Sync): Promise<SyncSnapshot> {
     const snapshot = syncWithBookmarks(data)
-    let treenode = await getBookmarkTree()
+    let treenode: Treenode[] | undefined
+    let liveTree = true
 
-    if (!treenode) {
+    try {
+        treenode = await getLiveBookmarkTree()
+    } catch (_error) {
         try {
             await getPermissions('bookmarks')
-            treenode = await getBookmarkTree()
-        } catch (_error) {
+            treenode = await getLiveBookmarkTree()
+        } catch (_permissionError) {
             settingsNotifications({ 'accept-permissions': true })
+            treenode = globalThis.startupBookmarks
+            liveTree = false
         }
     }
 
@@ -73,131 +97,49 @@ export async function initBookmarkSync(data: Sync): Promise<SyncSnapshot> {
         return snapshot
     }
 
-    browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
+    try {
+        applyLiveBrowserSnapshot(bookmarkTreeToFolderList(treenode))
+    } catch (_error) {
+        browserBookmarkFolders = []
+        return snapshot
+    }
 
-    applySyncedFolders(snapshot)
-    applyFavoritesFromToolbar(snapshot)
-
-    addBookmarkListeners()
+    applyBrowserFolders(snapshot)
+    if (liveTree) addBookmarkListeners()
     return snapshot
 }
 
-function applySyncedFolders(data: SyncSnapshot): boolean {
-    let mutated = false
-    const syncedFolderIds: string[] = []
+function applyBrowserFolders(data: SyncSnapshot): boolean {
     const links = data.links
+    const previous = stableStringify({
+        folders: links.folders,
+        favorites: links.favorites,
+        toolbarOrder: links.toolbarOrder,
+    })
+    const previousSelected = links.folders.find((folder) => folder.id === links.selectedFolder)
+    const folders = browserBookmarkFolders.filter((folder) => folder.kind === 'folder')
+    const favorites = browserBookmarkFolders.find((folder) => folder.kind === 'favorites')
 
-    for (const browserFolder of browserBookmarkFolders) {
-        if (browserFolder.title === FAVORITES_FOLDER) {
-            continue
-        }
-
-        let folder = links.folders.find((f) => f.id === browserFolder.id)
-
-        if (!folder) {
-            folder = getFolderByTitle(data, browserFolder.title)
-        }
-
-        if (!folder) {
-            folder = {
-                id: browserFolder.id,
-                title: browserFolder.title,
-                items: [],
-            }
-            links.folders.push(folder)
-            mutated = true
-        }
-
-        if (folder.title !== browserFolder.title) {
-            folder.title = browserFolder.title
-            mutated = true
-        }
-
-        if (folder.id !== browserFolder.id) {
-            if (data.links.selectedFolder === folder.id) {
-                data.links.selectedFolder = browserFolder.id
-            }
-            folder.id = browserFolder.id
-            mutated = true
-        }
-
-        syncedFolderIds.push(folder.id)
-        mutated = mirrorFolderIntoFolder(folder, browserFolder) || mutated
-    }
-
-    for (const folder of [...links.folders]) {
-        if (!syncedFolderIds.includes(folder.id)) {
-            removeFolder(data, folder.id)
-            mutated = true
-        }
-    }
-
-    if (links.folders.length > 1 && !links.foldersOn) {
-        data.links.foldersOn = true
-        mutated = true
-    }
+    links.folders = folders.map((folder): LinkFolder => ({
+        id: folder.id,
+        title: folder.title,
+        items: structuredClone(folder.items),
+    }))
+    links.favorites = (favorites?.items ?? []).filter(isElem).map((link) => ({ ...link }))
+    links.toolbarOrder = [...browserBookmarkToolbarOrder]
 
     if (!links.folders.some((folder) => folder.id === links.selectedFolder)) {
-        links.selectedFolder = links.folders[0]?.id ?? ''
-        mutated = true
+        const sameTitle = previousSelected
+            ? links.folders.find((folder) => folder.title === previousSelected.title)
+            : undefined
+        links.selectedFolder = sameTitle?.id ?? links.folders[0]?.id ?? ''
     }
 
-    return mutated
-}
-
-function mirrorFolderIntoFolder(folder: LinkFolder, browserFolder: BookmarksFolder): boolean {
-    const previous = stableStringify(folder.items)
-    folder.items = buildItemsFromBrowserFolder(browserFolder)
-    return previous !== stableStringify(folder.items)
-}
-
-function buildItemsFromBrowserFolder(browserFolder: BookmarksFolder): LinkNode[] {
-    const items: LinkNode[] = []
-
-    for (const bookmark of browserFolder.bookmarks) {
-        items.push(validateLink(bookmark.title, bookmark.url, bookmark.id))
-    }
-
-    for (const child of browserFolder.children) {
-        const subfolder: LinkSubfolder = {
-            id: child.id,
-            title: child.title,
-            items: buildItemsFromBrowserFolder(child),
-        }
-        items.push(subfolder)
-    }
-
-    return items
-}
-
-function applyFavoritesFromToolbar(data: SyncSnapshot): boolean {
-    const folder = browserBookmarkFolders.find((item) => item.title === FAVORITES_FOLDER)
-
-    if (!folder) {
-        return false
-    }
-
-    const links = data.links
-    const previous = stableStringify(links.favorites)
-    const existingById = new Map<string, LinkElem>()
-    const existingByUrl = new Map<string, LinkElem>()
-
-    for (const link of links.favorites) {
-        existingById.set(link.id, link)
-        existingByUrl.set(normalizeBookmarkUrl(link.url), link)
-    }
-
-    links.favorites = folder.bookmarks.map((bookmark) => {
-        const existing = existingById.get(bookmark.id) ?? existingByUrl.get(normalizeBookmarkUrl(bookmark.url))
-        const link = existing ?? validateLink(bookmark.title, bookmark.url, bookmark.id)
-
-        link.id = bookmark.id
-        link.title = bookmark.title
-        link.url = bookmark.url
-        return link
+    return previous !== stableStringify({
+        folders: links.folders,
+        favorites: links.favorites,
+        toolbarOrder: links.toolbarOrder,
     })
-
-    return previous !== stableStringify(links.favorites)
 }
 
 function addBookmarkListeners(): void {
@@ -205,19 +147,21 @@ function addBookmarkListeners(): void {
         return
     }
 
+    const bookmarksApi = getBookmarksApi()
+    if (!bookmarksApi) return
     bookmarkListenerAdded = true
 
-    const listeners = ['onChanged', 'onCreated', 'onRemoved', 'onMoved'] as const
+    const listeners = ['onChanged', 'onCreated', 'onRemoved', 'onMoved', 'onChildrenReordered'] as const
 
     for (const event of listeners) {
-        EXTENSION?.bookmarks?.[event]?.addListener(() => {
+        bookmarksApi[event]?.addListener(() => {
             if (bookmarkRestoreInProgress) {
                 bookmarkRefreshQueued = true
                 return
             }
 
             markBookmarksDirty()
-            refreshSyncedGroups()
+            queueBookmarkRefresh()
         })
     }
 }
@@ -233,132 +177,178 @@ function markBookmarksDirty(): void {
     })
 }
 
-export async function refreshSyncedGroups(): Promise<void> {
-    const data = await storage.sync.get()
-    const treenode = await getBookmarkTree()
+function queueBookmarkRefresh(): void {
+    bookmarkRefreshRequested = true
 
-    if (!treenode) {
-        return
+    if (bookmarkRefreshTimer) {
+        clearTimeout(bookmarkRefreshTimer)
     }
 
-    browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
+    bookmarkRefreshTimer = setTimeout(() => {
+        bookmarkRefreshTimer = 0
+        void drainBookmarkRefreshes().catch((err) => {
+            console.warn('Cannot refresh live bookmarks', err)
+        })
+    }, 50)
+}
+
+export function refreshSyncedGroups(): Promise<void> {
+    bookmarkRefreshRequested = true
+    if (bookmarkRefreshTimer) {
+        clearTimeout(bookmarkRefreshTimer)
+        bookmarkRefreshTimer = 0
+    }
+    return drainBookmarkRefreshes()
+}
+
+function drainBookmarkRefreshes(): Promise<void> {
+    if (bookmarkRefreshPromise) {
+        return bookmarkRefreshPromise
+    }
+
+    const active: Promise<void> = (async () => {
+        while (bookmarkRefreshRequested && !bookmarkRestoreInProgress) {
+            bookmarkRefreshRequested = false
+            await refreshSyncedGroupsOnce()
+        }
+    })().finally(() => {
+        if (bookmarkRefreshPromise === active) bookmarkRefreshPromise = undefined
+    })
+    bookmarkRefreshPromise = active
+    return active
+}
+
+async function refreshSyncedGroupsOnce(): Promise<void> {
+    const data = await storage.sync.get()
+    const treenode = await getLiveBookmarkTree()
+    applyLiveBrowserSnapshot(bookmarkTreeToFolderList(treenode))
     const snapshot = syncWithBookmarks(data)
-    applySyncedFolders(snapshot)
-    applyFavoritesFromToolbar(snapshot)
+    applyBrowserFolders(snapshot)
     initFolders(snapshot)
     initblocks(snapshot)
 }
 
+// This is the only snapshot suitable for upload. It intentionally has no
+// startup-cache or empty-data fallback: inability to read live bookmarks must
+// pause synchronization instead of turning "unknown" into "empty".
 export async function buildBookmarkSnapshotFromConfig(data: Sync): Promise<SyncSnapshot> {
     const snapshot = syncWithBookmarks(structuredClone(data))
-    const treenode = await getBookmarkTree()
-
-    if (!treenode) {
-        return snapshot
-    }
-
-    browserBookmarkFolders = bookmarkTreeToFolderList(treenode[0])
-    applySyncedFolders(snapshot)
-    applyFavoritesFromToolbar(snapshot)
+    const treenode = await getLiveBookmarkTree()
+    applyLiveBrowserSnapshot(bookmarkTreeToFolderList(treenode))
+    applyBrowserFolders(snapshot)
     return snapshot
 }
 
-// Writes the remote-side state into the user's Chrome bookmarks with Remote as
-// the single source of truth. Duplicates are NOT collapsed — `desiredUrls`
-// below is only used for membership checks, never to shorten `desiredLinks`,
-// and `existingByUrl` shifts one Chrome bookmark per occurrence in Remote so a
-// remote snapshot with [A, A, B] writes three Chrome bookmarks even when Chrome only
-// had one A to start with. Existing IDs are preserved when a URL match is
-// available — important to avoid every download rotating every bookmark ID
-// (which would cascade into avoidable cross-device upload churn).
-export async function replaceBookmarksFromConfig(current: Sync, next: Sync): Promise<boolean> {
-    const desiredFolders = collectRestorableBookmarkItems(next)
-    const currentFolders = collectRestorableBookmarkItems(current)
-
-    if (!EXTENSION || !EXTENSION.bookmarks) {
-        return false
-    }
+// Writes Remote into the Chrome/Edge bookmarks bar. Every error propagates,
+// and success is only returned after a fresh read-back exactly matches the
+// requested tree. The caller can therefore advance its sync baseline safely.
+export async function replaceBookmarksFromConfig(_current: Sync, next: Sync): Promise<boolean> {
+    const bookmarksApi = requireBookmarksApi()
+    const desiredToolbarItems = desiredToolbarNodes(next)
 
     holdBookmarkRefreshes()
-    const root = await getRestorableRoot()
+    try {
+        const liveTree = await getLiveBookmarkTree()
+        const toolbar = findBookmarksToolbar(liveTree)
+        const mutated = await syncItemsToChrome(
+            toolbar.id,
+            desiredToolbarItems,
+            orderedTreeChildren(toolbar),
+            bookmarksApi,
+        )
 
-    if (!root) {
+        const verifiedTree = await getLiveBookmarkTree()
+        const verifiedToolbar = findBookmarksToolbar(verifiedTree)
+        const actual = comparableTreeNodes(orderedTreeChildren(verifiedToolbar))
+        const expected = comparableLinkNodes(desiredToolbarItems)
+
+        if (stableStringify(actual) !== stableStringify(expected)) {
+            throw new BookmarkRestoreError('Chrome bookmarks did not match the requested snapshot after restore')
+        }
+
+        return mutated
+    } finally {
         releaseBookmarkRefreshesSoon()
-        return false
     }
+}
 
-    const bookmarksApi = EXTENSION.bookmarks
-    const toolbar = root.children?.[0] ?? root
-    const folderIdsByTitle = bookmarkFolderIdsByTitle(root)
-    const chromeTree = buildChromeTreeMap(root)
-    const targetFolders = uniqueStrings([...currentFolders.keys(), ...desiredFolders.keys()])
-    let mutated = false
+function desiredToolbarNodes(data: Sync): LinkNode[] {
+    const rawLinks = data.links as LinksStateWithOptionalBookmarks
+    if (!Array.isArray(rawLinks.folders) || !Array.isArray(rawLinks.favorites)) {
+        throw new BookmarkRestoreError('Bookmark snapshot is missing folders or favorites')
+    }
+    const folders = rawLinks.folders
+    const favorites = rawLinks.favorites
 
-    for (const folderTitle of orderedRestorableFolderNames(next, desiredFolders, targetFolders)) {
-        const desiredItems = desiredFolders.get(folderTitle) ?? []
-        const parentId = folderTitle === FAVORITES_FOLDER
-            ? toolbar.id
-            : await getOrCreateRestoreFolder(folderTitle, toolbar.id, bookmarksApi, folderIdsByTitle, new Map())
+    const ids = new Set<string>()
+    const result: LinkNode[] = []
 
-        if (!parentId) {
-            continue
+    for (const folder of folders) {
+        assertFolder(folder, ids)
+        result.push({ id: folder.id, title: folder.title, items: structuredClone(folder.items) })
+    }
+    for (const favorite of favorites) {
+        assertNode(favorite, ids)
+        if (!isElem(favorite)) {
+            throw new BookmarkRestoreError('Favorites may only contain bookmarks')
         }
-
-        const parentNode = chromeTree.get(parentId)
-        const existingChildren = folderTitle === FAVORITES_FOLDER
-            ? (parentNode?.children ?? []).filter((c) => !!c.url)
-            : parentNode?.children ?? []
-        const result = await syncItemsToChrome(parentId, desiredItems, existingChildren, bookmarksApi)
-        mutated = result || mutated
+        result.push({ ...favorite })
     }
 
-    for (const child of toolbar.children ?? []) {
-        if (child.children && !desiredFolders.has(child.title ?? '')) {
-            try {
-                await bookmarksApi.removeTree(child.id)
-                mutated = true
-            } catch (_) {
-                // best effort
-            }
+    if (rawLinks.toolbarOrder === undefined) return result
+    if (!Array.isArray(rawLinks.toolbarOrder) || rawLinks.toolbarOrder.length !== result.length) {
+        throw new BookmarkRestoreError('Bookmark toolbar order is invalid')
+    }
+
+    const byId = new Map(result.map((node) => [node.id, node]))
+    const ordered: LinkNode[] = []
+    for (const id of rawLinks.toolbarOrder) {
+        if (typeof id !== 'string') throw new BookmarkRestoreError('Bookmark toolbar order is invalid')
+        const node = byId.get(id)
+        if (!node) throw new BookmarkRestoreError('Bookmark toolbar order references an unknown bookmark')
+        ordered.push(node)
+        byId.delete(id)
+    }
+    if (byId.size > 0) throw new BookmarkRestoreError('Bookmark toolbar order is incomplete')
+    return ordered
+}
+
+type LinksStateWithOptionalBookmarks = Sync['links'] & Partial<BookmarkLinksState>
+
+function assertFolder(folder: unknown, ids: Set<string>): asserts folder is LinkFolder {
+    const value = folder as LinkFolder | undefined
+    if (
+        !value || typeof value.id !== 'string' || !value.id || typeof value.title !== 'string' ||
+        !Array.isArray(value.items)
+    ) {
+        throw new BookmarkRestoreError('Invalid bookmark folder in snapshot')
+    }
+    assertUniqueId(value.id, ids)
+    for (const item of value.items) assertNode(item, ids)
+}
+
+function assertNode(node: unknown, ids: Set<string>): asserts node is LinkNode {
+    if (isElem(node)) {
+        if (!node.id || typeof node.url !== 'string' || !node.url) {
+            throw new BookmarkRestoreError('Invalid bookmark in snapshot')
         }
+        assertUniqueId(node.id, ids)
+        return
     }
 
-    mutated = await normalizeBookmarkToolbarOrder(bookmarksApi) || mutated
-
-    releaseBookmarkRefreshesSoon()
-    return mutated
-}
-
-function collectRestorableBookmarkItems(data: Sync): Map<string, LinkNode[]> {
-    const folders = new Map<string, LinkNode[]>()
-    const links = linksWithBookmarks(data)
-
-    for (const folder of links.folders) {
-        folders.set(folder.title, folder.items)
+    if (isSubfolder(node)) {
+        if (!node.id) throw new BookmarkRestoreError('Invalid bookmark folder in snapshot')
+        assertUniqueId(node.id, ids)
+        for (const child of node.items) assertNode(child, ids)
+        return
     }
 
-    if (links.favorites.length > 0) {
-        folders.set(FAVORITES_FOLDER, links.favorites)
-    }
-
-    return folders
+    throw new BookmarkRestoreError('Invalid bookmark node in snapshot')
 }
 
-function orderedRestorableFolderNames(data: Sync, folders: Map<string, LinkNode[]>, extras: string[] = []): string[] {
-    const configuredFolders = linksWithBookmarks(data).folders
-        .map((folder) => folder.title)
-        .filter((folder) => folders.has(folder) || extras.includes(folder))
-    const extraFolders = uniqueStrings([...folders.keys(), ...extras]).filter((folder) => {
-        return folder !== FAVORITES_FOLDER && !configuredFolders.includes(folder)
-    })
-    const favorites = folders.has(FAVORITES_FOLDER) || extras.includes(FAVORITES_FOLDER) ? [FAVORITES_FOLDER] : []
-
-    return [...configuredFolders, ...extraFolders, ...favorites]
-}
-
-async function getRestorableRoot(): Promise<Treenode | undefined> {
-    const treenode = await getBookmarkTree()
-    return treenode?.[0]
+function assertUniqueId(id: string, ids: Set<string>): void {
+    if (ids.has(id)) throw new BookmarkRestoreError(`Duplicate bookmark id: ${id}`)
+    ids.add(id)
 }
 
 export function holdBookmarkRefreshes(): void {
@@ -371,343 +361,263 @@ export function holdBookmarkRefreshes(): void {
 }
 
 function releaseBookmarkRefreshesSoon(): void {
-    if (bookmarkRestoreReleaseTimer) {
-        clearTimeout(bookmarkRestoreReleaseTimer)
-    }
+    if (bookmarkRestoreReleaseTimer) clearTimeout(bookmarkRestoreReleaseTimer)
 
     bookmarkRestoreReleaseTimer = setTimeout(() => {
         bookmarkRestoreInProgress = false
         bookmarkRestoreReleaseTimer = 0
 
-        if (!bookmarkRefreshQueued) {
-            return
+        if (bookmarkRefreshQueued) {
+            bookmarkRefreshQueued = false
+            queueBookmarkRefresh()
         }
-
-        bookmarkRefreshQueued = false
-        refreshSyncedGroups()
     }, 300)
-}
-
-async function getOrCreateRestoreFolder(
-    title: string,
-    toolbarId: string,
-    bookmarksApi: NonNullable<typeof EXTENSION>['bookmarks'],
-    folderIdsByTitle: Map<string, string>,
-    urlsByParentId: Map<string, Set<string>>,
-): Promise<string | undefined> {
-    const existingId = folderIdsByTitle.get(title)
-
-    if (existingId) {
-        return existingId
-    }
-
-    try {
-        const folder = await bookmarksApi.create({ parentId: toolbarId, title })
-        folderIdsByTitle.set(title, folder.id)
-        urlsByParentId.set(folder.id, new Set())
-        return folder.id
-    } catch (_error) {
-        return
-    }
-}
-
-async function normalizeBookmarkToolbarOrder(
-    bookmarksApi: NonNullable<typeof EXTENSION>['bookmarks'],
-): Promise<boolean> {
-    const root = await getRestorableRoot()
-    const toolbar = root?.children?.[0] ?? root
-
-    if (!toolbar?.children) {
-        return false
-    }
-
-    const current = [...toolbar.children].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    const ordered = orderBookmarkToolbarChildren(current)
-    let mutated = false
-
-    for (let index = 0; index < ordered.length; index++) {
-        const child = ordered[index]
-        const currentIndex = current.findIndex((item) => item.id === child.id)
-
-        if (currentIndex < 0 || currentIndex === index) {
-            continue
-        }
-
-        try {
-            await bookmarksApi.move(child.id, { parentId: toolbar.id, index })
-            current.splice(currentIndex, 1)
-            current.splice(index, 0, child)
-            mutated = true
-        } catch (_error) {
-            // Reordering is best-effort; the bookmark contents were already restored.
-        }
-    }
-
-    return mutated
-}
-
-function buildChromeTreeMap(root: Treenode): Map<string, Treenode> {
-    const map = new Map<string, Treenode>()
-
-    function walk(node: Treenode): void {
-        map.set(node.id, node)
-        for (const child of node.children ?? []) {
-            walk(child)
-        }
-    }
-
-    walk(root)
-    return map
 }
 
 async function syncItemsToChrome(
     parentId: string,
     desiredItems: LinkNode[],
     existingChildren: Treenode[],
-    bookmarksApi: NonNullable<typeof EXTENSION>['bookmarks'],
+    bookmarksApi: BookmarksApi,
 ): Promise<boolean> {
+    const working = [...existingChildren]
     let mutated = false
 
-    const desiredLinks = desiredItems.filter(isElem)
-    const desiredSubfolders = desiredItems.filter(isSubfolder)
+    for (let targetIndex = 0; targetIndex < desiredItems.length; targetIndex++) {
+        const desired = desiredItems[targetIndex]
+        const matchIndex = findMatchingTreeNode(working, desired, targetIndex)
+        let chromeNode: Treenode
 
-    const existingBookmarks: BookmarksFolderItem[] = []
-    const existingFolders: Treenode[] = []
-
-    for (const child of existingChildren) {
-        if (child.url) {
-            existingBookmarks.push({
-                id: child.id,
-                parentId: child.parentId,
-                index: child.index,
-                title: child.title ?? '',
-                url: child.url,
-                dateAdded: child.dateAdded ?? 0,
-            })
-        } else if (child.children) {
-            existingFolders.push(child)
-        }
-    }
-
-    const desiredUrls = new Set(desiredLinks.map((link) => normalizeBookmarkUrl(link.url)).filter(Boolean))
-    const existingByUrl = new Map<string, BookmarksFolderItem[]>()
-
-    for (const bookmark of existingBookmarks) {
-        const url = normalizeBookmarkUrl(bookmark.url)
-        const list = existingByUrl.get(url) ?? []
-        list.push(bookmark)
-        existingByUrl.set(url, list)
-    }
-
-    for (const bookmark of existingBookmarks) {
-        const url = normalizeBookmarkUrl(bookmark.url)
-        if (!desiredUrls.has(url)) {
-            try {
-                await bookmarksApi.remove(bookmark.id)
-                mutated = true
-            } catch (_error) {
-                // Best effort
-            }
-        }
-    }
-
-    for (let index = 0; index < desiredLinks.length; index++) {
-        const link = desiredLinks[index]
-        const url = normalizeBookmarkUrl(link.url)
-        if (!url) continue
-
-        const existing = existingByUrl.get(url)?.shift()
-
-        if (existing) {
-            try {
-                if (existing.title !== link.title || existing.url !== url) {
-                    await bookmarksApi.update(existing.id, { title: link.title, url })
-                    mutated = true
-                }
-            } catch (_error) {
-                // Best effort
-            }
+        if (matchIndex < 0) {
+            chromeNode = await createTreeNode(bookmarksApi, parentId, targetIndex, desired)
+            working.splice(targetIndex, 0, chromeNode)
+            mutated = true
         } else {
-            try {
-                await bookmarksApi.create({ parentId, title: link.title, url })
+            chromeNode = working[matchIndex]
+            if (matchIndex !== targetIndex || chromeNode.parentId !== parentId) {
+                const moved = await bookmarksApi.move(chromeNode.id, { parentId, index: targetIndex })
+                chromeNode = { ...chromeNode, ...moved, children: chromeNode.children }
+                working.splice(matchIndex, 1)
+                working.splice(targetIndex, 0, chromeNode)
                 mutated = true
-            } catch (_error) {
-                // Best effort
             }
         }
-    }
 
-    for (const [url, bookmarks] of existingByUrl) {
-        if (!desiredUrls.has(url)) {
+        if (isElem(desired)) {
+            if (chromeNode.title !== desired.title || chromeNode.url !== desired.url) {
+                const updated = await bookmarksApi.update(chromeNode.id, { title: desired.title, url: desired.url })
+                working[targetIndex] = { ...chromeNode, ...updated }
+                mutated = true
+            }
             continue
         }
 
-        for (const bookmark of bookmarks) {
-            try {
-                await bookmarksApi.remove(bookmark.id)
-                mutated = true
-            } catch (_error) {
-                // Best effort
-            }
-        }
-    }
-
-    const desiredSubfolderTitles = new Set(desiredSubfolders.map((sf) => sf.title))
-    const existingFoldersByTitle = new Map<string, Treenode>()
-
-    for (const folder of existingFolders) {
-        existingFoldersByTitle.set(folder.title ?? '', folder)
-    }
-
-    for (const folder of existingFolders) {
-        if (!desiredSubfolderTitles.has(folder.title ?? '')) {
-            try {
-                await bookmarksApi.removeTree(folder.id)
-                mutated = true
-            } catch (_error) {
-                // Best effort
-            }
-        }
-    }
-
-    for (const subfolder of desiredSubfolders) {
-        let chromeFolder = existingFoldersByTitle.get(subfolder.title)
-
-        if (!chromeFolder) {
-            try {
-                const created = await bookmarksApi.create({ parentId, title: subfolder.title })
-                chromeFolder = { ...created, children: [] }
-                mutated = true
-            } catch (_error) {
-                continue
-            }
+        if (chromeNode.title !== desired.title) {
+            const updated = await bookmarksApi.update(chromeNode.id, { title: desired.title })
+            chromeNode = { ...chromeNode, ...updated, children: chromeNode.children }
+            working[targetIndex] = chromeNode
+            mutated = true
         }
 
-        const result = await syncItemsToChrome(
-            chromeFolder.id,
-            subfolder.items,
-            chromeFolder.children ?? [],
+        mutated = await syncItemsToChrome(
+            chromeNode.id,
+            desired.items,
+            orderedTreeChildren(chromeNode),
             bookmarksApi,
-        )
-        mutated = result || mutated
+        ) || mutated
+    }
+
+    for (const obsolete of working.slice(desiredItems.length)) {
+        if (isTreeFolder(obsolete)) {
+            await bookmarksApi.removeTree(obsolete.id)
+        } else {
+            await bookmarksApi.remove(obsolete.id)
+        }
+        mutated = true
     }
 
     return mutated
 }
 
-function bookmarkFolderIdsByTitle(treenode: Treenode): Map<string, string> {
-    const folders = new Map<string, string>()
-    const titleCounts = new Map<string, number>()
+function findMatchingTreeNode(existing: Treenode[], desired: LinkNode, fromIndex: number): number {
+    const candidates = existing.slice(fromIndex)
 
-    function uniqueFolderTitle(path: string[]): string {
-        const base = path.join(' / ') || 'Default folder'
-        const count = titleCounts.get(base) ?? 0
-        titleCounts.set(base, count + 1)
-        return count === 0 ? base : `${base} (${count + 1})`
+    if (isElem(desired)) {
+        const byUrl = candidates.findIndex((node) => isTreeBookmark(node) && node.url === desired.url)
+        if (byUrl >= 0) return fromIndex + byUrl
+        const byId = candidates.findIndex((node) => isTreeBookmark(node) && node.id === desired.id)
+        return byId < 0 ? -1 : fromIndex + byId
     }
 
-    function walk(node: Treenode, path: string[] = []): void {
-        if (!node.children) {
-            return
-        }
+    const byTitle = candidates.findIndex((node) => isTreeFolder(node) && node.title === desired.title)
+    if (byTitle >= 0) return fromIndex + byTitle
+    const byId = candidates.findIndex((node) => isTreeFolder(node) && node.id === desired.id)
+    return byId < 0 ? -1 : fromIndex + byId
+}
 
-        const isRootNode = !node.title
-        const isToolbarNode = node.id === treenode.children?.[0]?.id
-        const currentPath = isRootNode || isToolbarNode ? path : [...path, node.title || 'Default folder']
-
-        if (!isRootNode && !isToolbarNode) {
-            folders.set(uniqueFolderTitle(currentPath), node.id)
-        }
-
-        for (const child of node.children) {
-            if (child.children) {
-                walk(child, currentPath)
-            }
-        }
+async function createTreeNode(
+    bookmarksApi: BookmarksApi,
+    parentId: string,
+    index: number,
+    desired: LinkNode,
+): Promise<Treenode> {
+    if (isElem(desired)) {
+        return await bookmarksApi.create({ parentId, index, title: desired.title, url: desired.url }) as Treenode
     }
 
-    walk(treenode)
-    return folders
+    const created = await bookmarksApi.create({ parentId, index, title: desired.title }) as Treenode
+    return { ...created, children: [] }
 }
 
-function normalizeBookmarkUrl(url: string): string {
-    return url.trim()
+function comparableLinkNodes(nodes: LinkNode[]): ComparableNode[] {
+    return nodes.map((node): ComparableNode =>
+        isElem(node)
+            ? { kind: 'bookmark', title: node.title, url: node.url }
+            : { kind: 'folder', title: node.title, items: comparableLinkNodes(node.items) }
+    )
 }
 
-async function getBookmarkTree(): Promise<Treenode[] | undefined> {
+function comparableTreeNodes(nodes: Treenode[]): ComparableNode[] {
+    return nodes.map((node): ComparableNode =>
+        isTreeBookmark(node)
+            ? { kind: 'bookmark', title: node.title ?? '', url: node.url ?? '' }
+            : { kind: 'folder', title: node.title ?? '', items: comparableTreeNodes(orderedTreeChildren(node)) }
+    )
+}
+
+function getBookmarksApi(): BookmarksApi | undefined {
+    if (bookmarksApiForTests !== undefined) return bookmarksApiForTests ?? undefined
+    return EXTENSION?.bookmarks ?? globalThis.chrome?.bookmarks as BookmarksApi | undefined
+}
+
+function requireBookmarksApi(): BookmarksApi {
+    const bookmarksApi = getBookmarksApi()
+    if (!bookmarksApi) throw new BookmarkAccessError('Chrome bookmarks API is unavailable')
+    return bookmarksApi
+}
+
+async function getLiveBookmarkTree(): Promise<Treenode[]> {
+    const bookmarksApi = requireBookmarksApi()
+
     try {
-        const live = await EXTENSION?.bookmarks?.getTree()
-        if (live) {
-            return live as Treenode[]
+        const tree = await bookmarksApi.getTree()
+        if (!Array.isArray(tree) || tree.length === 0) {
+            throw new BookmarkAccessError('Chrome returned an empty bookmarks tree')
         }
-    } catch (_error) {
-        // fall through to startup cache
+        return tree as Treenode[]
+    } catch (error) {
+        if (error instanceof BookmarkAccessError) throw error
+        throw new BookmarkAccessError(`Unable to read live Chrome bookmarks: ${String(error)}`)
     }
-
-    return globalThis.startupBookmarks
 }
 
-function bookmarkTreeToFolderList(treenode: Treenode): BookmarksFolder[] {
-    const toolbar = treenode.children?.[0]
-    if (!toolbar?.children) return []
+export function findBookmarksToolbar(treenodes: Treenode[]): Treenode {
+    const allNodes = flattenTreeNodes(treenodes)
+    const typed = allNodes.filter((node) => node.folderType === 'bookmarks-bar')
 
-    const results: BookmarksFolder[] = []
+    if (typed.length === 1) return typed[0]
+    if (typed.length > 1) throw new BookmarkAccessError('Chrome returned multiple bookmarks-bar roots')
 
-    const directBookmarks: BookmarksFolderItem[] = []
-    for (const child of toolbar.children) {
-        if (child.url) {
-            directBookmarks.push(mapTreeNode(child))
-        }
+    const legacy = allNodes.filter((node) => node.id === '1' && isTreeFolder(node))
+    if (legacy.length === 1) return legacy[0]
+    if (legacy.length > 1) throw new BookmarkAccessError('Chrome returned multiple legacy bookmarks-bar roots')
+
+    throw new BookmarkAccessError('Unable to identify a unique Chrome bookmarks bar')
+}
+
+function flattenTreeNodes(nodes: Treenode[]): Treenode[] {
+    const result: Treenode[] = []
+
+    function walk(node: Treenode): void {
+        result.push(node)
+        for (const child of node.children ?? []) walk(child)
     }
 
-    results.push({
-        id: toolbar.id ?? FAVORITES_FOLDER,
+    for (const node of nodes) walk(node)
+    return result
+}
+
+function bookmarkTreeToFolderList(treenodes: Treenode[]): BrowserBookmarkSnapshot {
+    const toolbar = findBookmarksToolbar(treenodes)
+    const results: BookmarksFolder[] = [{
+        kind: 'favorites',
+        id: FAVORITES_FOLDER,
         title: FAVORITES_FOLDER,
         displayTitle: tradThis('Bookmarks bar'),
-        bookmarks: directBookmarks,
-        children: [],
-    })
+        items: orderedTreeChildren(toolbar).filter(isTreeBookmark).map(treeBookmarkToLink),
+    }]
 
-    for (const child of toolbar.children) {
-        if (child.children) {
-            results.push(treeNodeToFolder(child))
-        }
-    }
-
-    return results
-}
-
-function treeNodeToFolder(node: Treenode): BookmarksFolder {
-    const bookmarks: BookmarksFolderItem[] = []
-    const children: BookmarksFolder[] = []
-
-    for (const child of node.children ?? []) {
-        if (child.url) {
-            bookmarks.push(mapTreeNode(child))
-        } else if (child.children) {
-            children.push(treeNodeToFolder(child))
-        }
+    for (const child of orderedTreeChildren(toolbar)) {
+        if (isTreeFolder(child)) results.push(treeFolderToFolder(child))
     }
 
     return {
-        id: node.id,
-        title: node.title || 'Folder',
-        bookmarks,
-        children,
+        folders: results,
+        toolbarOrder: orderedTreeChildren(toolbar).map((node) => node.id),
     }
 }
 
-function mapTreeNode(node: Treenode): BookmarksFolderItem {
+function applyLiveBrowserSnapshot(snapshot: BrowserBookmarkSnapshot): void {
+    browserBookmarkFolders = snapshot.folders
+    browserBookmarkToolbarOrder = snapshot.toolbarOrder
+}
+
+function treeFolderToFolder(node: Treenode): BookmarksFolder {
+    return {
+        kind: 'folder',
+        id: node.id,
+        title: node.title ?? '',
+        items: orderedTreeChildren(node).map(treeNodeToLink),
+    }
+}
+
+function treeNodeToLink(node: Treenode): LinkNode {
+    if (isTreeBookmark(node)) return treeBookmarkToLink(node)
     return {
         id: node.id,
-        parentId: node.parentId,
-        index: node.index,
+        title: node.title ?? '',
+        items: orderedTreeChildren(node).map(treeNodeToLink),
+    }
+}
+
+function treeBookmarkToLink(node: Treenode): LinkElem {
+    return {
+        id: node.id,
         title: node.title ?? '',
         url: node.url ?? '',
-        dateAdded: node.dateAdded ?? 0,
     }
 }
 
-function uniqueStrings(values: string[]): string[] {
-    return [...new Set(values.filter(Boolean))]
+function orderedTreeChildren(node: Treenode): Treenode[] {
+    return [...(node.children ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+}
+
+function isTreeBookmark(node: Treenode): boolean {
+    return typeof node.url === 'string'
+}
+
+function isTreeFolder(node: Treenode): boolean {
+    return Array.isArray(node.children)
+}
+
+export const __testing = {
+    reset(): void {
+        bookmarksApiForTests = undefined
+        browserBookmarkFolders = []
+        browserBookmarkToolbarOrder = []
+        bookmarkListenerAdded = false
+        bookmarkRestoreInProgress = false
+        bookmarkRefreshQueued = false
+        bookmarkRefreshRequested = false
+        bookmarkRefreshPromise = undefined
+        if (bookmarkRestoreReleaseTimer) clearTimeout(bookmarkRestoreReleaseTimer)
+        if (bookmarkDirtyTimer) clearTimeout(bookmarkDirtyTimer)
+        if (bookmarkRefreshTimer) clearTimeout(bookmarkRefreshTimer)
+        bookmarkRestoreReleaseTimer = 0
+        bookmarkDirtyTimer = 0
+        bookmarkRefreshTimer = 0
+    },
+    setBookmarksApi(bookmarksApi: BookmarksApi | null): void {
+        bookmarksApiForTests = bookmarksApi
+    },
 }

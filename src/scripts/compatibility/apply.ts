@@ -1,6 +1,5 @@
 import { SYNC_DEFAULT } from '../defaults.ts'
 import { normalizeLinksState } from '../features/links/model.ts'
-import { deepmergeAll } from '@victr/deepmerge'
 import type { Backgrounds, Sync } from '../../types/sync.ts'
 
 /**
@@ -12,13 +11,38 @@ export function mergeImportedConfig(current: Sync, target: Partial<Sync>): Sync 
     const requiredKeys = Object.keys(SYNC_DEFAULT) as (keyof Sync)[]
     const isFullConfig = requiredKeys.every((key) => key in target)
 
-    const merged: Sync = isFullConfig ? (target as Sync) : (deepmergeAll(current, target) as Sync)
+    const merged = isFullConfig ? structuredClone(target as Sync) : deepMergeConfig(current, target)
 
     normalizeLinksState(merged as Sync & Record<string, unknown>)
     removeDeprecatedFields(merged)
     normalizeImportedBackgroundTexture(merged, target)
 
     return merged
+}
+
+function deepMergeConfig(current: Sync, target: Partial<Sync>): Sync {
+    return mergeValue(current, target) as Sync
+}
+
+function mergeValue(current: unknown, target: unknown): unknown {
+    if (Array.isArray(target)) {
+        const next = structuredClone(target)
+        return Array.isArray(current) ? [...structuredClone(current), ...next] : next
+    }
+    if (!isRecord(target)) {
+        return structuredClone(target)
+    }
+
+    const result: Record<string, unknown> = isRecord(current) ? structuredClone(current) : {}
+    for (const [key, value] of Object.entries(target)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue
+        result[key] = key in result ? mergeValue(result[key], value) : structuredClone(value)
+    }
+    return result
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
 function normalizeImportedBackgroundTexture(data: Sync, target: Partial<Sync>): void {
@@ -46,6 +70,7 @@ function normalizeImportedBackgroundTexture(data: Sync, target: Partial<Sync>): 
 }
 
 function removeDeprecatedFields(data: Sync): void {
+    delete data.showall
     delete (data.clock as unknown as Record<string, unknown>).analog
     delete (data.backgrounds as unknown as Record<string, unknown>).mute
     delete (data.backgrounds as unknown as Record<string, unknown>).fadein

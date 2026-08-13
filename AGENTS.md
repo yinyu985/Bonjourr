@@ -1,6 +1,6 @@
 # Bonjourr Development Guide
 
-Bonjourr is a minimalist new tab browser extension (Chrome, Edge, Firefox, Safari) and web app. This fork is privacy-focused, built around browser-native bookmarks. No frontend framework — plain TypeScript, HTML, CSS bundled with esbuild.
+Bonjourr is a minimalist new tab browser extension for Chrome and Edge, plus an ordinary online web build. This fork is privacy-focused, built around browser-native bookmarks. No frontend framework — plain TypeScript, HTML, CSS bundled with esbuild.
 
 ## Workflow rules
 
@@ -19,7 +19,7 @@ claude -p "你好" --dangerously-skip-permissions
 
 ```bash
 deno task online           # dev server on :8000 (web build, watches src/)
-deno task chrome           # dev build to release/chrome (also: edge, firefox, safari)
+deno task chrome           # dev build to release/chrome (also: edge)
 deno task build            # production build of all platforms into release/<platform>
 deno task check            # fmt + lint + type-check + test (CI parity)
 deno task test             # run all Deno tests (--allow-read --allow-env)
@@ -36,11 +36,11 @@ CI (`.github/workflows/ci.yml`) runs `deno task build`, `deno task test`, `deno 
 
 ### Build pipeline (`tasks/build.ts`)
 
-A single esbuild-driven script builds five platforms (`chrome`, `edge`, `firefox`, `safari`, `online`) from the same source. Each output goes to `release/<platform>/`. Per-platform variation is handled by:
+A single esbuild-driven script builds three targets (`chrome`, `edge`, `online`) from the same source. Each output goes to `release/<platform>/`. Per-platform variation is handled by:
 
-- **HTML token replacement.** `src/index.html` contains comment markers (`<!-- default icon -->`, `<!-- webext-storage -->`, `<!-- settings -->`, `<!-- help-mode -->`); the build replaces them differently per platform. `settings.html` and `help-mode.html` are inlined into `index.html` at build time.
-- **Manifest selection.** `src/manifests/<platform>.json` → `release/<platform>/manifest.json`. The web build instead emits `manifest.webmanifest` + a `service-worker.js` with `__VERSION__` substituted from `src/scripts/version.ts`.
-- **Bundle entry points.** Scripts: `src/scripts/index.ts` → `main.js`. Styles: `src/styles/style.css` → `style.css`. The `online` platform is minified; extension builds keep readable output. `define.ENV` is set to `"DEV"` / `"PROD"` so runtime can branch.
+- **HTML token replacement.** `src/index.html` contains comment markers (`<!-- default icon -->`, `<!-- webext-storage -->`, `<!-- help-mode -->`); the build replaces them differently per target. `help-mode.html` is inlined, while `settings.html` is copied separately and fetched only on the first settings interaction.
+- **Manifest selection.** `src/manifests/<platform>.json` → `release/<platform>/manifest.json` for Chrome and Edge. The online target is an ordinary web build with no Web App Manifest or Service Worker.
+- **Bundle entry points.** Scripts: `src/scripts/index.ts` → `main.js` plus ES-module chunks. Styles: `src/styles/style.css` → `style.css`; settings-only rules use the deferred `settings.css` entry. The `online` target is minified; extension builds keep readable output. `define.ENV` is set to `"DEV"` / `"PROD"` so runtime can branch.
 - **Watch mode.** `dev` builds invoke `watcher()`, which re-runs the relevant sub-task (html / styles / scripts / assets / manifests / locales) on file changes.
 
 ### Runtime entry (`src/scripts/index.ts`)
@@ -55,7 +55,7 @@ Boot sequence is fixed and order-sensitive:
 
 ### Storage abstraction (`src/scripts/storage.ts`)
 
-Two backends behind one API: `webext-local` (uses `chrome.storage.local` even for the "sync" namespace — the extension stores sync data under a `syncStorage` key inside local storage) and `localstorage` (web build, JSON-encoded under `localStorage.bonjourr`). The type is selected at startup based on `globalThis.chrome?.storage`. All feature code reads/writes through `storage.sync.*` / `storage.local.*` and never touches the platform APIs directly. `storage.init()` also handles a wait-for-`webextstorage`-event handshake when the extension's `services/webext-storage.js` content script populates `globalThis.startupStorage` before the bundle loads.
+Two config backends sit behind one API: `webext-local` (uses `chrome.storage.local` even for the "sync" namespace — the extension stores sync data under a `syncStorage` key) and `localstorage` (web build, JSON-encoded under `localStorage.bonjourr`). Durable recovery archives use separate storage: reserved `chrome.storage.local` keys in extensions and IndexedDB online. The type is selected at startup based on `globalThis.chrome?.storage`. All feature code reads/writes through `storage.sync.*` / `storage.local.*` / `storage.archive.*` and never touches the platform APIs directly. `storage.init()` also handles a wait-for-`webextstorage`-event handshake when the extension's `services/webext-storage.js` content script populates `globalThis.startupStorage` before the bundle loads.
 
 ### Remote sync freshness gate
 

@@ -1,16 +1,11 @@
 const IMAGES: Provider[] = [
     {
-        optgroup: 'Bonjourr',
-        options: [
-            {
-                name: 'Bonjourr Daylight',
-                value: 'bonjourr-images-daylight',
-            },
-        ],
-    },
-    {
         optgroup: 'Unsplash',
         options: [
+            {
+                name: 'Unsplash Random',
+                value: 'unsplash-images-random',
+            },
             {
                 name: 'Unsplash Collections',
                 value: 'unsplash-images-collections',

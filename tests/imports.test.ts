@@ -38,12 +38,41 @@ Deno.test('Partial import keeps defaults for missing keys', () => {
     assert(defaults.lang === config.lang)
 })
 
+Deno.test('Native partial import merge preserves nested siblings and appends array entries', () => {
+    const current = structuredClone(SYNC_DEFAULT)
+    current.font.family = 'Existing font'
+    current.notes = {
+        active: 'first',
+        records: [{ id: 'first', title: 'First', content: 'one', updatedAt: '2026-01-01T00:00:00.000Z' }],
+    }
+    const incoming = {
+        font: { weight: '700' },
+        notes: {
+            records: [{ id: 'second', title: 'Second', content: 'two', updatedAt: '2026-01-02T00:00:00.000Z' }],
+        },
+    } as unknown as Partial<Sync>
+
+    const config = mergeImportedConfig(current, incoming)
+
+    assert(config.font.family === 'Existing font')
+    assert(config.font.weight === '700')
+    assert(config.notes?.active === 'first')
+    assert(config.notes?.records.map((note) => note.id).join(',') === 'first,second')
+})
+
 Deno.test('Full import replaces current entirely', () => {
     const incoming = structuredClone(SYNC_DEFAULT)
     incoming.tabtitle = 'replaced'
     const config = mergeImportedConfig(defaults, incoming)
 
     assert(config.tabtitle === 'replaced')
+})
+
+Deno.test('Legacy show-all preference is discarded because advanced settings are always visible', () => {
+    const incoming = { ...structuredClone(SYNC_DEFAULT), showall: false }
+    const config = mergeImportedConfig(structuredClone(SYNC_DEFAULT), incoming)
+
+    assert(!('showall' in config))
 })
 
 Deno.test('Image import without texture does not inherit default texture', () => {

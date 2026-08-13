@@ -7,87 +7,66 @@ import {
 } from './features/backgrounds/index.ts'
 import { resetBackgroundRuntimeCache } from './features/backgrounds/cache.ts'
 import { changeFolderTitle, initFolders } from './features/links/groups.ts'
-import { synchronization } from './features/synchronization/index.ts'
-import { hideElements } from './features/hide.ts'
+import { synchronization, withSynchronizationLock } from './features/synchronization/index.ts'
 import {
-    buildBookmarkSnapshotFromConfig,
-    holdBookmarkRefreshes,
-    linksImport,
-    replaceBookmarksFromConfig,
-} from './features/links/bookmarks.ts'
+    getConfigSnapshots,
+    restoreConfigSnapshot,
+    saveConfigSnapshot,
+    saveExternalConfigSnapshot,
+} from './features/synchronization/backup.ts'
+import { assertValidNormalizedSync, assertValidSyncInput } from './features/synchronization/validation.ts'
+import { hideElements } from './features/hide.ts'
+import { buildBookmarkSnapshotFromConfig, linksImport, replaceBookmarksFromConfig } from './features/links/bookmarks.ts'
 import { quickLinks } from './features/links/index.ts'
+import { syncWithBookmarks } from './features/links/model.ts'
 import { clock } from './features/clock/index.ts'
-import { openSettingsButtonEvent } from './features/contextmenu.ts'
 
 import { colorInput, fadeOut, webkitRangeTrackColor } from './shared/dom.ts'
 import { initCustomSelects, refreshCustomSelects } from './shared/custom-select.ts'
-import { CURRENT_VERSION, EXTENSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
+import { CURRENT_VERSION, IS_MOBILE, PLATFORM, SYNC_DEFAULT } from './defaults.ts'
 import { toggleTraduction, tradThis, traduction } from './utils/translations.ts'
 import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
 import { loadCallbacks } from './utils/onsettingsload.ts'
-import { onclickdown } from 'clickdown/mod'
+import { onclickdown } from './utils/clickdown.ts'
 import { mergeImportedConfig } from './compatibility/apply.ts'
 import { stringify } from './utils/stringify.ts'
-import { debounce } from './utils/debounce.ts'
+import { cancelPendingDebounces, debounce, flushPendingDebounces } from './utils/debounce.ts'
 import { langList } from './langs.ts'
-import { storage } from './storage.ts'
+import { normalizeUnsplashAccessKey, storage } from './storage.ts'
 import { parse } from './utils/parse.ts'
 
 import type { Langs } from '../types/shared.ts'
 import type { Sync, SyncSnapshot } from '../types/sync.ts'
 import type { Local } from '../types/local.ts'
+import type { BackgroundUpdate } from './features/backgrounds/index.ts'
 
 // Initialization
 
-let settingsInitSync: Sync
-let settingsInitLocal: Local
 let settingsJsonUpdateQueue: Promise<void> = Promise.resolve()
+let unsplashAccessKeyAvailable = false
+
+function runBackgroundUpdate(update: BackgroundUpdate): void {
+    void backgroundUpdate(update).catch((err) => {
+        console.warn('Background update failed', err)
+    })
+}
+
+function runSettingsTask(label: string, task: () => Promise<unknown>): void {
+    try {
+        void task().catch((err) => console.warn(`${label} failed`, err))
+    } catch (err) {
+        console.warn(`${label} failed`, err)
+    }
+}
 
 export function settingsInit(sync: Sync, local: Local): void {
     const showsettings = document.getElementById('show-settings')
     const shownotes = document.getElementById('show-notes')
-
-    settingsInitSync = sync
-    settingsInitLocal = local
-    showsettings?.classList.add('he_hidden')
-    shownotes?.classList.add('he_hidden')
-
-    document.addEventListener('updateSettingsBeforeInit', (e) => {
-        settingsInitSync = (e as CustomEvent).detail
-    })
-
-    document.body?.addEventListener('keydown', settingsInitEvent)
-    showsettings?.addEventListener('pointerdown', settingsInitEvent)
-
-    const openSettingsButtonsFromContextMenu = document.body.querySelectorAll<HTMLButtonElement>(
-        `[data-action="openTheseSettings"]`,
-    )
-
-    openSettingsButtonsFromContextMenu.forEach((btn) => {
-        btn?.addEventListener('pointerdown', settingsInitEvent)
-    })
-}
-
-function settingsInitEvent(event: Event): void {
-    const showsettings = document.getElementById('show-settings')
     const settings = document.getElementById('settings')
 
-    // 1. When to load settings
-
-    const settingsAreHidden = settings?.classList.contains('hidden')
-    const isLeftClick = (event as PointerEvent)?.button === 0
-    const isEscape = (event as KeyboardEvent)?.code === 'Escape'
-    const canOpenSettings = settingsAreHidden && (isEscape || isLeftClick)
-
-    if (!canOpenSettings) {
-        return
-    }
-
-    // 2. To apply now
-
-    const local = settingsInitLocal
-    const sync = settingsInitSync
+    showsettings?.classList.add('he_hidden')
+    shownotes?.classList.add('he_hidden')
 
     settings?.removeAttribute('style')
     settings?.classList.remove('hidden')
@@ -100,23 +79,6 @@ function settingsInitEvent(event: Event): void {
         }) as EventListener,
     )
 
-    // if init by touch, opens settings right away
-    if ((event as PointerEvent).pointerType === 'touch') {
-        // tricks the browser into thinking it's not the same event that inits and opens
-        setTimeout(() => {
-            // when requesting specific settings section
-            if ((event.target as HTMLElement).getAttribute('data-attribute')) {
-                openSettingsButtonEvent(event)
-            } else {
-                document.dispatchEvent(new CustomEvent('toggle-settings'))
-            }
-        }, 0)
-    }
-
-    document.body?.removeEventListener('keydown', settingsInitEvent)
-    showsettings?.removeEventListener('pointerdown', settingsInitEvent)
-
-    showall(sync.showall, false)
     traduction(settings, sync.lang)
     translatePlaceholders()
     initBackgroundOptions(sync, local)
@@ -127,13 +89,12 @@ function settingsInitEvent(event: Event): void {
     initOptionsEvents()
     settingsFooter()
 
-    // 3. Can be deferred
-
     setTimeout(() => {
         updateSettingsJson()
         updateSettingsEvent()
         translateAriaLabels()
         settingsDrawerBar()
+        void renderSnapshotsList().catch((err) => console.warn('Cannot render recovery snapshots', err))
         loadCallbacks()
 
         settings?.classList.remove('init')
@@ -199,8 +160,8 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_synctype', local.syncType ?? (PLATFORM === 'online' ? 'off' : 'gist'))
 
     setFormInput('i_gistsync', 'github_pat_XXXXXXXXXXXX', local?.gistToken)
+    initUnsplashAccessKey(local.unsplashAccessKey)
 
-    setCheckbox('i_showall', data.showall)
     setCheckbox('i_quicklinks', data.links.enabled)
     setCheckbox('i_linkgroups', data.links.foldersOn)
     setCheckbox('i_linknewtab', data.links.newTab)
@@ -275,27 +236,27 @@ function initOptionsValues(data: Sync, local: Local): void {
 }
 
 function initOptionsEvents(): void {
-    onclickdown(paramId('b_accept-permissions'), async () => {
-        await getPermissions('bookmarks')
+    onclickdown(paramId('b_accept-permissions'), () => {
+        runSettingsTask('Bookmark permission request', async () => {
+            await getPermissions('bookmarks')
 
-        const sync = await storage.sync.get()
-        const local = await storage.local.get()
-        quickLinks({ sync, local })
-        setTimeout(async () => {
-            initFolders(await buildBookmarkSnapshotFromConfig(sync))
-        }, 10)
+            const sync = await storage.sync.get()
+            const local = await storage.local.get()
+            await quickLinks({ sync, local })
+            setTimeout(() => {
+                runSettingsTask('Bookmark folder initialization', async () => {
+                    initFolders(await buildBookmarkSnapshotFromConfig(sync))
+                })
+            }, 10)
 
-        settingsNotifications({ 'accept-permissions': false })
+            settingsNotifications({ 'accept-permissions': false })
+        })
     })
 
     // General
 
-    onclickdown(paramId('i_showall'), (_, target) => {
-        showall(target.checked, true)
-    })
-
     paramId('i_lang').addEventListener('change', function (): void {
-        switchLangs(this.value as Langs)
+        runSettingsTask('Language update', () => switchLangs(this.value as Langs))
     })
 
     paramId('i_favicon').addEventListener('input', function (this: HTMLInputElement): void {
@@ -320,35 +281,40 @@ function initOptionsEvents(): void {
 
     // Quick links
 
-    onclickdown(paramId('i_quicklinks'), async (_, target) => {
+    onclickdown(paramId('i_quicklinks'), (_, target) => {
         document.getElementById('linkblocks')?.classList.toggle('hidden', !target.checked)
-        const data = await storage.sync.get()
-        data.links.enabled = target.checked
-        storage.sync.set({ links: data.links })
+        runSettingsTask('Quick links visibility update', () =>
+            storage.sync.update((data) => {
+                data.links.enabled = target.checked
+            }))
     })
 
     onclickdown(paramId('i_linkgroups'), (_, target) => {
         paramId('linkgroups_options')?.classList.toggle('shown', target.checked)
-        quickLinks(undefined, { folders: target.checked })
+        runSettingsTask('Quick link folders update', () => quickLinks(undefined, { folders: target.checked }))
     })
 
     onclickdown(paramId('i_linknewtab'), (_, target) => {
-        quickLinks(undefined, { newtab: target.checked })
+        runSettingsTask('Quick link target update', () => quickLinks(undefined, { newtab: target.checked }))
     })
 
     paramId('i_linkstyle').addEventListener('change', function (this): void {
-        quickLinks(undefined, { styles: { style: this.value } })
+        runSettingsTask('Quick link style update', () => quickLinks(undefined, { styles: { style: this.value } }))
     })
 
-    onclickdown(paramId('b_importbookmarks'), async () => {
-        await getPermissions('bookmarks')
-        await linksImport()
+    onclickdown(paramId('b_importbookmarks'), () => {
+        runSettingsTask('Bookmark import', async () => {
+            await getPermissions('bookmarks')
+            await linksImport()
+        })
     })
 
     // Backgrounds
 
     paramId('i_type').addEventListener('change', function (this: HTMLInputElement): void {
-        backgroundUpdate({ type: this.value })
+        void backgroundUpdate({ type: this.value }).then(updateUnsplashAccessKeyVisibility).catch((err) => {
+            console.warn('Background update failed', err)
+        })
     })
 
     paramId('b_solid-background').addEventListener('click', function (): void {
@@ -356,18 +322,21 @@ function initOptionsEvents(): void {
     })
 
     paramId('i_solid-background').addEventListener('input', function (): void {
-        backgroundUpdate({ color: this.value })
+        runBackgroundUpdate({ color: this.value })
     })
 
     const saveBackgroundProvider = function (this: HTMLInputElement): void {
-        backgroundUpdate({ provider: this.value })
+        updateUnsplashAccessKeyVisibility()
+        runBackgroundUpdate({ provider: this.value })
     }
 
     paramId('i_background-provider').addEventListener('input', saveBackgroundProvider)
     paramId('i_background-provider').addEventListener('change', saveBackgroundProvider)
 
     const saveBackgroundQueryDraft = debounce((query: { targetId: string; value: string }) => {
-        void backgroundUpdate({ querydraft: query }).then(() => updateSettingsJson())
+        void backgroundUpdate({ querydraft: query }).then(() => updateSettingsJson()).catch((err) => {
+            console.warn('Background query draft failed', err)
+        })
     }, 250)
 
     const saveBackgroundQuery = (event: Event): void => {
@@ -379,7 +348,9 @@ function initOptionsEvents(): void {
                 targetId: target.id,
                 value: input?.value ?? '',
             },
-        }).then(() => updateSettingsJson())
+        }).then(() => updateSettingsJson()).catch((err) => {
+            console.warn('Background query update failed', err)
+        })
     }
 
     const queueBackgroundQueryDraft = (event: Event): void => {
@@ -408,26 +379,28 @@ function initOptionsEvents(): void {
     paramId('i_background-user-search').addEventListener('blur', saveBackgroundQuery)
     paramId('i_background-user-search').addEventListener('input', queueBackgroundQueryDraft)
 
+    initUnsplashAccessKeyEvents()
+
     paramId('i_freq').addEventListener('change', function (this: HTMLInputElement): void {
-        backgroundUpdate({ freq: this.value })
+        runBackgroundUpdate({ freq: this.value })
     })
 
     onclickdown(paramId('i_refresh'), (event) => {
-        backgroundUpdate({ refresh: event })
+        runBackgroundUpdate({ refresh: event })
     })
 
     paramId('i_background-upload').addEventListener('change', function (this: HTMLInputElement): void {
-        backgroundUpdate({ files: this.files })
+        runBackgroundUpdate({ files: this.files })
     })
 
     onclickdown(paramId('b_background-urls'), () => {
-        backgroundUpdate({ urlsapply: true })
+        runBackgroundUpdate({ urlsapply: true })
     })
 
     // Background filters
 
     paramId('i_texture').addEventListener('change', function (this: HTMLInputElement): void {
-        backgroundUpdate({ texture: this.value })
+        runBackgroundUpdate({ texture: this.value })
     })
 
     paramId('b_texture-color').addEventListener('click', function (): void {
@@ -435,34 +408,34 @@ function initOptionsEvents(): void {
     })
 
     paramId('i_texture-color').addEventListener('input', function (): void {
-        backgroundUpdate({ texturecolor: this.value })
+        runBackgroundUpdate({ texturecolor: this.value })
     })
 
     paramId('i_texture-size').addEventListener('input', function (this: HTMLInputElement): void {
-        backgroundUpdate({ texturesize: this.value })
+        runBackgroundUpdate({ texturesize: this.value })
     })
 
     paramId('i_texture-opacity').addEventListener('input', function (this: HTMLInputElement): void {
-        backgroundUpdate({ textureopacity: this.value })
+        runBackgroundUpdate({ textureopacity: this.value })
     })
 
     paramId('i_blur').addEventListener('pointerdown', function (this: HTMLInputElement): void {
-        backgroundUpdate({ blurenter: true })
+        runBackgroundUpdate({ blurenter: true })
     })
 
     paramId('i_blur').addEventListener('input', function (this: HTMLInputElement): void {
-        backgroundUpdate({ blur: this.value })
+        runBackgroundUpdate({ blur: this.value })
     })
 
     paramId('i_bright').addEventListener('input', function (this: HTMLInputElement): void {
-        backgroundUpdate({ bright: this.value })
+        runBackgroundUpdate({ bright: this.value })
     })
 
     // Time and date
 
     onclickdown(paramId('i_time'), (_, target) => {
         document.getElementById('time')?.classList.toggle('hidden', !target.checked)
-        storage.sync.set({ time: target.checked })
+        runSettingsTask('Clock visibility update', () => storage.sync.set({ time: target.checked }))
     })
 
     onclickdown(paramId('i_seconds'), (_, target) => {
@@ -482,7 +455,10 @@ function initOptionsEvents(): void {
     })
 
     paramId('i_timehide').addEventListener('change', function (this: HTMLInputElement): void {
-        hideElements({ clock: this.value === 'clock', date: this.value === 'date' }, { isEvent: true })
+        runSettingsTask(
+            'Clock element visibility update',
+            () => hideElements({ clock: this.value === 'clock', date: this.value === 'date' }, { isEvent: true }),
+        )
     })
 
     // Custom fonts
@@ -506,25 +482,23 @@ function initOptionsEvents(): void {
     // Sync
 
     paramId('i_synctype').addEventListener('change', function (this): void {
-        synchronization(undefined, { type: this.value })
+        runSettingsTask('Synchronization provider update', () => synchronization(undefined, { type: this.value }))
     })
 
     paramId('f_gistsync').addEventListener('submit', function (this, event): void {
         event.preventDefault()
-        synchronization(undefined, { gistToken: paramId('i_gistsync').value })
-    })
-
-    onclickdown(paramId('b_storage-persist'), async () => {
-        const persists = await navigator.storage.persist()
-        synchronization(undefined, { firefoxPersist: persists })
+        runSettingsTask(
+            'Synchronization token update',
+            () => synchronization(undefined, { gistToken: paramId('i_gistsync').value }),
+        )
     })
 
     onclickdown(paramId('b_gistup'), () => {
-        synchronization(undefined, { up: true })
+        runSettingsTask('Manual synchronization upload', () => synchronization(undefined, { up: true }))
     })
 
     armConfirmOverwrite(paramId('b_gistdown'), () => {
-        synchronization(undefined, { down: true })
+        runSettingsTask('Manual synchronization download', () => synchronization(undefined, { down: true }))
     })
 
     // Settings managment
@@ -542,7 +516,7 @@ function initOptionsEvents(): void {
     })
 
     paramId('b_file-save').addEventListener('click', () => {
-        saveImportFile()
+        runSettingsTask('Settings export', saveImportFile)
     })
 
     paramId('file-import').addEventListener('change', function (this): void {
@@ -550,7 +524,7 @@ function initOptionsEvents(): void {
     })
 
     paramId('b_settings-copy').addEventListener('click', () => {
-        copySettings()
+        runSettingsTask('Settings copy', copySettings)
     })
 
     // input 触发的 'input' 分支会跑 chrome.bookmarks.getTree + 全表 stringify。
@@ -561,32 +535,32 @@ function initOptionsEvents(): void {
     })
 
     paramId('settings-data').addEventListener('focus', (event) => {
-        toggleSettingsChangesButtons(event.type)
+        runSettingsTask('Settings editor focus update', () => toggleSettingsChangesButtons(event.type))
     })
 
     paramId('settings-data').addEventListener('blur', (event) => {
-        toggleSettingsChangesButtons(event.type)
+        runSettingsTask('Settings editor blur update', () => toggleSettingsChangesButtons(event.type))
     })
 
     onclickdown(paramId('b_settings-cancel'), () => {
-        toggleSettingsChangesButtons('cancel')
+        runSettingsTask('Settings editor cancel', () => toggleSettingsChangesButtons('cancel'))
     })
 
-    onclickdown(paramId('b_settings-apply'), () => {
+    armConfirmOverwrite(paramId('b_settings-apply'), () => {
         const val = paramId('settings-data').value
-        importSettings(parse<Partial<Sync>>(val) ?? {})
+        runSettingsTask('Settings import', () => importSettings(parse<Partial<Sync>>(val) ?? {}))
     })
 
     onclickdown(paramId('b_reset-first'), () => {
-        resetSettings('first')
+        runSettingsTask('Settings reset confirmation', () => resetSettings('first'))
     })
 
     onclickdown(paramId('b_reset-apply'), () => {
-        resetSettings('yes')
+        runSettingsTask('Settings reset', () => resetSettings('yes'))
     })
 
     onclickdown(paramId('b_reset-cancel'), () => {
-        resetSettings('no')
+        runSettingsTask('Settings reset cancellation', () => resetSettings('no'))
     })
 
     // Other
@@ -657,10 +631,156 @@ function translateAriaLabels(): void {
     }
 }
 
+function initUnsplashAccessKey(accessKey?: string): void {
+    const input = paramId('i_unsplash-access-key')
+    const normalized = normalizeUnsplashAccessKey(accessKey)
+
+    unsplashAccessKeyAvailable = normalized !== undefined
+    input.value = normalized ?? ''
+    input.removeAttribute('aria-invalid')
+    resetUnsplashAccessKeyVisibility()
+    paramId('b_unsplash-access-key-remove').disabled = !unsplashAccessKeyAvailable
+    paramId('b_unsplash-access-key-toggle').disabled = input.value.length === 0
+    updateUnsplashAccessKeyVisibility()
+}
+
+function initUnsplashAccessKeyEvents(): void {
+    const form = paramId('f_unsplash-access-key') as unknown as HTMLFormElement
+    const input = paramId('i_unsplash-access-key')
+    const toggle = paramId('b_unsplash-access-key-toggle')
+    const remove = paramId('b_unsplash-access-key-remove')
+
+    input.addEventListener('input', () => {
+        input.setCustomValidity('')
+        input.removeAttribute('aria-invalid')
+        toggle.disabled = input.value.length === 0
+        setUnsplashAccessKeyStatus()
+    })
+
+    toggle.addEventListener('click', () => {
+        const reveal = input.type === 'password'
+        input.type = reveal ? 'text' : 'password'
+        toggle.setAttribute('aria-pressed', String(reveal))
+        setUnsplashAccessKeyToggleText(reveal)
+        input.focus()
+    })
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault()
+        const accessKey = normalizeUnsplashAccessKey(input.value)
+
+        if (!accessKey) {
+            const message = tradThis('Enter a valid Unsplash Access Key.')
+            input.setCustomValidity(message)
+            input.setAttribute('aria-invalid', 'true')
+            setUnsplashAccessKeyStatus('Enter a valid Unsplash Access Key.', 'error')
+            input.focus()
+            return
+        }
+
+        runSettingsTask('Unsplash Access Key update', async () => {
+            setUnsplashAccessKeyControlsDisabled(true)
+            try {
+                await storage.local.set({ unsplashAccessKey: accessKey })
+                input.value = accessKey
+                input.setCustomValidity('')
+                input.removeAttribute('aria-invalid')
+                unsplashAccessKeyAvailable = true
+                resetUnsplashAccessKeyVisibility()
+                updateUnsplashAccessKeyVisibility()
+                setUnsplashAccessKeyStatus('Unsplash Access Key saved.', 'success')
+                dispatchUnsplashAccessKeyChange(true)
+            } catch (err) {
+                setUnsplashAccessKeyStatus('Could not save the Unsplash Access Key.', 'error')
+                throw err
+            } finally {
+                setUnsplashAccessKeyControlsDisabled(false)
+            }
+        })
+    })
+
+    remove.addEventListener('click', () => {
+        runSettingsTask('Unsplash Access Key removal', async () => {
+            setUnsplashAccessKeyControlsDisabled(true)
+            try {
+                await storage.local.remove('unsplashAccessKey')
+                input.value = ''
+                input.setCustomValidity('')
+                input.removeAttribute('aria-invalid')
+                unsplashAccessKeyAvailable = false
+                resetUnsplashAccessKeyVisibility()
+                updateUnsplashAccessKeyVisibility()
+                setUnsplashAccessKeyStatus('Unsplash Access Key removed.', 'success')
+                dispatchUnsplashAccessKeyChange(false)
+            } catch (err) {
+                setUnsplashAccessKeyStatus('Could not remove the Unsplash Access Key.', 'error')
+                throw err
+            } finally {
+                setUnsplashAccessKeyControlsDisabled(false)
+            }
+        })
+    })
+}
+
+function updateUnsplashAccessKeyVisibility(): void {
+    const isUnsplash = paramId('i_type').value === 'images' &&
+        paramId('i_background-provider').value.startsWith('unsplash-')
+    document.getElementById('unsplash-access-key-option')?.classList.toggle('shown', isUnsplash)
+    document.getElementById('unsplash-access-key-required')?.classList.toggle(
+        'shown',
+        isUnsplash && !unsplashAccessKeyAvailable,
+    )
+}
+
+function setUnsplashAccessKeyStatus(
+    message?: string,
+    state?: 'success' | 'error',
+): void {
+    const status = document.getElementById('unsplash-access-key-status')
+    if (!status) return
+
+    status.textContent = message ? tradThis(message) : ''
+    status.classList.toggle('shown', message !== undefined)
+    status.classList.toggle('success', state === 'success')
+    status.classList.toggle('error', state === 'error')
+}
+
+function setUnsplashAccessKeyControlsDisabled(disabled: boolean): void {
+    const input = paramId('i_unsplash-access-key')
+    input.disabled = disabled
+    paramId('b_unsplash-access-key-save').disabled = disabled
+    paramId('b_unsplash-access-key-remove').disabled = disabled || !unsplashAccessKeyAvailable
+    paramId('b_unsplash-access-key-toggle').disabled = disabled || input.value.length === 0
+}
+
+function resetUnsplashAccessKeyVisibility(): void {
+    const input = paramId('i_unsplash-access-key')
+    const toggle = paramId('b_unsplash-access-key-toggle')
+
+    input.type = 'password'
+    toggle.setAttribute('aria-pressed', 'false')
+    setUnsplashAccessKeyToggleText(false)
+}
+
+function setUnsplashAccessKeyToggleText(revealed: boolean): void {
+    const toggle = paramId('b_unsplash-access-key-toggle')
+    const label = revealed ? 'Hide Access Key' : 'Show Access Key'
+    const shortLabel = revealed ? 'Hide' : 'Show'
+
+    toggle.setAttribute('title', tradThis(label))
+    toggle.setAttribute('aria-label', tradThis(label))
+    const span = toggle.querySelector('span')
+    if (span) span.textContent = tradThis(shortLabel)
+}
+
+function dispatchUnsplashAccessKeyChange(available: boolean): void {
+    document.dispatchEvent(new CustomEvent('unsplash-key-change', { detail: { available } }))
+}
+
 async function switchLangs(nextLang: Langs): Promise<void> {
     await toggleTraduction(nextLang)
 
-    storage.sync.set({ lang: nextLang })
+    await storage.sync.set({ lang: nextLang })
 
     document.documentElement.setAttribute('lang', nextLang)
 
@@ -675,14 +795,6 @@ async function switchLangs(nextLang: Langs): Promise<void> {
     translatePlaceholders()
     translateAriaLabels()
     refreshCustomSelects(document.getElementById('settings') ?? document)
-}
-
-function showall(val: boolean, event: boolean): void {
-    document.getElementById('settings')?.classList.toggle('all', val)
-
-    if (event) {
-        storage.sync.set({ showall: val })
-    }
 }
 
 function settingsFooter(): void {
@@ -707,7 +819,6 @@ function settingsFooter(): void {
 function settingsDrawerBar(): void {
     const drawerDragDebounce = debounce(() => {
         ;(document.getElementById('settings-footer') as HTMLDivElement).style.removeProperty('padding')
-        drawerDragEvents()
     }, 600)
 
     globalThis.addEventListener('resize', () => {
@@ -831,7 +942,7 @@ async function copySettings(): Promise<void> {
         const data = await getLatestExportData()
         const json = stringify(data)
 
-        navigator.clipboard.writeText(json)
+        await navigator.clipboard.writeText(json)
 
         if (copybtn) {
             copybtn.textContent = tradThis('Copied!')
@@ -839,12 +950,13 @@ async function copySettings(): Promise<void> {
                 copybtn.textContent = tradThis('Copy')
             }, 1000)
         }
-    } catch (_error) {
-        // ...
+    } catch (error) {
+        console.warn('Copy settings failed', error)
     }
 }
 
 async function getLatestExportData(): Promise<SyncSnapshot> {
+    await flushPendingDebounces()
     await waitForPendingBackgroundWrites()
     return await buildBookmarkSnapshotFromConfig(await storage.sync.get())
 }
@@ -870,6 +982,7 @@ async function saveImportFile(): Promise<void> {
     a.setAttribute('tabindex', '-1')
     a.setAttribute('download', `bonjourr-${CURRENT_VERSION} ${yyyymmdd} ${hhmmss}.json`)
     a.click()
+    setTimeout(() => URL.revokeObjectURL(href), 1000)
 }
 
 function loadImportFile(target: HTMLInputElement): void {
@@ -901,43 +1014,85 @@ function loadImportFile(target: HTMLInputElement): void {
 
     reader.onload = () => {
         if (typeof reader.result !== 'string') {
-            return false
+            console.warn('Imported settings file did not contain text')
+            target.value = ''
+            return
         }
 
         const importData = decodeExportFile(reader.result)
 
         // data has at least one valid key from default sync storage => import
         if (Object.keys(SYNC_DEFAULT).filter((key) => key in importData).length > 0) {
-            importSettings(importData as Sync)
+            runSettingsTask('Imported settings file', () => importSettings(importData as Sync))
         }
+
+        target.value = ''
+    }
+    reader.onerror = () => {
+        console.warn('Cannot read imported settings file', reader.error)
+        target.value = ''
+    }
+    reader.onabort = () => {
+        target.value = ''
     }
     reader.readAsText(file)
 }
 
 async function importSettings(imported: Partial<Sync>): Promise<void> {
     try {
-        const current = await storage.sync.get()
+        assertValidSyncInput(imported)
 
-        // #308 - verify font subset before importing
+        // #308 - verify font subset before entering the destructive lock.
         if (imported?.font?.system === false) {
             const family = imported?.font?.family
             const lang = imported?.lang
             const correctSubset = await fontIsAvailableInSubset(lang, family)
-
-            if (correctSubset === false) {
-                imported.font.family = ''
-            }
+            if (correctSubset === false) imported.font.family = ''
         }
 
-        const importedData = mergeImportedConfig(structuredClone(SYNC_DEFAULT), imported)
+        await withSynchronizationLock(async () => {
+            await flushPendingDebounces()
+            await storage.flushWrites()
+            await storage.runExclusive(async (syncAccess) => {
+                const current = await syncAccess.get()
 
-        await replaceBookmarksFromConfig(current, importedData)
-        holdBookmarkRefreshes()
-        await resetBackgroundRuntimeCache(importedData.backgrounds)
+                const importedData = mergeImportedConfig(structuredClone(current), imported)
+                assertValidNormalizedSync(importedData)
+                const importedLinks = imported.links as Record<string, unknown> | undefined
+                const includesBookmarkSnapshot = Array.isArray(importedLinks?.folders) &&
+                    Array.isArray(importedLinks?.favorites)
+                const currentSnapshot = globalThis.chrome?.bookmarks
+                    ? await buildBookmarkSnapshotFromConfig(current)
+                    : syncWithBookmarks(structuredClone(current))
+                await saveExternalConfigSnapshot(currentSnapshot, 'before-settings-import')
 
-        storage.stageSyncForReload(importedData)
-        await storage.sync.clear()
-        await storage.sync.set(importedData)
+                storage.stageSyncForReload(importedData)
+                try {
+                    if (includesBookmarkSnapshot) {
+                        await replaceBookmarksFromConfig(currentSnapshot, importedData)
+                    }
+                    await syncAccess.replace(importedData)
+                    storage.clearStagedSyncForReload()
+                } catch (error) {
+                    try {
+                        storage.stageSyncForReload(current)
+                        if (includesBookmarkSnapshot) {
+                            await replaceBookmarksFromConfig(importedData, currentSnapshot)
+                        }
+                        await syncAccess.replace(current)
+                        storage.clearStagedSyncForReload()
+                    } catch (rollbackError) {
+                        throw new AggregateError([error, rollbackError], 'Import and automatic rollback both failed')
+                    }
+                    throw error
+                }
+                cancelPendingDebounces()
+                await resetBackgroundRuntimeCache(importedData.backgrounds).catch((err) => {
+                    console.warn('Imported background cache will be rebuilt after reload', err)
+                })
+                markConfigurationChanged()
+            })
+        })
 
         fadeOut()
     } catch (err) {
@@ -947,29 +1102,88 @@ async function importSettings(imported: Partial<Sync>): Promise<void> {
 
 async function resetSettings(action: 'yes' | 'no' | 'first'): Promise<void> {
     if (action === 'yes') {
-        // 直接清空 Chrome 书签栏，不用 replaceBookmarksFromConfig。
-        // replaceBookmarksFromConfig 逐项遍历删除，几十个书签就要跑几十次 API，
-        // 用户看到的反应就是"卡住了不动"。这里直接删 toolbar 的子节点，一次到位。
-        try {
-            holdBookmarkRefreshes()
-            const tree = await EXTENSION?.bookmarks?.getTree()
-            const toolbar = tree?.[0]?.children?.[0]
-            if (toolbar?.children) {
-                for (const child of toolbar.children) {
-                    await EXTENSION!.bookmarks!.removeTree(child.id)
+        await withSynchronizationLock(async () => {
+            await flushPendingDebounces()
+            cancelPendingDebounces()
+            await storage.flushWrites()
+            await storage.runExclusive(async (syncAccess) => {
+                const current = await syncAccess.get()
+                await saveConfigSnapshot(current, 'before-settings-reset')
+                try {
+                    await resetBackgroundRuntimeCache(SYNC_DEFAULT.backgrounds)
+                    await syncAccess.clearAll()
+                } catch (error) {
+                    await resetBackgroundRuntimeCache(current.backgrounds)
+                    throw error
                 }
-            }
-        } catch (_) {
-            // best effort
-        }
-        await resetBackgroundRuntimeCache(SYNC_DEFAULT.backgrounds)
-        await storage.clearall()
+            })
+        })
         fadeOut()
         return
     }
 
     document.getElementById('reset-first')?.classList.toggle('shown', action === 'no')
     document.getElementById('reset-conf')?.classList.toggle('shown', action === 'first')
+}
+
+function markConfigurationChanged(): void {
+    globalThis.dispatchEvent(new Event('bonjourr-sync-write'))
+}
+
+async function renderSnapshotsList(): Promise<void> {
+    const container = document.getElementById('snapshots-list')
+    if (!container) return
+
+    const snapshots = await getConfigSnapshots()
+    container.replaceChildren()
+
+    for (let index = 0; index < snapshots.length; index++) {
+        const snapshot = snapshots[index]
+        const item = document.createElement('div')
+        const info = document.createElement('div')
+        const time = document.createElement('time')
+        const reason = document.createElement('span')
+        const button = document.createElement('button')
+
+        item.className = 'wrapper snapshot-item'
+        info.className = 'snapshot-info'
+        time.className = 'snapshot-time'
+        time.dateTime = snapshot.timestamp
+        time.textContent = new Date(snapshot.timestamp).toLocaleString()
+        reason.className = 'snapshot-reason'
+        reason.textContent = snapshotReasonLabel(snapshot.reason)
+        info.append(time, reason)
+        button.className = 'param-btn trn'
+        button.textContent = tradThis('Restore')
+        onclickdown(button, async () => {
+            button.disabled = true
+            try {
+                if (await restoreConfigSnapshot(index)) fadeOut()
+            } catch (err) {
+                console.warn('Snapshot restore failed', err)
+                button.disabled = false
+            }
+        })
+        item.append(info, button)
+        container.appendChild(item)
+    }
+}
+
+function snapshotReasonLabel(reason: string): string {
+    switch (reason) {
+        case 'before-settings-import':
+            return tradThis('Import')
+        case 'before-settings-reset':
+            return tradThis('Reset all settings')
+        case 'before-snapshot-restore':
+            return tradThis('Restore')
+        case 'before-remote-overwrite':
+            return tradThis('Send')
+        case 'before-sync-download':
+            return tradThis('Get')
+        default:
+            return reason.replaceAll(/[-_]+/g, ' ').replace(/^./, (first) => first.toUpperCase())
+    }
 }
 
 export async function updateSettingsJson(data?: Sync | SyncSnapshot): Promise<void> {
@@ -996,23 +1210,33 @@ export async function updateSettingsJson(data?: Sync | SyncSnapshot): Promise<vo
 function updateSettingsEvent(): void {
     // On settings changes, update export code
     // beforeunload stuff
-    const storageUpdate = () => updateSettingsJson()
-    const removeListener = () => chrome.storage.onChanged.removeListener(storageUpdate)
+    const refreshSettingsJson = debounce(() => updateSettingsJson(), 100)
+    const localStorageUpdate = (event: Event): void => {
+        if (!(event instanceof StorageEvent) || event.key === null || event.key === 'bonjourr') {
+            refreshSettingsJson()
+        }
+    }
+    const webextStorageUpdate = (changes: Record<string, chrome.storage.StorageChange>): void => {
+        if (changes.syncStorage) refreshSettingsJson()
+    }
 
     if (PLATFORM === 'online') {
-        globalThis.addEventListener('storage', storageUpdate)
+        globalThis.addEventListener('storage', localStorageUpdate)
     } else {
-        chrome.storage.onChanged.addListener(storageUpdate)
-        globalThis.addEventListener('beforeunload', removeListener, { once: true })
+        chrome.storage.onChanged.addListener(webextStorageUpdate)
+        globalThis.addEventListener('beforeunload', () => {
+            refreshSettingsJson.cancel()
+            chrome.storage.onChanged.removeListener(webextStorageUpdate)
+        }, { once: true })
     }
 }
 
 async function toggleSettingsChangesButtons(action: string): Promise<void> {
     const textarea = paramId('settings-data')
-    const data = await getLatestExportData()
     let hasChanges = false
 
     if (action === 'input') {
+        const data = await getLatestExportData()
         const current = stringify(data)
         let user = ''
 
@@ -1032,6 +1256,7 @@ async function toggleSettingsChangesButtons(action: string): Promise<void> {
     }
 
     if (action === 'cancel') {
+        const data = await getLatestExportData()
         textarea.value = stringify(data)
         hasChanges = false
     }

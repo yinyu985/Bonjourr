@@ -50,7 +50,7 @@ aside.init .dropdown {
     transition: max-height 0.35s var(--ease-out-expo), padding 0.25s, margin 0.25s, visibility 0s 0.35s;
 }
 
-.all .as,
+.as:not(.as_provider),
 .dropdown.shown {
     visibility: visible;
     transition: max-height 0.35s var(--ease-out-expo), padding 0.25s, margin 0.25s, visibility 0s 0s;

@@ -24,3 +24,45 @@
     opacity: 1;
     text-decoration: underline;
 }
+
+#background-attribution {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    z-index: 1;
+    max-width: calc(100vw - 160px);
+    padding: 1px 8px;
+    overflow: hidden;
+    border-radius: 6px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    text-overflow: ellipsis;
+    text-shadow: 1px 2px 6px rgba(0, 0, 0, var(--text-shadow-alpha));
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+#background-attribution[hidden] {
+    display: none;
+}
+
+#background-attribution a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.55);
+    text-underline-offset: 2px;
+}
+
+#background-attribution a:hover {
+    text-decoration-color: currentColor;
+}
+
+@media screen and (max-width: 600px) {
+    #background-attribution {
+        bottom: 64px;
+        max-width: calc(100vw - 32px);
+    }
+}

@@ -2,6 +2,80 @@
     width: 100%;
 }
 
+.unsplash-access-key-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding-block: 5px;
+}
+
+#f_unsplash-access-key {
+    display: grid;
+    width: 100%;
+    gap: 6px;
+}
+
+#f_unsplash-access-key > div {
+    width: 100%;
+}
+
+#f_unsplash-access-key .unsplash-access-key-input {
+    display: flex;
+    gap: 4px;
+}
+
+#i_unsplash-access-key {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    font-family: var(--monospace-font-family);
+}
+
+#f_unsplash-access-key button {
+    width: auto;
+    max-width: none;
+    padding-inline: 0.65em;
+    opacity: 1;
+    visibility: visible;
+}
+
+#f_unsplash-access-key button span {
+    width: auto;
+}
+
+.unsplash-access-key-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.unsplash-access-key-message {
+    display: block;
+    padding: 3px 2px 5px;
+    color: var(--color-light-text);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+#unsplash-access-key-required,
+#unsplash-access-key-status {
+    display: none;
+}
+
+#unsplash-access-key-required.shown,
+#unsplash-access-key-status.shown {
+    display: block;
+}
+
+#unsplash-access-key-required,
+#unsplash-access-key-status.error {
+    color: orange;
+}
+
+#unsplash-access-key-status.success {
+    color: var(--color-green);
+}
+
 #background-local-actions > div {
     display: flex;
     gap: 8px;

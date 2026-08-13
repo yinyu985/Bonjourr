@@ -8,7 +8,7 @@ export async function setTranslationCache(language: string, local?: Local): Prom
     const lang = countryCodeToLanguageCode(language)
 
     if (lang === 'en') {
-        storage.local.remove('translations')
+        await storage.local.remove('translations')
         trns = undefined
         return
     }
@@ -20,7 +20,7 @@ export async function setTranslationCache(language: string, local?: Local): Prom
         trns = local.translations
     } else {
         trns = await (await fetch(`./_locales/${lang}/translations.json`)).json()
-        storage.local.set({ translations: trns })
+        await storage.local.set({ translations: trns })
     }
 
     currentTrnsLang = lang

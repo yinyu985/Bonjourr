@@ -1,6 +1,6 @@
 import './init.test.ts'
 
-import { assert, assertEquals, assertThrows } from '@std/assert'
+import { assert, assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import {
     getReadableTextColor,
     hexToHSL,
@@ -12,6 +12,9 @@ import {
 import { parse } from '../src/scripts/utils/parse.ts'
 import { stringify } from '../src/scripts/utils/stringify.ts'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
+import { buildNativeFaviconUrl, DEFAULT_FAVICON, getDefaultIcon } from '../src/scripts/features/links/helpers.ts'
+import { darkmode, favicon } from '../src/scripts/features/others.ts'
+import { onclickdown } from '../src/scripts/utils/clickdown.ts'
 
 // parse
 
@@ -30,6 +33,20 @@ Deno.test('parse returns undefined for empty string', () => {
 Deno.test('parse handles arrays', () => {
     const result = parse<number[]>('[1,2,3]')
     assertEquals(result, [1, 2, 3])
+})
+
+Deno.test('onclickdown invokes checkbox actions once across pointerdown and click', () => {
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    let calls = 0
+    onclickdown(checkbox, () => {
+        calls += 1
+    })
+
+    checkbox.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    checkbox.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    assertEquals(calls, 1)
 })
 
 // stringify
@@ -71,6 +88,108 @@ Deno.test('stringMaxSize truncates if over limit', () => {
 
 Deno.test('stringMaxSize handles exact boundary', () => {
     assertEquals(stringMaxSize('hello', 5), 'hello')
+})
+
+// favicons
+
+Deno.test('native favicon URL keeps bookmark domains inside the extension API', () => {
+    const icon = buildNativeFaviconUrl(
+        'https://private.example/account?secret=1',
+        'chrome-extension://extension-id/_favicon/',
+    )
+
+    assertStringIncludes(icon, 'chrome-extension://extension-id/_favicon/')
+    assertEquals(new URL(icon).searchParams.get('pageUrl'), 'https://private.example/account?secret=1')
+    assert(!icon.includes('duckduckgo.com'))
+})
+
+Deno.test('invalid favicon input uses the bundled fallback without a network URL', () => {
+    assertEquals(getDefaultIcon('not a URL'), DEFAULT_FAVICON)
+})
+
+Deno.test('clearing a custom tab favicon restores the original icon', () => {
+    const original = document.querySelector('#favicon')
+    const icon = document.createElement('link')
+    icon.id = 'favicon'
+    icon.href = 'https://example.com/default.svg'
+    original?.replaceWith(icon)
+    if (!original) document.head.appendChild(icon)
+
+    favicon('🌟')
+    assert(icon.href.startsWith('data:image/svg+xml,'))
+    favicon('')
+    assertEquals(icon.href, 'https://example.com/default.svg')
+
+    icon.remove()
+    if (original) document.head.appendChild(original)
+})
+
+Deno.test('default font uses the local system stack', () => {
+    assertEquals(SYNC_DEFAULT.font.family, '')
+    assertEquals(SYNC_DEFAULT.font.system, true)
+})
+
+Deno.test('system theme listener is removed before a fixed theme is applied', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'matchMedia')
+    const listeners = new Set<(event: MediaQueryListEvent) => void>()
+    const query = {
+        matches: true,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addEventListener: (_type: string, listener: EventListenerOrEventListenerObject): void => {
+            listeners.add(listener as (event: MediaQueryListEvent) => void)
+        },
+        removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject): void => {
+            listeners.delete(listener as (event: MediaQueryListEvent) => void)
+        },
+    } as unknown as MediaQueryList
+
+    Object.defineProperty(globalThis, 'matchMedia', {
+        configurable: true,
+        value: (): MediaQueryList => query,
+    })
+
+    try {
+        darkmode('system')
+        assertEquals(document.documentElement.dataset.theme, 'dark')
+        assertEquals(listeners.size, 1)
+
+        darkmode('disable')
+        assertEquals(document.documentElement.dataset.theme, 'light')
+        assertEquals(listeners.size, 0)
+
+        for (const listener of listeners) listener({ matches: true } as MediaQueryListEvent)
+        assertEquals(document.documentElement.dataset.theme, 'light')
+    } finally {
+        darkmode('disable')
+        if (descriptor) {
+            Object.defineProperty(globalThis, 'matchMedia', descriptor)
+        } else {
+            Reflect.deleteProperty(globalThis, 'matchMedia')
+        }
+    }
+})
+
+Deno.test('every locale contains the complete non-empty English translation key set', () => {
+    const localesRoot = new URL('../_locales/', import.meta.url)
+    const english = JSON.parse(Deno.readTextFileSync(new URL('en/translations.json', localesRoot))) as Record<
+        string,
+        string
+    >
+    const expectedKeys = Object.keys(english).sort()
+
+    for (const entry of Deno.readDirSync(localesRoot)) {
+        if (!entry.isDirectory || entry.name === 'en') continue
+
+        const translations = JSON.parse(
+            Deno.readTextFileSync(new URL(`${entry.name}/translations.json`, localesRoot)),
+        ) as Record<string, string>
+        assertEquals(Object.keys(translations).sort(), expectedKeys, `${entry.name} translation keys differ`)
+        assert(
+            Object.values(translations).every((value) => typeof value === 'string' && value.trim().length > 0),
+            `${entry.name} contains an empty translation`,
+        )
+    }
 })
 
 // opacityFromHex

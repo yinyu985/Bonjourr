@@ -5,7 +5,6 @@ takes too long to implement, but we can at least do it manually !
 
 ## General
 
-- Show all settings
 - Langues
 - Dark mode
   - Toggle

@@ -1,6 +1,6 @@
 import './init.test.ts'
 
-import { assertEquals, assertNotEquals } from '@std/assert'
+import { assertEquals, assertNotEquals, assertRejects } from '@std/assert'
 import { storage } from '../src/scripts/storage.ts'
 import { LOCAL_DEFAULT, SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import { buildBookmarkSnapshotFromConfig } from '../src/scripts/features/links/bookmarks.ts'
@@ -15,6 +15,7 @@ const {
     applyDownloadedSync,
     doAutoUpload,
     remoteFreshness,
+    replaceRemoteIdentity,
     resetSyncRuntimeForTests,
     startupPayloadDecision,
     syncPayloadHash,
@@ -183,6 +184,20 @@ Deno.test({
 })
 
 Deno.test({
+    name: 'remote freshness fails closed for a non-UTC or malformed local baseline',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const freshness = await remoteFreshness(
+            localSyncState({ remoteLastSyncedAt: '2026-01-01T00:00:00' }),
+            testProvider({ fetchUpdatedAt: () => Promise.resolve('2026-01-01T00:00:00Z') }),
+        )
+
+        assertEquals(freshness, 'unknown')
+    },
+})
+
+Deno.test({
     name: 'remote freshness is current without a bound remote resource',
     sanitizeOps: false,
     sanitizeResources: false,
@@ -193,6 +208,121 @@ Deno.test({
         )
 
         assertEquals(freshness, 'current')
+    },
+})
+
+Deno.test({
+    name: 'remote freshness fails closed for a bound resource without a baseline',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const freshness = await remoteFreshness(
+            localSyncState({ remoteLastSyncedAt: undefined }),
+            testProvider(),
+        )
+
+        assertEquals(freshness, 'unknown')
+    },
+})
+
+Deno.test({
+    name: 'stale runtime freshness cannot upload a newly bound resource without a baseline',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const originalFetch = globalThis.fetch
+        const remote = emptyBookmarkSnapshot()
+        remote.lang = 'ja'
+        const requests: string[] = []
+
+        await storage.sync.clear()
+        await storage.local.clear()
+        await storage.sync.set(structuredClone(SYNC_DEFAULT))
+        await storage.local.set({
+            syncType: 'gist',
+            gistToken: 'new-account-token',
+            remoteResourceId: 'new-account-resource',
+            remoteLastSyncedAt: undefined,
+            localConfigUpdatedAt: new Date().toISOString(),
+        })
+        // Simulate an old tab whose in-memory flag predates the token change.
+        resetSyncRuntimeForTests('old-account-baseline')
+
+        globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+            const method = init?.method ?? 'GET'
+            requests.push(`${method} ${String(input)}`)
+            return Promise.resolve(jsonResponse({
+                updated_at: '2026-01-01T00:00:00.000Z',
+                files: {
+                    'bonjourr-export.json': {
+                        filename: 'bonjourr-export.json',
+                        type: 'application/json',
+                        language: 'JSON',
+                        raw_url: 'https://gist.githubusercontent.com/user/id/raw/file',
+                        size: JSON.stringify(remote).length,
+                        content: JSON.stringify(remote),
+                    },
+                },
+            }))
+        }) as typeof fetch
+
+        try {
+            await doAutoUpload()
+
+            assertEquals(requests.some((request) => request.startsWith('PATCH ')), false)
+            assertEquals((await storage.local.get()).remoteLastSyncedAt, '')
+        } finally {
+            globalThis.fetch = originalFetch
+            resetSyncRuntimeForTests()
+            await storage.sync.clear()
+            await storage.local.clear()
+        }
+    },
+})
+
+Deno.test({
+    name: 'new remote identity is not persisted when old baseline cleanup fails',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const originalRemove = storage.local.remove
+        await storage.local.clear()
+        await storage.local.set({
+            syncType: 'gist',
+            gistToken: 'old-token',
+            remoteResourceId: 'old-resource',
+            remoteLastSyncedAt: '2026-01-01T00:00:00.000Z',
+            lastSyncedPayload: 'old-payload',
+        })
+        storage.local.remove = () => Promise.reject(new Error('injected baseline cleanup failure'))
+
+        try {
+            await assertRejects(
+                () =>
+                    replaceRemoteIdentity(
+                        testProvider({
+                            clearPatch: () => [
+                                'remoteResourceId',
+                                'remoteLastSyncedAt',
+                                'remoteLastFetchedAt',
+                                'lastSyncedPayload',
+                            ],
+                        }),
+                        'new-token',
+                        'new-resource',
+                    ),
+                Error,
+                'baseline cleanup failure',
+            )
+
+            const local = await storage.local.get()
+            assertEquals(local.gistToken, 'old-token')
+            assertEquals(local.remoteResourceId, 'old-resource')
+            assertEquals(local.remoteLastSyncedAt, '2026-01-01T00:00:00.000Z')
+        } finally {
+            storage.local.remove = originalRemove
+            await storage.local.clear()
+        }
     },
 })
 
@@ -257,6 +387,7 @@ Deno.test({
             assertEquals(status?.textContent, formatStatusDate(uploadedAt))
             assertEquals(requests, [
                 'GET https://api.github.com/gists/abc123',
+                'GET https://api.github.com/gists/abc123',
                 'PATCH https://api.github.com/gists/abc123',
             ])
         } finally {
@@ -289,7 +420,7 @@ Deno.test({
         current.tabtitle = 'local-only-tab-title'
         await storage.sync.set(current)
 
-        const incoming: Partial<Sync> = structuredClone(SYNC_DEFAULT)
+        const incoming = emptyBookmarkSnapshot()
         incoming.lang = 'ja'
 
         const next = await applyDownloadedSync(current, incoming)
@@ -310,7 +441,7 @@ Deno.test({
         sessionStorage.clear()
         await storage.sync.clear()
         const current = structuredClone(SYNC_DEFAULT)
-        const incoming = structuredClone(SYNC_DEFAULT)
+        const incoming = emptyBookmarkSnapshot()
         incoming.lang = 'de'
 
         const next = await applyDownloadedSync(current, incoming)
@@ -322,7 +453,7 @@ Deno.test({
 })
 
 Deno.test({
-    name: 'applyDownloadedSync stages a locked remote image for the reload startup',
+    name: 'applyDownloadedSync clears its staged reload snapshot after a successful commit',
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
@@ -333,7 +464,7 @@ Deno.test({
         const current = structuredClone(SYNC_DEFAULT)
         await storage.sync.set(current)
 
-        const incoming = structuredClone(SYNC_DEFAULT)
+        const incoming = emptyBookmarkSnapshot()
         incoming.backgrounds.type = 'images'
         incoming.backgrounds.frequency = 'pause'
         incoming.backgrounds.texture = { type: 'none' }
@@ -344,16 +475,17 @@ Deno.test({
         assertEquals(next.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
         assertEquals(localStorage.getItem('backgroundCache'), LOCKED_BACKGROUND_FULL_URL)
 
-        await storage.sync.clear()
-        await storage.sync.set(structuredClone(SYNC_DEFAULT))
+        const newer = structuredClone(SYNC_DEFAULT)
+        newer.lang = 'fr'
+        await storage.sync.replace(newer)
 
         const initialized = await storage.init()
         const saved = await storage.sync.get()
 
-        assertEquals(initialized.sync.backgrounds.type, 'images')
-        assertEquals(initialized.sync.backgrounds.frequency, 'pause')
-        assertEquals(initialized.sync.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
-        assertEquals(saved.backgrounds.pausedImage?.urls.full, LOCKED_BACKGROUND_FULL_URL)
+        assertEquals(initialized.sync.lang, 'fr')
+        assertEquals(initialized.sync.backgrounds.type, SYNC_DEFAULT.backgrounds.type)
+        assertEquals(saved.lang, 'fr')
+        assertEquals(saved.backgrounds.type, SYNC_DEFAULT.backgrounds.type)
 
         sessionStorage.clear()
         localStorage.removeItem('backgroundCache')
@@ -374,6 +506,12 @@ function syncWithNote(content: string, title = 'Untitled'): Sync {
         }],
     }
     return data
+}
+
+function emptyBookmarkSnapshot(): SyncSnapshot {
+    const sync = structuredClone(SYNC_DEFAULT) as SyncSnapshot
+    sync.links = { ...sync.links, folders: [], favorites: [], toolbarOrder: [] }
+    return sync
 }
 
 function syncWithFavoriteTitle(title: string): SyncSnapshot {
@@ -463,19 +601,22 @@ function formatStatusDate(isoDate: string): string {
     })
 }
 
-function bookmarkTreeWithFavoriteTitle(title: string): browser.bookmarks.BookmarkTreeNode[] {
+function bookmarkTreeWithFavoriteTitle(title: string): chrome.bookmarks.BookmarkTreeNode[] {
     return [{
         id: '0',
         title: '',
+        syncing: false,
         children: [{
             id: '1',
             title: 'Bookmarks Bar',
+            syncing: false,
             children: [{
                 id: 'bookmark-1',
                 parentId: '1',
                 title,
                 url: 'https://example.com',
                 dateAdded: 1,
+                syncing: false,
             }],
         }],
     }]

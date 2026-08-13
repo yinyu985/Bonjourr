@@ -1,7 +1,6 @@
 import type { BackgroundImage, Frequency, LinkElem, LinkNode } from './shared.ts'
 
 export interface Sync {
-    showall: boolean
     time: boolean
     links: LinksState
     textShadow: number
@@ -34,6 +33,8 @@ export interface LinksState {
 export interface BookmarkLinksState extends LinksState {
     folders: LinkFolder[]
     favorites: LinkElem[]
+    /** Snapshot-only order of top-level bookmark and folder IDs. */
+    toolbarOrder?: string[]
 }
 
 export interface SyncSnapshot extends Sync {

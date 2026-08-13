@@ -23,38 +23,29 @@ export function getPermissions(...args: string[]): Promise<boolean> {
     return promise
 }
 
-async function requestPermissions(args: string[]): Promise<boolean> {
-    switch (PLATFORM) {
-        case 'online': {
-            return true
-        }
-
-        case 'firefox': {
-            const hasPermission = await browser.permissions.contains({
-                permissions: [...args as browser._manifest.OptionalPermission[]],
-            })
-
-            if (hasPermission) {
-                return true
-            }
-
-            return await browser.permissions.request({
-                permissions: [...args as browser._manifest.OptionalPermission[]],
-            })
-        }
-
-        default: {
-            const hasPermission = await chrome.permissions.contains({
-                permissions: [...args as chrome.runtime.ManifestPermissions[]],
-            })
-
-            if (hasPermission) {
-                return true
-            }
-
-            return chrome.permissions.request({
-                permissions: [...args as chrome.runtime.ManifestPermissions[]],
-            }) ?? false
-        }
+/** Request only the HTTPS origin needed for a user-triggered remote download. */
+export function requestHostPermission(url: URL): Promise<boolean> {
+    if (url.protocol !== 'https:') {
+        return Promise.resolve(false)
     }
+    if (PLATFORM === 'online') {
+        return Promise.resolve(true)
+    }
+
+    return chrome.permissions.request({ origins: [`${url.origin}/*`] })
+}
+
+async function requestPermissions(args: string[]): Promise<boolean> {
+    if (PLATFORM === 'online') {
+        return true
+    }
+
+    const permissions = [...args as chrome.runtime.ManifestPermissions[]]
+    const hasPermission = await chrome.permissions.contains({ permissions })
+
+    if (hasPermission) {
+        return true
+    }
+
+    return chrome.permissions.request({ permissions }) ?? false
 }

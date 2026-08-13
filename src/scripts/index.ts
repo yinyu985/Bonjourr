@@ -15,8 +15,7 @@ import { operaExtensionExplainer } from './startup/opera.ts'
 import { setPotatoComputerMode } from './startup/potato.ts'
 import { userDate } from './shared/time.ts'
 import { onlineAndMobile } from './startup/online.ts'
-import { serviceWorker } from './startup/serviceworker.ts'
-import { settingsInit } from './settings.ts'
+import { settingsLoader } from './settings-loader.ts'
 import { userActions } from './events.ts'
 import { storage } from './storage.ts'
 
@@ -25,7 +24,7 @@ import { BROWSER, PLATFORM, SYSTEM_OS } from './defaults.ts'
 restoreBackgroundCache()
 
 // storage 写失败时显示 settings 顶部的 banner（永久显示直到用户重启或下次成功）。
-// 对应触发：localStorage 配额满、Safari 私密模式 quota=0、扩展存储被禁等。
+// 对应触发：localStorage 配额满、扩展存储被禁等。
 globalThis.addEventListener('bonjourr-storage-error', () => {
     settingsNotifications({ 'storage-error': true })
 })
@@ -48,7 +47,6 @@ function restoreBackgroundCache(): void {
 
 try {
     const startupPromise = startup()
-    serviceWorker()
     onlineAndMobile()
     startupPromise.catch((err) => {
         console.warn('Startup failed', err)
@@ -60,7 +58,14 @@ try {
 async function startup(): Promise<void> {
     const { sync, local } = await storage.init()
 
-    await setTranslationCache(sync.lang, local)
+    try {
+        await setTranslationCache(sync.lang, local)
+    } catch (err) {
+        // Localized labels are non-critical. A corrupt/missing locale cache
+        // must never prevent bookmarks, notes, settings, or recovery UI from
+        // starting; English source text remains usable as the fallback.
+        console.warn('Translation initialization failed; using source labels', err)
+    }
 
     displayInterface(undefined, sync)
     traduction(null, sync.lang)
@@ -80,7 +85,7 @@ async function startup(): Promise<void> {
 
     await quickLinks({ sync, local })
     notes(sync)
-    settingsInit(sync, local)
+    settingsLoader(sync, local)
     operaExtensionExplainer(local.operaExplained)
 
     document.documentElement.dataset.system = SYSTEM_OS as string

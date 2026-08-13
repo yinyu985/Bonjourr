@@ -1,5 +1,3 @@
-import { BROWSER } from '../defaults.ts'
-
 interface Suntime {
     sunrise: number
     sunset: number
@@ -10,33 +8,15 @@ let sunrise = 420
 let sunset = 1320
 let dusk = 60
 
-let userSetDate: Date
+let userTimezone = 'auto'
 
 export function userDate(timezone?: string): Date {
-    const hasSetDate = !timezone && userSetDate
-    const isAuto = !timezone || timezone === 'auto'
+    timezone ??= userTimezone
+    const isAuto = timezone === 'auto'
     let date = new Date()
-
-    if (hasSetDate) {
-        return userSetDate
-    }
 
     if (isAuto) {
         return date
-    }
-
-    /**
-     * AST & CST timezones seems to only work on chrome
-     * Do these timezones switch to daylight savings ?
-     * If yes, this fix below is wrong
-     */
-    if (BROWSER === 'firefox') {
-        if (timezone === 'CST') {
-            timezone = '-06:00'
-        }
-        if (timezone === 'AST') {
-            timezone = '-03:00'
-        }
     }
 
     try {
@@ -56,13 +36,13 @@ export function userDate(timezone?: string): Date {
 }
 
 export function setUserDate(timezone: string): void {
-    userSetDate = userDate(timezone)
+    userTimezone = timezone
 }
 
 export function daylightPeriod(time?: number): 'night' | 'noon' | 'evening' | 'day' {
     // noon & evening are + /- 60 min around sunrise/set
 
-    const mins = minutator(time ? new Date(time) : new Date())
+    const mins = minutator(time !== undefined ? new Date(time) : new Date())
 
     if (mins >= 0 && mins <= sunrise - 60) {
         return 'night'
@@ -107,7 +87,9 @@ export function needsChange(every: string, last: number): boolean {
     const nowDate = userDate()
     const lastDate = last !== undefined ? new Date(last) : nowDate
     const changed = {
-        date: nowDate.getDate() !== lastDate.getDate(),
+        date: nowDate.getFullYear() !== lastDate.getFullYear() ||
+            nowDate.getMonth() !== lastDate.getMonth() ||
+            nowDate.getDate() !== lastDate.getDate(),
         hour: nowDate.getHours() !== lastDate.getHours(),
     }
 
@@ -125,7 +107,7 @@ export function needsChange(every: string, last: number): boolean {
             return last === 0
 
         case 'period': {
-            return last === 0 ? true : daylightPeriod() !== daylightPeriod(+lastDate)
+            return last === 0 ? true : daylightPeriod(nowDate.getTime()) !== daylightPeriod(+lastDate)
         }
 
         default:

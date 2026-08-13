@@ -1,12 +1,6 @@
 import { BROWSER } from '../defaults.ts'
 
 export function setPotatoComputerMode(): void {
-    if (BROWSER === 'firefox' || BROWSER === 'safari') {
-        // firefox fingerprinting protection disables webgl info, smh
-        // safari always have hardware acceleration, no need for potato
-        return
-    }
-
     const fourHours = 1000 * 60 * 60 * 4
     const isPotato = localStorage.potato === 'yes'
     const expirationTime = Date.now() - Number.parseInt(localStorage.lastPotatoCheck ?? '0')

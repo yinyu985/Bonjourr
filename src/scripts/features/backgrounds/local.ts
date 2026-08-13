@@ -2,11 +2,11 @@ import { applyBackground, removeBackgrounds } from './index.ts'
 import { compressAsBlob, imageDimensions } from '../../shared/compress.ts'
 import { webkitRangeTrackColor } from '../../shared/dom.ts'
 import { needsChange } from '../../shared/time.ts'
-import { onclickdown } from 'clickdown/mod'
+import { onclickdown } from '../../utils/clickdown.ts'
 import { IS_MOBILE } from '../../defaults.ts'
 import { getCache } from '../../shared/cache.ts'
-import { hashcode } from '../../utils/hash.ts'
 import { storage } from '../../storage.ts'
+import { currentBackgroundRuntimeVersion, isCurrentBackgroundRuntimeVersion } from './cache.ts'
 
 import type { Background, BackgroundImage } from '../../../types/shared.ts'
 import type { BackgroundFile, Local } from '../../../types/local.ts'
@@ -17,6 +17,11 @@ type LocalFileData = {
     small: Blob
 }
 
+interface LocalBackgroundEntry {
+    id: string
+    file: File
+}
+
 type LocalFileOption =
     | 'size'
     | 'vertical'
@@ -25,6 +30,7 @@ type LocalFileOption =
 
 let thumbnailVisibilityObserver: IntersectionObserver
 let thumbnailSelectionObserver: MutationObserver
+const THUMBNAIL_LOAD_TIMEOUT_MS = 15_000
 
 // Update
 
@@ -32,8 +38,8 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
     try {
         const thumbnailsContainer = document.getElementById('thumbnails-container')
         const filesData: Record<string, LocalFileData> = {}
-        const newids: string[] = []
-        let thumbnail: HTMLElement | undefined
+        const newEntries = await uniqueLocalBackgroundEntries(filelist, local.backgroundFiles)
+        const newids = newEntries.map(({ id }) => id)
 
         if (filelist.length === 0) {
             return
@@ -43,17 +49,8 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
 
         // 1. Add empty thumbnails
 
-        for (const file of filelist) {
-            const infosString = file.size.toString() + file.name + file.lastModified.toString()
-            const hashString = hashcode(infosString).toString()
-
-            if (Object.keys(local.backgroundFiles).includes(hashString)) {
-                continue
-            }
-
-            newids.push(hashString)
-
-            thumbnail = createThumbnail(hashString)
+        for (const { id } of newEntries) {
+            const thumbnail = createThumbnail(id)
             thumbnailsContainer?.appendChild(thumbnail)
             thumbnailSelectionObserver?.observe(thumbnail, { attributes: true })
         }
@@ -66,13 +63,11 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
 
         // 2. Compress files for background & thumbnail use
 
-        for (let i = 0; i < newids.length; i++) {
-            const file = filelist[i]
-            const id = newids[i]
-
+        for (const { file, id } of newEntries) {
             // 2a. This finds a reasonable resolution for compression
 
-            const isLandscape = globalThis.screen.orientation.type === 'landscape-primary'
+            const isLandscape = globalThis.screen.orientation?.type?.startsWith('landscape') ??
+                globalThis.screen.width >= globalThis.screen.height
             const long = isLandscape ? globalThis.screen.width : globalThis.screen.height
             const short = isLandscape ? globalThis.screen.height : globalThis.screen.width
             const density = Math.min(2, globalThis.devicePixelRatio)
@@ -88,17 +83,21 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
 
             if (!isThumbnailSize) {
                 const objectUrl = URL.createObjectURL(file)
-                const dimensions = await imageDimensions(objectUrl)
-                const width = dimensions.width
-                const height = dimensions.height
-                const isHighRes = averagePixelHeight * 2 < width + height
-                const isCompressible = !isGif && !isResonablySized && isHighRes
+                try {
+                    const dimensions = await imageDimensions(objectUrl)
+                    const width = dimensions.width
+                    const height = dimensions.height
+                    const isHighRes = averagePixelHeight * 2 < width + height
+                    const isCompressible = !isGif && !isResonablySized && isHighRes
 
-                if (isCompressible) {
-                    full = await compressAsBlob(objectUrl, { size: averagePixelHeight, q: 0.8 })
+                    if (isCompressible) {
+                        full = await compressAsBlob(objectUrl, { size: averagePixelHeight, q: 0.8 })
+                    }
+
+                    small = await compressAsBlob(objectUrl, { size: 360, q: 0.4 })
+                } finally {
+                    URL.revokeObjectURL(objectUrl)
                 }
-
-                small = await compressAsBlob(objectUrl, { size: 360, q: 0.4 })
             }
 
             local.backgroundFiles[id] = {
@@ -116,9 +115,9 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
             }
 
             await saveFileToCache(id, filesData[id])
-            addThumbnailImage(id, local, filesData[id])
+            addThumbnailImage(id, filesData[id])
 
-            storage.local.set({ backgroundFiles: local.backgroundFiles })
+            await storage.local.set({ backgroundFiles: local.backgroundFiles })
         }
 
         // 3. Apply background
@@ -130,7 +129,7 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
             applyBackground(media)
             unselectAll()
 
-            thumbnail?.classList.add('selected')
+            document.getElementById(id)?.classList.add('selected')
         }
 
         // 4. Allow same file to be uploaded
@@ -142,7 +141,7 @@ export async function addLocalBackgrounds(filelist: FileList | File[], local: Lo
         }
     } catch (e) {
         console.info(e)
-        return
+        throw e
     }
 }
 
@@ -156,8 +155,17 @@ async function removeLocalBackgrounds(): Promise<void> {
         }
 
         for (const id of selectedIds) {
-            removeFilesFromCache([id])
-            delete local.backgroundFiles[id]
+            const nextFiles = { ...local.backgroundFiles }
+            delete nextFiles[id]
+            await storage.local.set({ backgroundFiles: nextFiles })
+
+            try {
+                await removeFilesFromCache([id])
+            } catch (error) {
+                await storage.local.set({ backgroundFiles: local.backgroundFiles })
+                throw error
+            }
+            local.backgroundFiles = nextFiles
 
             const thumbnail = document.querySelector<HTMLElement>(`#${id}`)
             thumbnail?.classList.toggle('hiding', true)
@@ -176,12 +184,9 @@ async function removeLocalBackgrounds(): Promise<void> {
         }
 
         handleFilesSettingsOptions(local)
-
-        storage.local.remove('backgroundFiles')
-        storage.local.set({ backgroundFiles: local.backgroundFiles })
     } catch (err) {
-        console.info(err)
-        return
+        console.warn('Cannot remove local background', err)
+        throw err
     }
 }
 
@@ -224,7 +229,7 @@ async function updateFileOptions(option: LocalFileOption, value: string): Promis
     }
 
     local.backgroundFiles[selection] = file
-    storage.local.set({ backgroundFiles: local.backgroundFiles })
+    await storage.local.set({ backgroundFiles: local.backgroundFiles })
 }
 
 //	Settings options
@@ -237,9 +242,13 @@ export function initFilesSettingsOptions(local: Local): void {
 
     sanitizeMetadatas(local).then((newlocal) => {
         handleFilesSettingsOptions(newlocal)
+    }).catch((err) => {
+        console.warn('[Backgrounds] Cannot sanitize local background metadata', err)
     })
 
-    onclickdown(document.getElementById('b_thumbnail-remove'), removeLocalBackgrounds)
+    onclickdown(document.getElementById('b_thumbnail-remove'), () => {
+        void removeLocalBackgrounds().catch((err) => console.warn('[Backgrounds] Cannot remove local background', err))
+    })
     onclickdown(document.getElementById('b_thumbnail-options'), toggleFileOptions)
     document.getElementById('b_thumbnail-zoom')?.addEventListener('click', handleGridView)
     document.getElementById('i_background-size')?.addEventListener('input', fileOptionsEvent)
@@ -256,17 +265,21 @@ export function initFilesSettingsOptions(local: Local): void {
         const { id, value, checked } = this
 
         if (id === 'i_background-size') {
-            updateFileOptions('size', value)
+            void updateFileOptions('size', value).catch(reportFileOptionError)
         }
         if (id === 'i_background-vertical') {
-            updateFileOptions('vertical', value)
+            void updateFileOptions('vertical', value).catch(reportFileOptionError)
         }
         if (id === 'i_background-horizontal') {
-            updateFileOptions('horizontal', value)
+            void updateFileOptions('horizontal', value).catch(reportFileOptionError)
         }
         if (id === 'i_background-compress') {
-            updateFileOptions('use-compressed', checked.toString())
+            void updateFileOptions('use-compressed', checked.toString()).catch(reportFileOptionError)
         }
+    }
+
+    function reportFileOptionError(err: unknown): void {
+        console.warn('[Backgrounds] Cannot update local background options', err)
     }
 
     function renderThumbnailOnIntersection(entries: IntersectionObserverEntry[]): void {
@@ -276,12 +289,10 @@ export function initFilesSettingsOptions(local: Local): void {
 
             if (isIntersecting && isLoading) {
                 getFileFromCache(id).then((data) => {
-                    storage.local.get('backgroundFiles').then((local) => {
-                        if (data) {
-                            addThumbnailImage(id, local, data)
-                            thumbnailVisibilityObserver.unobserve(target)
-                        }
-                    })
+                    addThumbnailImage(id, data)
+                    thumbnailVisibilityObserver.unobserve(target)
+                }).catch((err) => {
+                    console.warn(`[Backgrounds] Cannot render local thumbnail ${id}`, err)
                 })
             }
         }
@@ -382,12 +393,16 @@ function createThumbnail(id: string): HTMLButtonElement {
     thbimg.setAttribute('draggable', 'false')
 
     thb.appendChild(thbimg)
-    thb.addEventListener('click', handleThumbnailClick)
+    thb.addEventListener('click', (event) => {
+        void handleThumbnailClick.call(thb, event).catch((err) => {
+            console.warn(`[Backgrounds] Cannot select local background ${id}`, err)
+        })
+    })
 
     return thb
 }
 
-function addThumbnailImage(id: string, local: Local, data: LocalFileData): void {
+function addThumbnailImage(id: string, data: LocalFileData): void {
     const btn = document.querySelector<HTMLButtonElement>(`#${id}`)
     const img = document.querySelector<HTMLImageElement>(`#${id} img`)
 
@@ -396,14 +411,25 @@ function addThumbnailImage(id: string, local: Local, data: LocalFileData): void 
         return
     }
 
+    const objectUrl = URL.createObjectURL(data.small)
+    let released = false
+    const releaseObjectUrl = (): void => {
+        if (released) {
+            return
+        }
+        released = true
+        clearTimeout(timeout)
+        URL.revokeObjectURL(objectUrl)
+    }
+    const timeout = setTimeout(releaseObjectUrl, THUMBNAIL_LOAD_TIMEOUT_MS)
+
     img.addEventListener('load', () => {
         btn.classList.replace('loading', 'loaded')
         setTimeout(() => btn.classList.remove('loaded'), 2)
-    })
-
-    mediaFromFiles(id, local, data).then((image) => {
-        img.src = image.urls.small
-    })
+        releaseObjectUrl()
+    }, { once: true })
+    img.addEventListener('error', releaseObjectUrl, { once: true })
+    img.src = objectUrl
 }
 
 async function handleThumbnailClick(this: HTMLButtonElement, mouseEvent: MouseEvent): Promise<void> {
@@ -486,7 +512,7 @@ async function handleThumbnailClick(this: HTMLButtonElement, mouseEvent: MouseEv
         document.getElementById(id)?.classList?.add('selected')
 
         local.backgroundFiles[id].lastUsed = new Date().toString()
-        storage.local.set({ backgroundFiles: local.backgroundFiles })
+        await storage.local.set({ backgroundFiles: local.backgroundFiles })
 
         handleFilesSettingsOptions(local)
         applyBackground(image)
@@ -513,9 +539,14 @@ export async function mediaFromFiles(
 
     data = data ?? (await getFileFromCache(id))
 
-    const urls = {
-        full: URL.createObjectURL(data.full),
-        small: URL.createObjectURL(data.small),
+    const fullUrl = URL.createObjectURL(data.full)
+    let smallUrl: string
+
+    try {
+        smallUrl = URL.createObjectURL(data.small)
+    } catch (err) {
+        URL.revokeObjectURL(fullUrl)
+        throw err
     }
 
     const image: BackgroundImage = {
@@ -523,8 +554,8 @@ export async function mediaFromFiles(
         mimetype: data.full.type,
         file: metadata,
         urls: {
-            full: urls.full,
-            small: urls.small,
+            full: fullUrl,
+            small: smallUrl,
         },
     }
 
@@ -546,7 +577,12 @@ function getSelection(): string[] {
 }
 
 export async function localFilesCacheControl(backgrounds: Backgrounds, local: Local, needNew?: boolean): Promise<void> {
+    const runtimeVersion = currentBackgroundRuntimeVersion()
     local = await sanitizeMetadatas(local)
+
+    if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+        return
+    }
 
     const ids = lastUsedBackgroundFiles(local.backgroundFiles)
 
@@ -567,17 +603,39 @@ export async function localFilesCacheControl(backgrounds: Backgrounds, local: Lo
         const rand = Math.floor(Math.random() * ids.length)
         const id = ids[rand]
 
-        applyBackground(await mediaFromFiles(id, local))
+        const media = await mediaFromFiles(id, local)
+
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+            revokeBackgroundObjectUrls(media)
+            return
+        }
+
+        applyBackground(media)
         local.backgroundFiles[id].lastUsed = new Date().toString()
-        storage.local.set(local)
+        await storage.local.set({ backgroundFiles: local.backgroundFiles })
     } else {
-        applyBackground(await mediaFromFiles(ids[0], local))
+        const media = await mediaFromFiles(ids[0], local)
+
+        if (!isCurrentBackgroundRuntimeVersion(runtimeVersion)) {
+            revokeBackgroundObjectUrls(media)
+            return
+        }
+
+        applyBackground(media)
+    }
+}
+
+function revokeBackgroundObjectUrls(media: Background): void {
+    for (const url of Object.values(media.urls)) {
+        if (url?.startsWith('blob:')) {
+            URL.revokeObjectURL(url)
+        }
     }
 }
 
 //  Storage
 
-async function saveFileToCache(id: string, filedata: LocalFileData): Promise<void> {
+export async function saveFileToCache(id: string, filedata: LocalFileData): Promise<void> {
     const cache = await getCache('local-files')
     const { full, small } = filedata
 
@@ -590,17 +648,31 @@ async function saveFileToCache(id: string, filedata: LocalFileData): Promise<voi
     const responseFull = new Response(full, { headers: headersFull })
     const responseSmall = new Response(small, { headers: headersSmall })
 
-    await Promise.all([
+    const writes = await Promise.allSettled([
         cache.put(requestFull, responseFull),
         cache.put(requestSmall, responseSmall),
     ])
+
+    const failures = writes.filter((result) => result.status === 'rejected')
+    if (failures.length > 0) {
+        await Promise.allSettled([
+            cache.delete(requestFull),
+            cache.delete(requestSmall),
+        ])
+        throw new AggregateError(failures.map((failure) => failure.reason), `Cannot cache local background ${id}`)
+    }
 }
 
 export async function getFileFromCache(id: string): Promise<LocalFileData> {
     const cache = await getCache('local-files')
-
-    const full = await (await cache?.match(`http://127.0.0.1:8888/${id}/full`))?.blob()
-    const small = await (await cache?.match(`http://127.0.0.1:8888/${id}/small`))?.blob()
+    const [fullResponse, smallResponse] = await Promise.all([
+        cache.match(`http://127.0.0.1:8888/${id}/full`),
+        cache.match(`http://127.0.0.1:8888/${id}/small`),
+    ])
+    const [full, small] = await Promise.all([
+        fullResponse?.blob(),
+        smallResponse?.blob(),
+    ])
 
     if (!full || !small) {
         throw new Error(`${id} is undefined`)
@@ -609,59 +681,121 @@ export async function getFileFromCache(id: string): Promise<LocalFileData> {
     return { full, small }
 }
 
-async function removeFilesFromCache(ids: string[]): Promise<true> {
+export async function removeFilesFromCache(ids: string[]): Promise<void> {
     const cache = await getCache('local-files')
+    const deletions: Promise<boolean>[] = []
 
     for (const id of ids) {
         sessionStorage.removeItem(id)
-        cache.delete(`http://127.0.0.1:8888/${id}/full`)
-        cache.delete(`http://127.0.0.1:8888/${id}/small`)
+        deletions.push(
+            cache.delete(`http://127.0.0.1:8888/${id}/full`),
+            cache.delete(`http://127.0.0.1:8888/${id}/small`),
+        )
     }
 
-    return true
+    await Promise.all(deletions)
 }
 
 /**
  * Removes metadata in local storage or add default based on files
  * found in CacheStorage "local-files"
  */
-async function sanitizeMetadatas(local: Local): Promise<Local> {
+export async function sanitizeMetadatas(local: Local): Promise<Local> {
     const newMetadataList: Record<string, BackgroundFile> = {}
     const cache = await getCache('local-files')
     const cacheKeys = await cache.keys()
+    const cachedParts = new Map<string, Set<string>>()
 
     local.backgroundFiles ??= {}
 
     for (const request of cacheKeys) {
         try {
-            const key = new URL(request.url).pathname.split('/')[1]
-            let metadata = local.backgroundFiles[key]
+            const [key, part] = new URL(request.url).pathname.split('/').filter(Boolean)
 
-            if (!metadata) {
-                metadata = {
-                    lastUsed: new Date('01/01/1971').toString(),
-                    position: {
-                        size: 'cover',
-                        x: '50%',
-                        y: '50%',
-                    },
-                }
+            if (!key || (part !== 'full' && part !== 'small')) {
+                continue
             }
 
-            newMetadataList[key] = metadata
+            const parts = cachedParts.get(key) ?? new Set<string>()
+            parts.add(part)
+            cachedParts.set(key, parts)
         } catch (err) {
             console.info(err)
         }
     }
 
-    const oldKeys = Object.keys(local.backgroundFiles)
-    const newKeys = Object.keys(newMetadataList)
+    for (const [key, parts] of cachedParts) {
+        if (!(parts.has('full') && parts.has('small'))) {
+            const availablePart = parts.has('full') ? 'full' : 'small'
+            const missingPart = availablePart === 'full' ? 'small' : 'full'
+            const availableRequest = new Request(`http://127.0.0.1:8888/${key}/${availablePart}`)
+            const missingRequest = new Request(`http://127.0.0.1:8888/${key}/${missingPart}`)
 
-    if (oldKeys.length !== newKeys.length) {
-        storage.local.set({ backgroundFiles: newMetadataList })
+            // Both cache entries contain the same user-selected image at
+            // different sizes. If a browser evicted only one, retain the
+            // irreplaceable remaining blob and rebuild the missing half.
+            try {
+                const available = await cache.match(availableRequest)
+                if (!available) throw new Error(`Cannot read cached ${availablePart} background`)
+                await cache.put(missingRequest, available.clone())
+                parts.add(missingPart)
+            } catch (err) {
+                console.warn(`[Backgrounds] Cannot repair local background ${key}`, err)
+            }
+        }
+
+        let metadata = local.backgroundFiles[key]
+
+        if (!metadata) {
+            metadata = {
+                lastUsed: new Date('01/01/1971').toString(),
+                position: {
+                    size: 'cover',
+                    x: '50%',
+                    y: '50%',
+                },
+            }
+        }
+
+        // Keep metadata even if repair failed so a transient quota/cache
+        // failure never turns into permanent user-data deletion.
+        newMetadataList[key] = metadata
+    }
+
+    const oldKeys = Object.keys(local.backgroundFiles).toSorted()
+    const newKeys = Object.keys(newMetadataList).toSorted()
+
+    if (oldKeys.join('\n') !== newKeys.join('\n')) {
+        await storage.local.set({ backgroundFiles: newMetadataList })
     }
 
     local.backgroundFiles = newMetadataList
 
     return local
+}
+
+export async function uniqueLocalBackgroundEntries(
+    filelist: FileList | File[],
+    existing: Local['backgroundFiles'],
+): Promise<LocalBackgroundEntry[]> {
+    const entries: LocalBackgroundEntry[] = []
+    const knownIds = new Set(Object.keys(existing ?? {}))
+
+    for (const file of filelist) {
+        const id = await localBackgroundId(file)
+
+        if (knownIds.has(id)) {
+            continue
+        }
+
+        knownIds.add(id)
+        entries.push({ id, file })
+    }
+
+    return entries
+}
+
+export async function localBackgroundId(file: File): Promise<string> {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
+    return `local-${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 }

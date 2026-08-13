@@ -7,7 +7,6 @@ try {
 
 export function httpServer(port: number, baseUrl = 'release/online'): void {
     const contentTypeList: Record<string, string> = {
-        '.webmanifest': 'application/manifest+json',
         '.js': 'text/javascript',
         '.svg': 'image/svg+xml',
         '.ico': 'image/x-icon',

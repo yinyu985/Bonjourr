@@ -20,7 +20,7 @@
     },
     "offline_enabled": true,
     "background": {
-        "service_worker": "src/scripts/service-worker.js"
+        "service_worker": "src/scripts/extension-worker.js"
     },
     "permissions": [
         "storage",
@@ -28,10 +28,13 @@
         "favicon",
         "bookmarks"
     ],
-    "optional_permissions": [
-        "search"
-    ],
     "host_permissions": [
+        "https://api.unsplash.com/*",
+        "https://api.github.com/*",
+        "https://gist.githubusercontent.com/*",
+        "https://cdn.jsdelivr.net/*"
+    ],
+    "optional_host_permissions": [
         "https://*/*"
     ]
 }
