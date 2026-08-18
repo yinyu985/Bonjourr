@@ -25,14 +25,7 @@ export function backgroundQueryValue(backgrounds: Backgrounds, collectionName: s
 }
 
 export function backgroundSourcePatch(type: Backgrounds['type'], value: string): BackgroundPatch {
-    switch (type) {
-        case 'images':
-            return { images: value }
-        case 'urls':
-            return { urls: value }
-        default:
-            return {}
-    }
+    return type === 'images' ? { images: value } : {}
 }
 
 export function mergeBackgroundPatch(current: Backgrounds, patch: BackgroundPatch): Backgrounds {
@@ -47,12 +40,5 @@ export function mergeBackgroundPatch(current: Backgrounds, patch: BackgroundPatc
 }
 
 function selectedBackgroundSource(backgrounds: Backgrounds): string {
-    switch (backgrounds.type) {
-        case 'images':
-            return backgrounds.images
-        case 'urls':
-            return backgrounds.urls
-        default:
-            return ''
-    }
+    return backgrounds.type === 'images' ? backgrounds.images : ''
 }

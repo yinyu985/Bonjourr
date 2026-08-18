@@ -8,7 +8,7 @@ import { acquireSynchronizationLock } from './lock.ts'
 import { buildBookmarkSnapshotFromConfig, replaceBookmarksFromConfig } from '../links/bookmarks.ts'
 import { onSettingsLoad } from '../../utils/onsettingsload.ts'
 import { flushPendingDebounces } from '../../utils/debounce.ts'
-import { mergeImportedConfig } from '../../compatibility/apply.ts'
+import { mergeImportedConfig, removeDeprecatedFields } from '../../compatibility/apply.ts'
 import { stableStringify } from '../../utils/stringify.ts'
 import { getLang, tradThis } from '../../utils/translations.ts'
 import { fadeOut } from '../../shared/dom.ts'
@@ -588,9 +588,19 @@ async function updateSyncOption(update: SyncUpdate): Promise<void> {
                 const newToken = update.gistToken ?? ''
                 const lookupState = { ...current, gistToken: newToken, syncType: 'gist' as const }
                 const gist = getRemoteProvider(lookupState)
-                const foundId = await gist?.findResource(lookupState)
 
                 if (!gist) throw new Error('Remote synchronization provider is unavailable')
+
+                // Discovery lists the account's Gists. Some tokens can still read a
+                // known Gist directly even when listing fails, so fall back to the
+                // already-bound resource instead of rejecting a usable token.
+                let foundId: string | undefined
+                try {
+                    foundId = await gist.findResource(lookupState)
+                } catch (err) {
+                    foundId = current.remoteResourceId || undefined
+                    if (!foundId) throw err
+                }
 
                 await replaceRemoteIdentity(gist, newToken, foundId ?? '')
                 current.gistToken = newToken
@@ -824,6 +834,7 @@ async function recordRemoteSyncSuccess(
 }
 
 function normalizeExternalSync(data: Partial<Sync>): Sync {
+    removeDeprecatedFields(data as Sync)
     assertValidSyncInput(data)
     const links = data.links as Record<string, unknown> | undefined
     if (!links || !Array.isArray(links.folders) || !Array.isArray(links.favorites)) {

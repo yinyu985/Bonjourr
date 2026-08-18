@@ -53,14 +53,12 @@ export interface Hide {
 }
 
 export interface Backgrounds {
-    type: 'files' | 'urls' | 'images' | 'color'
+    type: 'images' | 'color'
     frequency: Frequency
     bright: number
     blur: number
     color: string
-    urls: string
     images: string
-    pausedUrl?: string
     pausedImage?: BackgroundImage
     query: string
     texture: {

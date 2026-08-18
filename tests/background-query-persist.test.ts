@@ -24,9 +24,7 @@ function setupDom(): void {
         <form id="f_background-user-coll"><input id="i_background-user-coll" /><small></small><button></button></form>
         <div id="background-user-coll-option"></div>
         <div id="background-user-search-option"></div>
-        <select id="i_background-provider"></select>
         <select id="i_freq"></select>
-        <div id="background-provider-option"></div>
         <form id="f_gistsync"><input /><small></small><button></button></form>
         <div id="linkblocks"></div>
         <div id="link-mini"></div>
@@ -150,13 +148,8 @@ Deno.test({
         await new Promise((resolve) => setTimeout(resolve, 550))
 
         const type = document.getElementById('i_type') as HTMLSelectElement
-        type.value = 'images'
+        type.value = 'unsplash-images-search'
         type.dispatchEvent(new Event('change', { bubbles: true }))
-        await waitForPendingBackgroundWrites()
-
-        const provider = document.getElementById('i_background-provider') as HTMLSelectElement
-        provider.value = 'unsplash-images-search'
-        provider.dispatchEvent(new Event('change', { bubbles: true }))
         await waitForPendingBackgroundWrites()
 
         const input = document.getElementById('i_background-user-search') as HTMLInputElement
@@ -369,13 +362,8 @@ Deno.test({
         await new Promise((resolve) => setTimeout(resolve, 550))
 
         const type = document.getElementById('i_type') as HTMLSelectElement
-        type.value = 'images'
+        type.value = 'unsplash-images-search'
         type.dispatchEvent(new Event('change', { bubbles: true }))
-        await waitForPendingBackgroundWrites()
-
-        const provider = document.getElementById('i_background-provider') as HTMLSelectElement
-        provider.value = 'unsplash-images-search'
-        provider.dispatchEvent(new Event('change', { bubbles: true }))
         await waitForPendingBackgroundWrites()
 
         const input = document.getElementById('i_background-user-search') as HTMLInputElement

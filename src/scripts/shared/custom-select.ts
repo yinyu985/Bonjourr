@@ -121,6 +121,13 @@ export function initCustomSelects(root: ParentNode = document): void {
         const aside = document.getElementById('settings')
         aside?.addEventListener('scroll', closeCustomSelects, { passive: true })
         globalThis.addEventListener('resize', closeCustomSelects)
+
+        // The option list lives on <body>, outside the settings aside, so it is
+        // not hidden when the panel closes. Close it whenever settings toggle
+        // or any editor closes, otherwise it lingers on the page.
+        document.addEventListener('toggle-settings', closeCustomSelects)
+        document.addEventListener('close-edit', closeCustomSelects)
+        document.addEventListener('toggle-notes', closeCustomSelects)
     }
 }
 

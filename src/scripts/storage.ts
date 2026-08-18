@@ -927,18 +927,16 @@ function clearall(): Promise<void> {
 async function clearallNow(): Promise<void> {
     switch (storage.type.get()) {
         case 'webext-local': {
-            // Preserve user-supplied background blobs. Resetting extension
-            // preferences must not destroy assets that cannot be re-created.
+            // Recovery archives survive a reset so a fatal settings corruption
+            // can always be rolled back from the settings panel.
             try {
                 const current = await chrome.storage.local.get() as Record<string, unknown>
                 const archives = Object.fromEntries(
                     Object.entries(current).filter(([key]) => key.startsWith(ARCHIVE_PREFIX)),
                 )
-                const currentBackgroundFiles = isRecord(current.backgroundFiles) ? current.backgroundFiles : {}
                 const resetState: Record<string, unknown> = {
                     ...archives,
                     ...LOCAL_DEFAULT,
-                    backgroundFiles: currentBackgroundFiles,
                     syncStorage: structuredClone(SYNC_DEFAULT),
                 }
 
@@ -949,11 +947,8 @@ async function clearallNow(): Promise<void> {
                 const obsoleteKeys = Object.keys(current).filter((key) => !(key in resetState))
                 if (obsoleteKeys.length > 0) await chrome.storage.local.remove(obsoleteKeys)
 
-                const readback = await chrome.storage.local.get(['syncStorage', 'backgroundFiles']) as unknown as Local
-                if (
-                    !deepEqual(verifyDataAsSync(readback.syncStorage), SYNC_DEFAULT) ||
-                    !deepEqual(readback.backgroundFiles ?? {}, currentBackgroundFiles)
-                ) {
+                const readback = await chrome.storage.local.get('syncStorage') as unknown as Local
+                if (!deepEqual(verifyDataAsSync(readback.syncStorage), SYNC_DEFAULT)) {
                     throw new Error('Reset verification failed')
                 }
             } catch (err) {
@@ -980,8 +975,7 @@ async function clearallNow(): Promise<void> {
 
     sessionStorage.clear()
     for (const key of Object.keys(localStorage)) {
-        const preserve = key === 'bonjourr' || key === 'backgroundFiles' || key === 'update-archive' ||
-            key.startsWith('bonjourr-archive-')
+        const preserve = key === 'bonjourr' || key === 'update-archive' || key.startsWith('bonjourr-archive-')
         if (!preserve) localStorage.removeItem(key)
     }
 
@@ -1084,16 +1078,11 @@ function verifyDataAsLocal(data: unknown = {}): Local {
 
     if (data.syncType === 'off' || data.syncType === 'gist') local.syncType = data.syncType
     if (data.operaExplained === true) local.operaExplained = true
-    if (typeof data.backgroundCompressFiles === 'boolean') {
-        local.backgroundCompressFiles = data.backgroundCompressFiles
-    }
     if (isValidTranslations(data.translations)) local.translations = structuredClone(data.translations)
     if (Array.isArray(data.fonts)) local.fonts = structuredClone(data.fonts) as Local['fonts']
     if (isRecord(data.syncStorage)) local.syncStorage = verifyDataAsSync(data.syncStorage)
 
     local.backgroundCollections = sanitizeBackgroundCollections(data.backgroundCollections)
-    local.backgroundUrls = sanitizeBackgroundUrls(data.backgroundUrls)
-    local.backgroundFiles = sanitizeBackgroundFiles(data.backgroundFiles)
     return local
 }
 
@@ -1117,45 +1106,6 @@ function sanitizeBackgroundCollections(value: unknown): Local['backgroundCollect
 function isLocalBackgroundImage(value: unknown): boolean {
     return isRecord(value) && value.format === 'image' && isRecord(value.urls) &&
         typeof value.urls.full === 'string' && typeof value.urls.small === 'string'
-}
-
-function sanitizeBackgroundUrls(value: unknown): Local['backgroundUrls'] {
-    if (!isRecord(value)) return {}
-    const states = new Set(['NONE', 'LOADING', 'OK', 'NOT_URL', 'CANT_REACH', 'NOT_MEDIA'])
-    const result: Local['backgroundUrls'] = {}
-
-    for (const [url, metadata] of Object.entries(value)) {
-        if (isRecord(metadata) && typeof metadata.lastUsed === 'string' && states.has(String(metadata.state))) {
-            result[url] = {
-                lastUsed: metadata.lastUsed,
-                state: metadata.state as Local['backgroundUrls'][string]['state'],
-            }
-        }
-    }
-    return result
-}
-
-function sanitizeBackgroundFiles(value: unknown): Local['backgroundFiles'] {
-    if (!isRecord(value)) return {}
-    const result: Local['backgroundFiles'] = {}
-
-    for (const [id, metadata] of Object.entries(value)) {
-        if (!isRecord(metadata) || typeof metadata.lastUsed !== 'string') continue
-        const file: Local['backgroundFiles'][string] = { lastUsed: metadata.lastUsed }
-        if (typeof metadata.selected === 'boolean') file.selected = metadata.selected
-        if (
-            isRecord(metadata.position) && typeof metadata.position.size === 'string' &&
-            typeof metadata.position.x === 'string' && typeof metadata.position.y === 'string'
-        ) {
-            file.position = {
-                size: metadata.position.size,
-                x: metadata.position.x,
-                y: metadata.position.y,
-            }
-        }
-        result[id] = file
-    }
-    return result
 }
 
 function stageSyncForReload(data: Sync): void {

@@ -9,9 +9,6 @@ const UTM_SOURCE = 'bonjourr-fork'
 const UTM_MEDIUM = 'referral'
 
 export function toggleCredits(backgrounds: Backgrounds): void {
-    const container = document.getElementById('background-credit')
-    container?.classList.toggle('shown', backgrounds.type === 'images')
-
     if (backgrounds.type !== 'images') {
         const attribution = document.getElementById('background-attribution')
         attribution?.replaceChildren()
@@ -23,35 +20,6 @@ export function toggleCredits(backgrounds: Backgrounds): void {
 export function updateCredits(image?: Background): void {
     updateDownloadTarget(image)
     updateMainAttribution(image)
-
-    const el = document.getElementById('credit-text')
-
-    if (!el) {
-        return
-    }
-
-    el.textContent = ''
-
-    if (!image?.page || !image?.username) return
-
-    const author = image.name || image.username
-    const city = image.city || ''
-    const country = image.country || ''
-    const comma = city && country ? ', ' : ''
-    const location = `${city}${comma}${country}`
-    const text = [author, location].filter(Boolean).join(' · ')
-
-    const link = document.createElement('a')
-    link.textContent = text
-
-    const page = safeCreditUrl(image)
-    if (!page) return
-    link.href = page
-
-    link.target = '_blank'
-    link.rel = 'noopener noreferrer'
-
-    el.appendChild(link)
 }
 
 function updateDownloadTarget(image?: Background): void {
@@ -67,14 +35,6 @@ function updateDownloadTarget(image?: Background): void {
         }
     }
     button?.toggleAttribute('disabled', !downloadLocation)
-}
-
-function safeCreditUrl(image: Background): string | undefined {
-    if (isUnsplashImage(image)) {
-        return unsplashProfileUrl(image.username)
-    }
-
-    return safeHttpsUrl(image.page)
 }
 
 function safeHttpsUrl(value?: string): string | undefined {

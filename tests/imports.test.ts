@@ -2,7 +2,8 @@ import './init.test.ts'
 
 // Import script after test init, document needs to be loaded first
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
-import { mergeImportedConfig } from '../src/scripts/compatibility/apply.ts'
+import { mergeImportedConfig, removeDeprecatedFields } from '../src/scripts/compatibility/apply.ts'
+import { assertValidNormalizedSync } from '../src/scripts/features/synchronization/validation.ts'
 import { assert } from '@std/assert'
 import { resetBackgroundRuntimeCache } from '../src/scripts/features/backgrounds/cache.ts'
 import type { Sync } from '../src/types/sync.ts'
@@ -174,4 +175,39 @@ Deno.test('Background runtime reset applies imported texture immediately', async
         localStorage.removeItem('backgroundCache')
         localStorage.removeItem('backgroundPreloadingAt')
     }
+})
+
+Deno.test('legacy remote config with retired urls background migrates instead of failing validation', () => {
+    const incoming = structuredClone(SYNC_DEFAULT)
+    const backgrounds = incoming.backgrounds as unknown as Record<string, unknown>
+    backgrounds.type = 'urls'
+    backgrounds.urls = 'https://example.com/x.png'
+    backgrounds.pausedUrl = 'https://example.com/x.png'
+
+    removeDeprecatedFields(incoming)
+
+    assert(!('urls' in incoming.backgrounds))
+    assert(!('pausedUrl' in incoming.backgrounds))
+    assert(incoming.backgrounds.type === 'color')
+
+    // After stripping, the normalized value must pass strict validation.
+    assertValidNormalizedSync(incoming)
+})
+
+Deno.test('legacy remote config with images type plus urls field keeps images and drops urls', () => {
+    const incoming = structuredClone(SYNC_DEFAULT)
+    const backgrounds = incoming.backgrounds as unknown as Record<string, unknown>
+    backgrounds.type = 'images'
+    backgrounds.images = 'unsplash-images-search'
+    backgrounds.query = 'sea'
+    backgrounds.urls = ''
+
+    removeDeprecatedFields(incoming)
+
+    assert(!('urls' in incoming.backgrounds))
+    assert(incoming.backgrounds.type === 'images')
+    assert(incoming.backgrounds.images === 'unsplash-images-search')
+    assert(incoming.backgrounds.query === 'sea')
+
+    assertValidNormalizedSync(incoming)
 })

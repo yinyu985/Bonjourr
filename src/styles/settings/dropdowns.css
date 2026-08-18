@@ -2,29 +2,12 @@
 
 /* Dropdowns: Background Options */
 
-#background-video-sound-options.shown {
-    max-height: 70px;
-}
-
 #solid_options.shown {
     max-height: 400px;
 }
 
-#local_options.shown {
-    max-height: 585px;
-}
-
-#background-urls-option.shown {
-    /* 80vh is prism-code-editor size */
-    max-height: calc(80vh + 80px);
-}
-
-#background-provider-option.shown {
-    max-height: 560px;
-}
-
 #unsplash-access-key-option.shown {
-    max-height: 260px;
+    max-height: 340px;
 }
 
 #background-user-coll-option.shown {
@@ -32,14 +15,6 @@
 }
 
 #background-user-search-option.shown {
-    max-height: 60px;
-}
-
-#background-file-options.shown {
-    max-height: 180px;
-}
-
-#thumbnail-action-buttons.shown {
     max-height: 60px;
 }
 
@@ -93,10 +68,6 @@
 
 .as_visuals {
     max-height: 285px;
-}
-
-.as_provider.shown {
-    max-height: 120px;
 }
 
 .as_video_sound {

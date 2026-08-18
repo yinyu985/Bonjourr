@@ -1,4 +1,4 @@
-import type { BackgroundFile, Local } from './local.ts'
+import type { Local } from './local.ts'
 import type { langList } from '../scripts/langs.ts'
 import type { Sync } from './sync.ts'
 
@@ -23,7 +23,6 @@ export interface BackgroundImage {
     city?: string
     country?: string
     download?: string
-    file?: BackgroundFile
 }
 
 export interface LinkElem {

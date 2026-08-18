@@ -1,3 +1,11 @@
+## 3.1.0
+
+- Backgrounds are now either an Unsplash photo or a solid color. The "Local files" and "URLs" background sources were removed.
+- The background type dropdown now lists the Unsplash sources directly (Random / Collections / Search) plus Solid color — no separate provider dropdown.
+- Unsplash Access Key form simplified: a single Save button, the label is just "Access Key", and the privacy notice is now an "!" tooltip (stored only on this device; never exported or remotely synced).
+- The current wallpaper's photographer credit now also appears inside the Background settings section, and the on-page Unsplash attribution moved to the top-right corner.
+- Removed dead modules/tests for local-file backgrounds, URL backgrounds and their compression/cache helpers.
+
 ## 3.0.0
 
 - Major release for the browser-bookmark based Bonjourr fork.

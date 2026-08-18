@@ -1,6 +1,6 @@
 import './init.test.ts'
 
-import { assertEquals, assertRejects, assertStrictEquals } from '@std/assert'
+import { assertEquals } from '@std/assert'
 import { SYNC_DEFAULT } from '../src/scripts/defaults.ts'
 import {
     __testing as backgroundTesting,
@@ -13,70 +13,13 @@ import {
     currentBackgroundRuntimeVersion,
     invalidateBackgroundRuntime,
 } from '../src/scripts/features/backgrounds/cache.ts'
-import {
-    getFileFromCache,
-    localBackgroundId,
-    removeFilesFromCache,
-    sanitizeMetadatas,
-    saveFileToCache,
-    uniqueLocalBackgroundEntries,
-} from '../src/scripts/features/backgrounds/local.ts'
-import { compressAsBlob, imageDimensions } from '../src/scripts/shared/compress.ts'
 import { storage } from '../src/scripts/storage.ts'
 import {
     backgroundSourcePatch,
     mergeBackgroundPatch,
     queryCollectionName,
 } from '../src/scripts/features/backgrounds/query.ts'
-import { validateBackgroundUrl } from '../src/scripts/features/backgrounds/urls.ts'
 import { safeUnsplashAssetUrl } from '../src/scripts/features/contextmenu.ts'
-
-class MemoryCache {
-    entries = new Map<string, Response>()
-    failPart = ''
-    deleted: string[] = []
-
-    put(request: Request, response: Response): Promise<void> {
-        if (request.url.endsWith(this.failPart) && this.failPart) {
-            return Promise.reject(new Error('cache put failed'))
-        }
-        this.entries.set(request.url, response.clone())
-        return Promise.resolve()
-    }
-
-    match(request: Request | string): Promise<Response | undefined> {
-        const key = typeof request === 'string' ? request : request.url
-        return Promise.resolve(this.entries.get(key)?.clone())
-    }
-
-    delete(request: Request | string): Promise<boolean> {
-        const key = typeof request === 'string' ? request : request.url
-        this.deleted.push(key)
-        return Promise.resolve(this.entries.delete(key))
-    }
-
-    keys(): Promise<Request[]> {
-        return Promise.resolve([...this.entries.keys()].map((key) => new Request(key)))
-    }
-}
-
-function installCache(cache: MemoryCache): () => void {
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'caches')
-    Object.defineProperty(globalThis, 'caches', {
-        configurable: true,
-        value: {
-            open: () => Promise.resolve(cache as unknown as Cache),
-        },
-    })
-
-    return () => {
-        if (descriptor) {
-            Object.defineProperty(globalThis, 'caches', descriptor)
-        } else {
-            Reflect.deleteProperty(globalThis, 'caches')
-        }
-    }
-}
 
 Deno.test('background search form selects the search provider', () => {
     const backgrounds = structuredClone(SYNC_DEFAULT.backgrounds)
@@ -91,11 +34,6 @@ Deno.test('retired and unknown image providers safely fall back to direct Unspla
     assertEquals(backgroundTesting.normalizedImageCollectionName('unsplash-images-random'), 'unsplash-images-random')
     assertEquals(backgroundTesting.normalizedImageCollectionName('bonjourr-images-daylight'), 'unsplash-images-random')
     assertEquals(backgroundTesting.normalizedImageCollectionName('unknown-images-source'), 'unsplash-images-random')
-})
-
-Deno.test('URL background validation rejects non-web schemes without a proxy request', async () => {
-    assertEquals(await validateBackgroundUrl('file:///private/image.png'), 'NOT_URL')
-    assertEquals(await validateBackgroundUrl('javascript:alert(1)'), 'NOT_URL')
 })
 
 Deno.test('background collection form selects the collection provider', () => {
@@ -148,7 +86,6 @@ Deno.test('remote background validation rejects malformed image descriptors', ()
 
 Deno.test('background credits never expose unsafe provider links and clear stale attribution', () => {
     document.body.innerHTML = `
-        <div id="credit-text"><a href="https://stale.example">stale</a></div>
         <div id="background-attribution"><a href="https://stale.example">stale</a></div>
         <a id="download-background"></a>
         <button id="b_interface-background-download"></button>
@@ -160,7 +97,6 @@ Deno.test('background credits never expose unsafe provider links and clear stale
         page: 'javascript:alert(1)',
         username: 'provider',
     })
-    assertEquals(document.querySelector('#credit-text a'), null)
     assertEquals(document.getElementById('background-attribution')?.hidden, true)
 
     updateCredits({
@@ -169,7 +105,8 @@ Deno.test('background credits never expose unsafe provider links and clear stale
         page: 'https://photos.example/image',
         username: 'provider',
     })
-    assertEquals(document.querySelector<HTMLAnchorElement>('#credit-text a')?.href, 'https://photos.example/image')
+    // Only Unsplash images get an on-page attribution; others stay hidden.
+    assertEquals(document.getElementById('background-attribution')?.hidden, true)
 })
 
 Deno.test('Unsplash backgrounds expose compliant attribution and only exact download locations', () => {
@@ -258,132 +195,6 @@ Deno.test({
     },
 })
 
-Deno.test('local background deduplication keeps each new file paired with its own id', async () => {
-    const duplicate = new File(['old'], 'duplicate.png', { type: 'image/png', lastModified: 1 })
-    const fresh = new File(['new'], 'fresh.png', { type: 'image/png', lastModified: 2 })
-    const duplicateId = await localBackgroundId(duplicate)
-    const existing = {
-        [duplicateId]: { lastUsed: new Date(0).toString() },
-    }
-
-    const entries = await uniqueLocalBackgroundEntries([duplicate, fresh, fresh], existing)
-
-    assertEquals(entries.length, 1)
-    assertStrictEquals(entries[0].file, fresh)
-    assertEquals(entries[0].id, (await uniqueLocalBackgroundEntries([fresh], {}))[0].id)
-
-    const sameMetadataA = new File(['aa'], 'same.png', { type: 'image/png', lastModified: 3 })
-    const sameMetadataB = new File(['bb'], 'same.png', { type: 'image/png', lastModified: 3 })
-    assertEquals((await uniqueLocalBackgroundEntries([sameMetadataA, sameMetadataB], {})).length, 2)
-})
-
-Deno.test({
-    name: 'local background cache stores and reads a complete full/small pair',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const cache = new MemoryCache()
-        const restore = installCache(cache)
-
-        try {
-            await saveFileToCache('pair', {
-                full: new Blob(['full'], { type: 'image/png' }),
-                small: new Blob(['small'], { type: 'image/webp' }),
-            })
-            const result = await getFileFromCache('pair')
-
-            assertEquals(await result.full.text(), 'full')
-            assertEquals(await result.small.text(), 'small')
-            assertEquals(cache.entries.size, 2)
-        } finally {
-            restore()
-        }
-    },
-})
-
-Deno.test({
-    name: 'local background cache rolls back both entries when either put fails',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const cache = new MemoryCache()
-        cache.failPart = '/small'
-        const restore = installCache(cache)
-
-        try {
-            await assertRejects(() =>
-                saveFileToCache('partial', {
-                    full: new Blob(['full'], { type: 'image/png' }),
-                    small: new Blob(['small'], { type: 'image/png' }),
-                })
-            )
-            assertEquals(cache.entries.size, 0)
-            assertEquals(cache.deleted.toSorted(), [
-                'http://127.0.0.1:8888/partial/full',
-                'http://127.0.0.1:8888/partial/small',
-            ])
-        } finally {
-            restore()
-        }
-    },
-})
-
-Deno.test({
-    name: 'local background cache waits for both entries to be deleted',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const cache = new MemoryCache()
-        const restore = installCache(cache)
-
-        try {
-            await saveFileToCache('remove-me', {
-                full: new Blob(['full'], { type: 'image/png' }),
-                small: new Blob(['small'], { type: 'image/png' }),
-            })
-            await removeFilesFromCache(['remove-me'])
-
-            assertEquals(cache.entries.size, 0)
-            assertEquals(cache.deleted.toSorted(), [
-                'http://127.0.0.1:8888/remove-me/full',
-                'http://127.0.0.1:8888/remove-me/small',
-            ])
-        } finally {
-            restore()
-        }
-    },
-})
-
-Deno.test({
-    name: 'metadata sanitizer repairs incomplete cache pairs without deleting the remaining user image',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const cache = new MemoryCache()
-        const restore = installCache(cache)
-        storage.type.set('localstorage')
-        await cache.put(
-            new Request('http://127.0.0.1:8888/orphan/full'),
-            new Response(new Blob(['full'], { type: 'image/png' })),
-        )
-
-        try {
-            const local = await sanitizeMetadatas({
-                backgroundCollections: {},
-                backgroundUrls: {},
-                backgroundFiles: { orphan: { lastUsed: new Date().toString() } },
-            })
-
-            assertEquals(Object.keys(local.backgroundFiles), ['orphan'])
-            assertEquals(cache.entries.size, 2)
-            assertEquals(await (await cache.match('http://127.0.0.1:8888/orphan/full'))?.text(), 'full')
-            assertEquals(await (await cache.match('http://127.0.0.1:8888/orphan/small'))?.text(), 'full')
-        } finally {
-            restore()
-        }
-    },
-})
-
 Deno.test({
     name: 'background DOM releases unselected and removed blob URLs',
     sanitizeOps: false,
@@ -451,37 +262,6 @@ Deno.test({
 })
 
 Deno.test({
-    name: 'imageDimensions rejects image decoding errors',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const imageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Image')
-
-        class BrokenImage extends EventTarget {
-            onload: (() => void) | null = null
-            onerror: (() => void) | null = null
-
-            set src(_value: string) {
-                queueMicrotask(() => this.onerror?.())
-            }
-
-            remove(): void {}
-        }
-
-        Object.defineProperty(globalThis, 'Image', {
-            configurable: true,
-            value: BrokenImage as unknown as typeof Image,
-        })
-
-        try {
-            await assertRejects(() => imageDimensions('blob:broken'), Error, 'Cannot read image dimensions')
-        } finally {
-            if (imageDescriptor) Object.defineProperty(globalThis, 'Image', imageDescriptor)
-        }
-    },
-})
-
-Deno.test({
     name: 'a failed background image keeps the previous background visible',
     sanitizeOps: false,
     sanitizeResources: false,
@@ -520,53 +300,6 @@ Deno.test({
         } finally {
             document.body.innerHTML = previousHtml
             if (imageDescriptor) Object.defineProperty(globalThis, 'Image', imageDescriptor)
-        }
-    },
-})
-
-Deno.test({
-    name: 'compression revokes owned object URLs after errors',
-    sanitizeOps: false,
-    sanitizeResources: false,
-    fn: async () => {
-        const imageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Image')
-        const createDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
-        const revokeDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
-        const revoked: string[] = []
-
-        class BrokenImage extends EventTarget {
-            onload: (() => void) | null = null
-            onerror: (() => void) | null = null
-
-            set src(_value: string) {
-                queueMicrotask(() => this.onerror?.())
-            }
-
-            remove(): void {}
-        }
-
-        Object.defineProperty(globalThis, 'Image', {
-            configurable: true,
-            value: BrokenImage as unknown as typeof Image,
-        })
-        Object.defineProperty(URL, 'createObjectURL', {
-            configurable: true,
-            value: (): string => 'blob:compression',
-        })
-        Object.defineProperty(URL, 'revokeObjectURL', {
-            configurable: true,
-            value: (url: string): void => {
-                revoked.push(url)
-            },
-        })
-
-        try {
-            await assertRejects(() => compressAsBlob(new Blob(['broken']), { size: 100 }))
-            assertEquals(revoked, ['blob:compression'])
-        } finally {
-            if (imageDescriptor) Object.defineProperty(globalThis, 'Image', imageDescriptor)
-            if (createDescriptor) Object.defineProperty(URL, 'createObjectURL', createDescriptor)
-            if (revokeDescriptor) Object.defineProperty(URL, 'revokeObjectURL', revokeDescriptor)
         }
     },
 })

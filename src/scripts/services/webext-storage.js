@@ -19,11 +19,8 @@ const startupStorageKeys = [
     'lastSyncedPayload',
     'syncType',
     'backgroundCollections',
-    'backgroundUrls',
-    'backgroundFiles',
     'backgroundLastChange',
     'backgroundLastTrackedPhoto',
-    'backgroundCompressFiles',
 ]
 
 chrome.storage.local.get(startupStorageKeys).then((data) => {

@@ -69,30 +69,43 @@ function normalizeImportedBackgroundTexture(data: Sync, target: Partial<Sync>): 
     }
 }
 
-function removeDeprecatedFields(data: Sync): void {
-    delete data.showall
-    delete (data.clock as unknown as Record<string, unknown>).analog
-    delete (data.backgrounds as unknown as Record<string, unknown>).mute
-    delete (data.backgrounds as unknown as Record<string, unknown>).fadein
-    delete (data.backgrounds as unknown as Record<string, unknown>).queries
+/**
+ * Strips fields that existed in older schemas but are no longer part of the
+ * current one, and coerces retired background sources. Must run before any
+ * validation so that legacy remote/imported configs migrate instead of being
+ * rejected. Defensive against partial inputs.
+ */
+export function removeDeprecatedFields(data: Sync): void {
+    const root = data as Record<string, unknown>
+    delete root.showall
 
-    if (data.backgrounds.pausedImage) {
-        data.backgrounds.type = 'images'
-        data.backgrounds.frequency = 'pause'
-        delete data.backgrounds.pausedUrl
-    } else if (data.backgrounds.pausedUrl) {
-        data.backgrounds.type = 'urls'
-        data.backgrounds.frequency = 'pause'
-        delete data.backgrounds.pausedImage
-    } else if (data.backgrounds.frequency !== 'pause') {
-        delete data.backgrounds.pausedImage
-        delete data.backgrounds.pausedUrl
+    if (isRecord(data.clock)) {
+        delete (data.clock as unknown as Record<string, unknown>).analog
     }
 
-    const images = [data.backgrounds.pausedImage]
-    for (const img of images) {
-        if (img && typeof img === 'object' && 'exif' in img) {
-            delete (img as Record<string, unknown>).exif
+    const backgrounds = data.backgrounds as unknown as Record<string, unknown> | undefined
+    if (!isRecord(backgrounds)) return
+
+    delete backgrounds.mute
+    delete backgrounds.fadein
+    delete backgrounds.queries
+    delete backgrounds.urls
+    delete backgrounds.pausedUrl
+
+    // The "files" and "urls" background sources were removed from this fork.
+    // Imported configs that used them fall back to the solid color.
+    if (backgrounds.type === 'files' || backgrounds.type === 'urls') {
+        backgrounds.type = 'color'
+        backgrounds.frequency = 'hour'
+    }
+
+    if (isRecord(backgrounds.pausedImage)) {
+        backgrounds.type = 'images'
+        backgrounds.frequency = 'pause'
+        if ('exif' in backgrounds.pausedImage) {
+            delete (backgrounds.pausedImage as Record<string, unknown>).exif
         }
+    } else if (backgrounds.frequency !== 'pause') {
+        delete backgrounds.pausedImage
     }
 }

@@ -227,7 +227,7 @@ Deno.test('Unsplash key settings use password input and local-only disclosure', 
     assertStringIncludes(html, 'id="unsplash-access-key-required"')
     assertStringIncludes(html, 'id="unsplash-access-key-status"')
     assertStringIncludes(html, 'aria-live="polite"')
-    assertStringIncludes(html, 'Never included in exports, remote sync, or recovery snapshots.')
+    assertStringIncludes(html, 'Never exported or remotely synced.')
     assertStringIncludes(settings, "new CustomEvent('unsplash-key-change', { detail: { available } })")
     assertEquals('unsplashAccessKey' in SYNC_DEFAULT, false)
     assertEquals(LOCAL_DEFAULT.unsplashAccessKey, '')

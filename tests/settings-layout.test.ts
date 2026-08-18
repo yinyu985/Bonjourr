@@ -8,9 +8,9 @@ Deno.test('Advanced settings are always visible without a show-all switch', () =
 
     assert(!html.includes('i_showall'))
     assert(!html.includes('Show all settings'))
-    assertStringIncludes(globalStyles, '.as:not(.as_provider)')
-    assert(!globalStyles.includes('.all .as'))
-    assert(!dropdownStyles.includes('.all .as'))
+    assertStringIncludes(globalStyles, '.dropdown.shown')
+    assert(!globalStyles.includes('.as_provider'))
+    assert(!dropdownStyles.includes('.as_provider'))
 })
 
 Deno.test('Settings markup, styles, and editor code stay out of the startup payload', () => {
@@ -33,7 +33,6 @@ Deno.test('Settings markup, styles, and editor code stay out of the startup payl
 })
 
 Deno.test('External network permissions are fixed-host by default and arbitrary HTTPS is optional', () => {
-    const urlBackgrounds = Deno.readTextFileSync('src/scripts/features/backgrounds/urls.ts')
     const helpMode = Deno.readTextFileSync('src/scripts/services/help-mode.js')
     const retiredServiceOrigin = ['https://services', 'bonjourr', 'fr'].join('.')
 
@@ -62,7 +61,6 @@ Deno.test('External network permissions are fixed-host by default and arbitrary 
             )
         }
     }
-    assert(!urlBackgrounds.includes('/backgrounds/proxy/'))
     assert(!helpMode.includes('localStorage.setItem(archiveName'))
     assertStringIncludes(helpMode, 'indexedDB.open(ARCHIVE_DATABASE, 1)')
 })

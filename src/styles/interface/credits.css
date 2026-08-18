@@ -1,48 +1,20 @@
-#background-credit.shown {
-    max-height: 30px;
-}
-
-#background-credit .wrapper {
-    color: var(--color-light-text);
-    font-size: inherit;
-    overflow: hidden;
-}
-
-#background-credit #credit-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#background-credit a {
-    color: inherit;
-    text-decoration: none;
-    opacity: 0.8;
-}
-
-#background-credit a:hover {
-    opacity: 1;
-    text-decoration: underline;
-}
-
 #background-attribution {
     position: fixed;
-    left: 50%;
-    bottom: 22px;
+    top: 16px;
+    right: 16px;
     z-index: 1;
-    max-width: calc(100vw - 160px);
-    padding: 1px 8px;
+    max-width: min(340px, calc(100vw - 32px));
+    padding: 3px 10px;
     overflow: hidden;
     border-radius: 6px;
     color: #fff;
     background: rgba(0, 0, 0, 0.2);
     font-size: 12px;
     line-height: 20px;
-    text-align: center;
+    text-align: right;
     text-overflow: ellipsis;
     text-shadow: 1px 2px 6px rgba(0, 0, 0, var(--text-shadow-alpha));
     white-space: nowrap;
-    transform: translateX(-50%);
 }
 
 #background-attribution[hidden] {
@@ -58,11 +30,4 @@
 
 #background-attribution a:hover {
     text-decoration-color: currentColor;
-}
-
-@media screen and (max-width: 600px) {
-    #background-attribution {
-        bottom: 64px;
-        max-width: calc(100vw - 32px);
-    }
 }

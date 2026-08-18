@@ -3,6 +3,7 @@ import { customFont, fontIsAvailableInSubset } from './features/fonts.ts'
 import {
     backgroundUpdate,
     initBackgroundOptions,
+    normalizedImageCollectionName,
     waitForPendingBackgroundWrites,
 } from './features/backgrounds/index.ts'
 import { resetBackgroundRuntimeCache } from './features/backgrounds/cache.ts'
@@ -29,7 +30,7 @@ import { settingsNotifications } from './utils/notifications.ts'
 import { getPermissions } from './utils/permissions.ts'
 import { loadCallbacks } from './utils/onsettingsload.ts'
 import { onclickdown } from './utils/clickdown.ts'
-import { mergeImportedConfig } from './compatibility/apply.ts'
+import { mergeImportedConfig, removeDeprecatedFields } from './compatibility/apply.ts'
 import { stringify } from './utils/stringify.ts'
 import { cancelPendingDebounces, debounce, flushPendingDebounces } from './utils/debounce.ts'
 import { langList } from './langs.ts'
@@ -81,7 +82,7 @@ export function settingsInit(sync: Sync, local: Local): void {
 
     traduction(settings, sync.lang)
     translatePlaceholders()
-    initBackgroundOptions(sync, local)
+    initBackgroundOptions(sync)
     initOptionsValues(sync, local)
     if (settings) {
         initCustomSelects(settings)
@@ -143,7 +144,10 @@ function initOptionsValues(data: Sync, local: Local): void {
     setInput('i_blur', data.backgrounds.blur ?? 15)
     setInput('i_bright', data.backgrounds.bright ?? 0.8)
     setInput('i_linkstyle', data.links.style || 'default')
-    setInput('i_type', data.backgrounds.type || 'images')
+    const backgroundType = data.backgrounds.type === 'color'
+        ? 'color'
+        : normalizedImageCollectionName(data.backgrounds.images)
+    setInput('i_type', backgroundType)
     setInput('i_freq', data.backgrounds?.frequency || 'hour')
     setInput('i_dark', data.dark || 'system')
     setInput('i_favicon', data.favicon ?? '')
@@ -312,9 +316,10 @@ function initOptionsEvents(): void {
     // Backgrounds
 
     paramId('i_type').addEventListener('change', function (this: HTMLInputElement): void {
-        void backgroundUpdate({ type: this.value }).then(updateUnsplashAccessKeyVisibility).catch((err) => {
-            console.warn('Background update failed', err)
-        })
+        const value = this.value
+        const isUnsplash = value.startsWith('unsplash-')
+        updateUnsplashAccessKeyVisibility()
+        runBackgroundUpdate(isUnsplash ? { type: 'images', provider: value } : { type: value })
     })
 
     paramId('b_solid-background').addEventListener('click', function (): void {
@@ -324,14 +329,6 @@ function initOptionsEvents(): void {
     paramId('i_solid-background').addEventListener('input', function (): void {
         runBackgroundUpdate({ color: this.value })
     })
-
-    const saveBackgroundProvider = function (this: HTMLInputElement): void {
-        updateUnsplashAccessKeyVisibility()
-        runBackgroundUpdate({ provider: this.value })
-    }
-
-    paramId('i_background-provider').addEventListener('input', saveBackgroundProvider)
-    paramId('i_background-provider').addEventListener('change', saveBackgroundProvider)
 
     const saveBackgroundQueryDraft = debounce((query: { targetId: string; value: string }) => {
         void backgroundUpdate({ querydraft: query }).then(() => updateSettingsJson()).catch((err) => {
@@ -387,14 +384,6 @@ function initOptionsEvents(): void {
 
     onclickdown(paramId('i_refresh'), (event) => {
         runBackgroundUpdate({ refresh: event })
-    })
-
-    paramId('i_background-upload').addEventListener('change', function (this: HTMLInputElement): void {
-        runBackgroundUpdate({ files: this.files })
-    })
-
-    onclickdown(paramId('b_background-urls'), () => {
-        runBackgroundUpdate({ urlsapply: true })
     })
 
     // Background filters
@@ -591,15 +580,33 @@ function initOptionsEvents(): void {
     }
 
     const tooltips = document.querySelectorAll<HTMLElement>('.tooltip')
+    const canHover = globalThis.matchMedia?.('(hover: hover)')?.matches ?? false
 
     for (const tooltip of tooltips) {
-        onclickdown(tooltip, () => {
+        const showTooltip = (): void => {
             const classes = [...tooltip.classList]
             const ttclass = classes.filter((cl) => cl.startsWith('tt'))[0]
             const tttext = document.querySelector(`.tooltiptext.${ttclass}`)
 
             tttext?.classList.toggle('shown')
-        })
+        }
+
+        onclickdown(tooltip, showTooltip)
+
+        if (canHover) {
+            tooltip.addEventListener('mouseenter', () => {
+                const classes = [...tooltip.classList]
+                const ttclass = classes.filter((cl) => cl.startsWith('tt'))[0]
+                const tttext = document.querySelector(`.tooltiptext.${ttclass}`)
+                tttext?.classList.add('shown')
+            })
+            tooltip.addEventListener('mouseleave', () => {
+                const classes = [...tooltip.classList]
+                const ttclass = classes.filter((cl) => cl.startsWith('tt'))[0]
+                const tttext = document.querySelector(`.tooltiptext.${ttclass}`)
+                tttext?.classList.remove('shown')
+            })
+        }
     }
 
     const splitRangeButtons = document.querySelectorAll<HTMLButtonElement>('.split-range button')
@@ -638,31 +645,17 @@ function initUnsplashAccessKey(accessKey?: string): void {
     unsplashAccessKeyAvailable = normalized !== undefined
     input.value = normalized ?? ''
     input.removeAttribute('aria-invalid')
-    resetUnsplashAccessKeyVisibility()
-    paramId('b_unsplash-access-key-remove').disabled = !unsplashAccessKeyAvailable
-    paramId('b_unsplash-access-key-toggle').disabled = input.value.length === 0
     updateUnsplashAccessKeyVisibility()
 }
 
 function initUnsplashAccessKeyEvents(): void {
     const form = paramId('f_unsplash-access-key') as unknown as HTMLFormElement
     const input = paramId('i_unsplash-access-key')
-    const toggle = paramId('b_unsplash-access-key-toggle')
-    const remove = paramId('b_unsplash-access-key-remove')
 
     input.addEventListener('input', () => {
         input.setCustomValidity('')
         input.removeAttribute('aria-invalid')
-        toggle.disabled = input.value.length === 0
         setUnsplashAccessKeyStatus()
-    })
-
-    toggle.addEventListener('click', () => {
-        const reveal = input.type === 'password'
-        input.type = reveal ? 'text' : 'password'
-        toggle.setAttribute('aria-pressed', String(reveal))
-        setUnsplashAccessKeyToggleText(reveal)
-        input.focus()
     })
 
     form.addEventListener('submit', (event) => {
@@ -686,7 +679,6 @@ function initUnsplashAccessKeyEvents(): void {
                 input.setCustomValidity('')
                 input.removeAttribute('aria-invalid')
                 unsplashAccessKeyAvailable = true
-                resetUnsplashAccessKeyVisibility()
                 updateUnsplashAccessKeyVisibility()
                 setUnsplashAccessKeyStatus('Unsplash Access Key saved.', 'success')
                 dispatchUnsplashAccessKeyChange(true)
@@ -698,33 +690,11 @@ function initUnsplashAccessKeyEvents(): void {
             }
         })
     })
-
-    remove.addEventListener('click', () => {
-        runSettingsTask('Unsplash Access Key removal', async () => {
-            setUnsplashAccessKeyControlsDisabled(true)
-            try {
-                await storage.local.remove('unsplashAccessKey')
-                input.value = ''
-                input.setCustomValidity('')
-                input.removeAttribute('aria-invalid')
-                unsplashAccessKeyAvailable = false
-                resetUnsplashAccessKeyVisibility()
-                updateUnsplashAccessKeyVisibility()
-                setUnsplashAccessKeyStatus('Unsplash Access Key removed.', 'success')
-                dispatchUnsplashAccessKeyChange(false)
-            } catch (err) {
-                setUnsplashAccessKeyStatus('Could not remove the Unsplash Access Key.', 'error')
-                throw err
-            } finally {
-                setUnsplashAccessKeyControlsDisabled(false)
-            }
-        })
-    })
 }
 
 function updateUnsplashAccessKeyVisibility(): void {
-    const isUnsplash = paramId('i_type').value === 'images' &&
-        paramId('i_background-provider').value.startsWith('unsplash-')
+    const value = paramId('i_type')?.value ?? ''
+    const isUnsplash = value.startsWith('unsplash-')
     document.getElementById('unsplash-access-key-option')?.classList.toggle('shown', isUnsplash)
     document.getElementById('unsplash-access-key-required')?.classList.toggle(
         'shown',
@@ -749,28 +719,6 @@ function setUnsplashAccessKeyControlsDisabled(disabled: boolean): void {
     const input = paramId('i_unsplash-access-key')
     input.disabled = disabled
     paramId('b_unsplash-access-key-save').disabled = disabled
-    paramId('b_unsplash-access-key-remove').disabled = disabled || !unsplashAccessKeyAvailable
-    paramId('b_unsplash-access-key-toggle').disabled = disabled || input.value.length === 0
-}
-
-function resetUnsplashAccessKeyVisibility(): void {
-    const input = paramId('i_unsplash-access-key')
-    const toggle = paramId('b_unsplash-access-key-toggle')
-
-    input.type = 'password'
-    toggle.setAttribute('aria-pressed', 'false')
-    setUnsplashAccessKeyToggleText(false)
-}
-
-function setUnsplashAccessKeyToggleText(revealed: boolean): void {
-    const toggle = paramId('b_unsplash-access-key-toggle')
-    const label = revealed ? 'Hide Access Key' : 'Show Access Key'
-    const shortLabel = revealed ? 'Hide' : 'Show'
-
-    toggle.setAttribute('title', tradThis(label))
-    toggle.setAttribute('aria-label', tradThis(label))
-    const span = toggle.querySelector('span')
-    if (span) span.textContent = tradThis(shortLabel)
 }
 
 function dispatchUnsplashAccessKeyChange(available: boolean): void {
@@ -1040,6 +988,7 @@ function loadImportFile(target: HTMLInputElement): void {
 
 async function importSettings(imported: Partial<Sync>): Promise<void> {
     try {
+        removeDeprecatedFields(imported as Sync)
         assertValidSyncInput(imported)
 
         // #308 - verify font subset before entering the destructive lock.

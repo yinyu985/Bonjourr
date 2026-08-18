@@ -99,20 +99,15 @@ async function resetApply() {
 
         if (typeof chrome !== 'undefined' && chrome?.storage) {
             const current = await chrome.storage.local.get()
-            const removableKeys = Object.keys(current).filter((key) =>
-                key !== 'backgroundFiles' && !key.startsWith(ARCHIVE_PREFIX)
-            )
+            const removableKeys = Object.keys(current).filter((key) => !key.startsWith(ARCHIVE_PREFIX))
 
-            // User-selected background blobs live in CacheStorage and their
-            // only index is backgroundFiles. A settings reset must preserve it.
             if (removableKeys.length > 0) {
                 await chrome.storage.local.remove(removableKeys)
             }
         }
 
         for (const key of Object.keys(localStorage)) {
-            const preserve = key === 'backgroundFiles' || key === 'update-archive' ||
-                key.startsWith(ARCHIVE_PREFIX)
+            const preserve = key === 'update-archive' || key.startsWith(ARCHIVE_PREFIX)
             if (!preserve) localStorage.removeItem(key)
         }
         sessionStorage.clear()

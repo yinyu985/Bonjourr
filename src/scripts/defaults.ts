@@ -76,7 +76,6 @@ export const SYNC_DEFAULT: Sync = {
         bright: 0.78,
         frequency: 'hour',
         color: '#222222',
-        urls: '',
         images: '',
         query: '',
         texture: {
@@ -113,10 +112,7 @@ export const LOCAL_DEFAULT: Local = {
     localConfigUpdatedAt: '',
     lastSyncedPayload: '',
     translations: undefined,
-    backgroundUrls: {},
-    backgroundFiles: {},
     backgroundCollections: {},
-    backgroundCompressFiles: true,
     backgroundLastChange: '',
     backgroundLastTrackedPhoto: '',
 }

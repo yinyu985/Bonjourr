@@ -524,19 +524,12 @@ Deno.test({
 })
 
 Deno.test({
-    name: 'reset preserves user background metadata and recovery archives',
+    name: 'reset preserves recovery archives and clears volatile settings',
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
-        const backgroundFiles = {
-            photo: {
-                lastUsed: 'today',
-                position: { size: 'cover', x: '50%', y: '50%' },
-            },
-        }
         const mock = webextStorageMock({
             syncStorage: { ...structuredClone(SYNC_DEFAULT), lang: 'fr' },
-            backgroundFiles,
             backgroundLastChange: 'today',
             'bonjourr-archive-config-snapshots': [{ safe: true }],
         })
@@ -546,7 +539,7 @@ Deno.test({
 
         try {
             await storage.clearall()
-            assertEquals(mock.state.backgroundFiles, backgroundFiles)
+            assertEquals(mock.state.backgroundLastChange, '')
             assertEquals(mock.state['bonjourr-archive-config-snapshots'], [{ safe: true }])
             assertEquals((mock.state.syncStorage as typeof SYNC_DEFAULT).lang, SYNC_DEFAULT.lang)
             assertEquals(localStorage.getItem('bonjourr-archive-config-snapshots'), '[{"safe":true}]')
@@ -815,26 +808,14 @@ Deno.test({
         localStorage.setItem('syncType', 'gist')
         localStorage.setItem('gistToken', 'valid-token')
         localStorage.setItem('backgroundCollections', '{"broken":"not-an-array"}')
-        localStorage.setItem('backgroundUrls', '{"https://example.com":{"state":"INVALID","lastUsed":"today"}}')
-        localStorage.setItem('backgroundFiles', '{"photo":{"lastUsed":42}}')
 
         try {
             const local = await storage.local.get()
             assertEquals(local.syncType, 'gist')
             assertEquals(local.gistToken, 'valid-token')
             assertEquals(local.backgroundCollections, {})
-            assertEquals(local.backgroundUrls, {})
-            assertEquals(local.backgroundFiles, {})
         } finally {
-            for (
-                const key of [
-                    'syncType',
-                    'gistToken',
-                    'backgroundCollections',
-                    'backgroundUrls',
-                    'backgroundFiles',
-                ]
-            ) {
+            for (const key of ['syncType', 'gistToken', 'backgroundCollections']) {
                 localStorage.removeItem(key)
             }
         }

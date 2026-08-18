@@ -59,7 +59,6 @@ function assertBoundedTextFields(value: Record<string, unknown>): void {
     }
 
     if (isRecord(value.backgrounds)) {
-        assertMaxString(value.backgrounds.urls, 8080, 'configuration.backgrounds.urls')
         assertMaxString(value.backgrounds.query, 200, 'configuration.backgrounds.query')
         assertMaxString(value.backgrounds.images, 256, 'configuration.backgrounds.images')
         assertHexColor(value.backgrounds.color, 'configuration.backgrounds.color')
@@ -140,7 +139,7 @@ function assertKnownConfigurationFields(value: Record<string, unknown>): void {
     if (isRecord(value.backgrounds)) {
         assertAllowedKeys(
             value.backgrounds,
-            [...Object.keys(SYNC_DEFAULT.backgrounds), 'pausedUrl', 'pausedImage', 'mute', 'fadein', 'queries'],
+            [...Object.keys(SYNC_DEFAULT.backgrounds), 'pausedImage', 'mute', 'fadein', 'queries'],
             'configuration.backgrounds',
         )
         if (isRecord(value.backgrounds.texture)) {
@@ -250,7 +249,7 @@ function assertEnums(value: Record<string, unknown>): void {
         assertEnum(value.links.style, ['inline', 'text'], 'configuration.links.style')
     }
     if (isRecord(value.backgrounds)) {
-        assertEnum(value.backgrounds.type, ['files', 'urls', 'images', 'color'], 'configuration.backgrounds.type')
+        assertEnum(value.backgrounds.type, ['images', 'color'], 'configuration.backgrounds.type')
         assertEnum(
             value.backgrounds.frequency,
             ['tabs', 'hour', 'day', 'period', 'pause'],
@@ -307,11 +306,6 @@ function assertOptionalFields(value: Record<string, unknown>): void {
 
     const backgrounds = value.backgrounds
     if (!isRecord(backgrounds)) return
-    for (const key of ['pausedUrl']) {
-        if (backgrounds[key] !== undefined && typeof backgrounds[key] !== 'string') {
-            throw new Error(`Invalid configuration: configuration.backgrounds.${key} must be a string`)
-        }
-    }
     if (backgrounds.pausedImage !== undefined && !isRecord(backgrounds.pausedImage)) {
         throw new Error('Invalid configuration: configuration.backgrounds.pausedImage must be an object')
     }

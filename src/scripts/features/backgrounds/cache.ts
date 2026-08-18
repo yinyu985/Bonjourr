@@ -2,7 +2,6 @@ import { storage } from '../../storage.ts'
 import { settingsBackgroundColor } from '../others.ts'
 import { TEXTURE_RANGES } from './textures.ts'
 
-import type { BackgroundUrl, BackgroundUrlState } from '../../../types/local.ts'
 import type { Backgrounds } from '../../../types/sync.ts'
 
 const BACKGROUND_CACHE_KEY = 'backgroundCache'
@@ -21,24 +20,6 @@ export function invalidateBackgroundRuntime(): void {
     backgroundRuntimeVersion += 1
 }
 
-export function backgroundUrlsFromText(value: string, state: BackgroundUrlState = 'OK'): Record<string, BackgroundUrl> {
-    const backgroundUrls: Record<string, BackgroundUrl> = {}
-    const now = new Date().toString()
-
-    for (const url of value.split('\n')) {
-        const trimmed = url.trim()
-
-        if (trimmed.startsWith('http')) {
-            backgroundUrls[trimmed] = {
-                lastUsed: now,
-                state,
-            }
-        }
-    }
-
-    return backgroundUrls
-}
-
 export async function resetBackgroundRuntimeCache(backgrounds?: Backgrounds): Promise<void> {
     invalidateBackgroundRuntime()
     localStorage.removeItem(BACKGROUND_CACHE_KEY)
@@ -46,24 +27,13 @@ export async function resetBackgroundRuntimeCache(backgrounds?: Backgrounds): Pr
     resetBackgroundDom(backgrounds)
     restoreLockedBackgroundCache(backgrounds)
 
-    await Promise.all([
-        storage.local.remove('backgroundCollections'),
-        storage.local.remove('backgroundUrls'),
-        storage.local.remove('backgroundLastChange'),
-    ])
-
-    if (backgrounds?.type === 'urls' && backgrounds.urls.trim()) {
-        await storage.local.set({ backgroundUrls: backgroundUrlsFromText(backgrounds.urls) })
-    }
+    await storage.local.remove('backgroundCollections')
+    await storage.local.remove('backgroundLastChange')
 }
 
 function restoreLockedBackgroundCache(backgrounds?: Backgrounds): void {
     if (backgrounds?.type === 'images' && backgrounds.frequency === 'pause' && backgrounds.pausedImage) {
         localStorage.setItem(BACKGROUND_CACHE_KEY, backgrounds.pausedImage.urls.full)
-    }
-
-    if (backgrounds?.type === 'urls' && backgrounds.frequency === 'pause' && backgrounds.pausedUrl) {
-        localStorage.setItem(BACKGROUND_CACHE_KEY, backgrounds.pausedUrl)
     }
 }
 
@@ -88,11 +58,6 @@ function resetBackgroundDom(backgrounds?: Backgrounds): void {
 
     if (backgrounds.type === 'images' && backgrounds.frequency === 'pause' && backgrounds.pausedImage) {
         showCachedImageBackground(backgrounds.pausedImage.urls.full, backgrounds.pausedImage.color)
-        return
-    }
-
-    if (backgrounds.type === 'urls' && backgrounds.frequency === 'pause' && backgrounds.pausedUrl) {
-        showCachedImageBackground(backgrounds.pausedUrl)
         return
     }
 

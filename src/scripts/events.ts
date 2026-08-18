@@ -31,7 +31,6 @@ function clickUserActions(event: MouseEvent): void {
         folder: path.some((el) => el.className.includes('in-folder')),
         linkblocks: pathIds.includes('linkblocks'),
         button: path.some((el) => el.className.includes('param-btn')),
-        localfiles: path.some((el) => el.id === 'local_options'),
         interface: pathIds.includes('interface'),
         contextmenu: pathIds.includes('contextmenu'),
         settings: path.some((el) => el.id === 'settings'),
@@ -44,12 +43,6 @@ function clickUserActions(event: MouseEvent): void {
                 )
             )
         ),
-    }
-
-    if (document.querySelectorAll('.thumbnail.selected') && !on.localfiles && !on.button) {
-        for (const node of document.querySelectorAll('.thumbnail.selected')) {
-            node.classList.remove('selected')
-        }
     }
 
     if (on.showsettings) {
